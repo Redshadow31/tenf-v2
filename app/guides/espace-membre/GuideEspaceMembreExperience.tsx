@@ -2,40 +2,56 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   Check,
   ChevronDown,
   CircleDot,
-  Eye,
-  EyeOff,
+  ClipboardList,
+  Cog,
+  GraduationCap,
+  LayoutDashboard,
   LayoutGrid,
   LogIn,
   MousePointerClick,
   Sparkles,
+  Target,
+  UserCircle,
+  Zap,
 } from "lucide-react";
 import {
   checklistItems,
   extraRessources,
   faqItems,
-  menuZones,
+  memberZones,
   parcoursEtapes,
   personas,
   type PersonaId,
-} from "./guidePartiePubliqueData";
+} from "./guideEspaceMembreData";
 
 const GUIDE_SECTION_ATTR = "data-guide-section";
-
-const STORAGE_CHECKLIST = "tenf:guide-partie-publique:checklist:v1";
+const STORAGE_CHECKLIST = "tenf:guide-espace-membre:checklist:v1";
 
 const navItems = [
-  { id: "explorer", label: "Profils" },
-  { id: "carte-menu", label: "Carte du menu" },
+  { id: "profils", label: "Profils" },
+  { id: "acces", label: "Accès" },
+  { id: "carte-sidebar", label: "Barre membre" },
   { id: "parcours", label: "Parcours" },
   { id: "checklist", label: "Checklist" },
   { id: "faq", label: "FAQ" },
-  { id: "compte", label: "Connexion" },
+  { id: "actions", label: "Connexion" },
 ] as const;
+
+const ZONE_ICONS: Record<string, LucideIcon> = {
+  "espace-membre": LayoutDashboard,
+  "mon-profil": UserCircle,
+  "participation-tenf": Zap,
+  "objectifs-activite": Target,
+  "academy-progression": GraduationCap,
+  evaluation: ClipboardList,
+  compte: Cog,
+};
 
 function scrollToId(id: string) {
   const el = document.getElementById(id);
@@ -43,12 +59,12 @@ function scrollToId(id: string) {
   el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-export default function GuidePartiePubliqueExperience() {
-  const [persona, setPersona] = useState<PersonaId>("decouvrir");
-  const [expandedMenu, setExpandedMenu] = useState<string | null>(menuZones[0]?.id ?? null);
+export default function GuideEspaceMembreExperience() {
+  const [persona, setPersona] = useState<PersonaId>("debuter");
+  const [expandedZone, setExpandedZone] = useState<string | null>(memberZones[0]?.id ?? null);
   const [openParcours, setOpenParcours] = useState<string>(parcoursEtapes[0]?.id ?? "");
   const [openFaq, setOpenFaq] = useState<string | null>(null);
-  const [modeApercu, setModeApercu] = useState<"public" | "membre">("public");
+  const [modeLecture, setModeLecture] = useState<"visiteur" | "membre">("visiteur");
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [activeNav, setActiveNav] = useState<string>(navItems[0].id);
 
@@ -103,7 +119,6 @@ export default function GuidePartiePubliqueExperience() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
-      {/* Hero */}
       <section
         id="top"
         className="relative overflow-hidden border-b"
@@ -113,11 +128,11 @@ export default function GuidePartiePubliqueExperience() {
           className="pointer-events-none absolute inset-0 opacity-90 motion-safe:animate-mesh"
           style={{
             background:
-              "radial-gradient(ellipse 80% 55% at 20% 10%, rgba(139, 92, 246, 0.35), transparent 55%), radial-gradient(ellipse 70% 50% at 85% 20%, rgba(6, 182, 212, 0.28), transparent 50%), radial-gradient(ellipse 60% 45% at 50% 95%, rgba(236, 72, 153, 0.18), transparent 45%)",
+              "radial-gradient(ellipse 80% 55% at 15% 15%, rgba(99, 102, 241, 0.38), transparent 55%), radial-gradient(ellipse 70% 50% at 90% 25%, rgba(245, 158, 11, 0.22), transparent 50%), radial-gradient(ellipse 55% 45% at 50% 100%, rgba(52, 211, 153, 0.16), transparent 45%)",
           }}
         />
-        <div className="pointer-events-none absolute -right-32 top-10 h-72 w-72 rounded-full bg-fuchsia-500/20 blur-3xl motion-safe:animate-mesh" />
-        <div className="pointer-events-none absolute -left-24 bottom-0 h-64 w-64 rounded-full bg-cyan-500/15 blur-3xl motion-safe:animate-mesh" />
+        <div className="pointer-events-none absolute -right-28 top-8 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl motion-safe:animate-mesh" />
+        <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl motion-safe:animate-mesh" />
 
         <div className="relative mx-auto max-w-6xl px-4 pb-14 pt-10 sm:pb-16 sm:pt-14">
           <div className="flex flex-wrap items-center gap-2">
@@ -132,47 +147,55 @@ export default function GuidePartiePubliqueExperience() {
               className="rounded-full border px-3 py-1 text-xs font-medium backdrop-blur"
               style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
             >
-              Lecture ~8 min · 100 % public
+              Page publique · liens /member avec session
             </span>
           </div>
 
           <h1 className="mt-5 max-w-4xl text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl" style={{ color: "var(--color-text)" }}>
-            Carte interactive de la{" "}
-            <span className="bg-gradient-to-r from-cyan-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">
-              partie publique
+            Carte interactive de l&apos;
+            <span className="bg-gradient-to-r from-amber-200 via-violet-200 to-emerald-200 bg-clip-text text-transparent">
+              espace membre
             </span>
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: "var(--color-text-secondary)" }}>
-            Sans connexion Discord, tu navigues dans la vitrine TENF : découvrir la communauté, explorer les créateurs,
-            consulter les événements et lire les guides. Ce parcours te propose des raccourcis cliquables, une carte du
-            menu, et une checklist sauvegardée dans ton navigateur.
+            Tu peux lire ce guide sans être connecté : il explique la barre latérale (et le menu mobile), propose des
+            profils types, une checklist et des liens vers les pages <code className="rounded bg-white/10 px-1.5 py-0.5 text-sm">/member/…</code>.
+            Une fois connecté avec Discord, ces liens affichent tes données personnelles.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => scrollToId("explorer")}
-              className="group inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/30 transition hover:scale-[1.02] active:scale-[0.99]"
-              style={{ background: "linear-gradient(135deg, var(--color-primary), #7c3aed)" }}
+              onClick={() => scrollToId("profils")}
+              className="group inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 transition hover:scale-[1.02] active:scale-[0.99]"
+              style={{ background: "linear-gradient(135deg, #6366f1, #a855f7)" }}
             >
               <MousePointerClick className="h-4 w-4 transition group-hover:rotate-[-8deg]" aria-hidden />
               Choisir mon profil
             </button>
+            <Link
+              href="/member/dashboard"
+              className="inline-flex items-center gap-2 rounded-2xl border px-5 py-3 text-sm font-semibold backdrop-blur transition hover:bg-white/5"
+              style={{ borderColor: "rgba(255,255,255,0.25)", color: "var(--color-text)" }}
+            >
+              <LayoutDashboard className="h-4 w-4" aria-hidden />
+              Ouvrir le dashboard
+            </Link>
             <Link
               href="/auth/login"
               className="inline-flex items-center gap-2 rounded-2xl border px-5 py-3 text-sm font-semibold backdrop-blur transition hover:bg-white/5"
               style={{ borderColor: "rgba(255,255,255,0.25)", color: "var(--color-text)" }}
             >
               <LogIn className="h-4 w-4" aria-hidden />
-              J&apos;ai déjà un compte
+              Me connecter
             </Link>
           </div>
 
           <div className="mt-10 grid gap-3 sm:grid-cols-3">
             {[
-              { k: "Zones menu", v: "5 blocs", d: "Boutique + 4 menus déroulants" },
-              { k: "Parcours", v: "4 étapes", d: "De la carte au passage membre" },
-              { k: "Persistance", v: "Checklist", d: "Sauvegardée localement" },
+              { k: "Aligné sur", v: "Menu membre", d: "Même structure que la sidebar officielle" },
+              { k: "Parcours", v: "4 étapes", d: "Connexion → navigation → profil → guide" },
+              { k: "Checklist", v: "6 actions", d: "Sauvegardée dans ton navigateur" },
             ].map((s) => (
               <div
                 key={s.k}
@@ -194,7 +217,6 @@ export default function GuidePartiePubliqueExperience() {
         </div>
       </section>
 
-      {/* Sticky mini-nav */}
       <div
         className="sticky top-0 z-30 border-b backdrop-blur-md"
         style={{ borderColor: "var(--color-border)", backgroundColor: "color-mix(in srgb, var(--color-bg) 88%, transparent)" }}
@@ -224,15 +246,15 @@ export default function GuidePartiePubliqueExperience() {
       </div>
 
       <div className="mx-auto max-w-6xl space-y-16 px-4 py-14 sm:py-16">
-        {/* Personas */}
-        <section data-guide-section="explorer" id="explorer" className="scroll-mt-28">
+        <section data-guide-section="profils" id="profils" className="scroll-mt-28">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: "var(--color-text)" }}>
-                Par où commencer ?
+                Quel membre es-tu aujourd&apos;hui ?
               </h2>
               <p className="mt-2 max-w-2xl text-sm sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
-                Clique sur un profil : les liens recommandés et le conseil s&apos;adaptent. Tu peux changer d&apos;avis à tout moment.
+                Les liens recommandés changent selon ton intention : démarrage, participation active, ou progression
+                longue durée.
               </p>
             </div>
             <p className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--color-text-secondary)" }}>
@@ -280,24 +302,24 @@ export default function GuidePartiePubliqueExperience() {
             style={{
               borderColor: "var(--color-border)",
               background:
-                "linear-gradient(135deg, color-mix(in srgb, var(--color-card) 92%, #6366f1), var(--color-card) 55%, var(--color-card))",
+                "linear-gradient(135deg, color-mix(in srgb, var(--color-card) 90%, #6366f1), var(--color-card) 55%, var(--color-card))",
             }}
             key={persona}
           >
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="max-w-xl">
                 <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-                  Suggestion pour toi
+                  Piste conseillée
                 </p>
                 <p className="mt-2 text-base leading-relaxed" style={{ color: "var(--color-text)" }}>
                   {personaData.conseil}
                 </p>
               </div>
-              <CircleDot className="hidden h-10 w-10 shrink-0 text-violet-400/80 md:block" aria-hidden />
+              <CircleDot className="hidden h-10 w-10 shrink-0 text-amber-300/90 md:block" aria-hidden />
             </div>
             <ul className="mt-6 grid gap-2 sm:grid-cols-2">
               {personaData.liens.map((l) => (
-                <li key={l.href}>
+                <li key={l.href + l.label}>
                   <Link
                     href={l.href}
                     className="group flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition hover:border-violet-400/50"
@@ -312,92 +334,86 @@ export default function GuidePartiePubliqueExperience() {
           </div>
         </section>
 
-        {/* Public vs membre toggle */}
-        <section className="scroll-mt-28 rounded-3xl border p-6 sm:p-8" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+        <section data-guide-section="acces" id="acces" className="scroll-mt-28 rounded-3xl border p-6 sm:p-8" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-bold sm:text-2xl" style={{ color: "var(--color-text)" }}>
-                Public ou espace membre ?
+                Lire ce guide ou ouvrir l&apos;espace membre ?
               </h2>
               <p className="mt-2 max-w-2xl text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Bascule pour voir ce qui change une fois Discord connecté — sans quitter cette page.
+                Ce guide reste une page publique. Les URLs <strong style={{ color: "var(--color-text)" }}>/member</strong> ne
+                dévoilent ton contenu perso qu&apos;avec une session Discord active.
               </p>
             </div>
             <div
               className="inline-flex rounded-2xl border p-1"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
               role="group"
-              aria-label="Mode d'aperçu"
+              aria-label="Mode de lecture"
             >
               <button
                 type="button"
-                aria-pressed={modeApercu === "public"}
-                onClick={() => setModeApercu("public")}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
+                aria-pressed={modeLecture === "visiteur"}
+                onClick={() => setModeLecture("visiteur")}
+                className="rounded-xl px-4 py-2 text-sm font-semibold transition"
                 style={{
-                  backgroundColor: modeApercu === "public" ? "var(--color-primary)" : "transparent",
-                  color: modeApercu === "public" ? "#fff" : "var(--color-text-secondary)",
+                  backgroundColor: modeLecture === "visiteur" ? "var(--color-primary)" : "transparent",
+                  color: modeLecture === "visiteur" ? "#fff" : "var(--color-text-secondary)",
                 }}
               >
-                <Eye className="h-4 w-4" aria-hidden />
-                Public
+                Visiteur
               </button>
               <button
                 type="button"
-                aria-pressed={modeApercu === "membre"}
-                onClick={() => setModeApercu("membre")}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
+                aria-pressed={modeLecture === "membre"}
+                onClick={() => setModeLecture("membre")}
+                className="rounded-xl px-4 py-2 text-sm font-semibold transition"
                 style={{
-                  backgroundColor: modeApercu === "membre" ? "var(--color-primary)" : "transparent",
-                  color: modeApercu === "membre" ? "#fff" : "var(--color-text-secondary)",
+                  backgroundColor: modeLecture === "membre" ? "var(--color-primary)" : "transparent",
+                  color: modeLecture === "membre" ? "#fff" : "var(--color-text-secondary)",
                 }}
               >
-                <EyeOff className="h-4 w-4" aria-hidden />
-                Espace membre
+                Membre connecté
               </button>
             </div>
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <div
-              className={`rounded-2xl border p-5 transition duration-500 ${modeApercu === "public" ? "ring-2 ring-emerald-400/50" : "opacity-60"}`}
+              className={`rounded-2xl border p-5 transition duration-500 ${modeLecture === "visiteur" ? "ring-2 ring-amber-400/45" : "opacity-60"}`}
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
             >
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-400">Accessible sans compte</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-300">Tu lis le guide</p>
               <ul className="mt-3 space-y-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                <li>Pages « À propos », fonctionnement, témoignages</li>
-                <li>Annuaire, clips, interviews, calendriers lives / events</li>
-                <li>Guides en lecture, FAQ, boutique, soutien</li>
+                <li>Tu prépares ton parcours ou partages le lien à un·e futur·e membre.</li>
+                <li>Les liens /member peuvent afficher une invitation à te connecter.</li>
+                <li>Combine avec le guide pas à pas sous Rejoindre pour les captures d’écran.</li>
               </ul>
             </div>
             <div
-              className={`relative overflow-hidden rounded-2xl border p-5 transition duration-500 ${modeApercu === "membre" ? "ring-2 ring-violet-400/50" : "opacity-60"}`}
+              className={`rounded-2xl border p-5 transition duration-500 ${modeLecture === "membre" ? "ring-2 ring-violet-400/45" : "opacity-60"}`}
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
             >
-              <p className="text-xs font-bold uppercase tracking-wide text-violet-300">Après connexion Discord</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-violet-300">Session Discord active</p>
               <ul
-                className={`mt-3 space-y-2 text-sm transition ${modeApercu === "membre" ? "" : "blur-[2px]"}`}
+                className={`mt-3 space-y-2 text-sm transition ${modeLecture === "membre" ? "" : "blur-[1.5px]"}`}
                 style={{ color: "var(--color-text-secondary)" }}
               >
-                <li>Tableau de bord personnel et notifications</li>
-                <li>Profil, planning, raids, inscriptions événements</li>
-                <li>Engagement, objectifs, Academy côté membre…</li>
+                <li>Dashboard, notifications et profil reflètent ton compte.</li>
+                <li>Raids, inscriptions et présences sont liés à ton identité TENF.</li>
+                <li>Les outils admin n’apparaissent que si ton rôle le permet.</li>
               </ul>
-              {modeApercu === "membre" ? (
+              {modeLecture === "membre" ? (
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Link
-                    href="/rejoindre/guide-espace-membre"
-                    className="inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-semibold"
-                    style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-                  >
-                    Guide espace membre
+                  <Link href="/member/dashboard" className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:opacity-95">
+                    Dashboard
                   </Link>
                   <Link
                     href="/auth/login"
-                    className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold text-white"
-                    style={{ backgroundColor: "var(--color-primary)" }}
+                    className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                    style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                   >
-                    Se connecter
+                    Connexion
                   </Link>
                 </div>
               ) : null}
@@ -405,30 +421,30 @@ export default function GuidePartiePubliqueExperience() {
           </div>
         </section>
 
-        {/* Menu bento */}
-        <section data-guide-section="carte-menu" id="carte-menu" className="scroll-mt-28">
+        <section data-guide-section="carte-sidebar" id="carte-sidebar" className="scroll-mt-28">
           <div className="flex items-start gap-3">
             <div
-              className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-violet-300"
+              className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-amber-200"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
             >
               <LayoutGrid className="h-5 w-5" aria-hidden />
             </div>
             <div>
               <h2 className="text-2xl font-bold sm:text-3xl" style={{ color: "var(--color-text)" }}>
-                Carte du menu du haut
+                Barre latérale &amp; menu mobile
               </h2>
               <p className="mt-2 max-w-3xl text-sm sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
-                Chaque carte résume un bloc du bandeau. Clique sur le titre pour afficher les sous-pages utiles — comme
-                ouvrir le menu déroulant sans quitter le guide.
+                Les blocs ci-dessous reprennent les sections du menu membre (hors administration). Déplie chaque carte
+                pour voir les liens regroupés comme dans la navigation.
               </p>
             </div>
           </div>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            {menuZones.map((z) => {
-              const Icon = z.icon;
-              const open = expandedMenu === z.id;
+            {memberZones.map((z) => {
+              const Icon = ZONE_ICONS[z.id] ?? LayoutGrid;
+              const open = expandedZone === z.id;
+              const primaryHref = z.groupes[0]?.liens[0]?.href ?? "/member/dashboard";
               return (
                 <article
                   key={z.id}
@@ -436,7 +452,7 @@ export default function GuidePartiePubliqueExperience() {
                   style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
                 >
                   <div
-                    className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full opacity-40 blur-3xl transition group-hover:opacity-70"
+                    className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full opacity-35 blur-3xl transition group-hover:opacity-65"
                     style={{ backgroundColor: z.accent }}
                   />
                   <div className="relative p-5 sm:p-6">
@@ -444,21 +460,21 @@ export default function GuidePartiePubliqueExperience() {
                       <button
                         type="button"
                         className="flex flex-1 flex-col items-start text-left"
-                        onClick={() => setExpandedMenu((prev) => (prev === z.id ? null : z.id))}
+                        onClick={() => setExpandedZone((prev) => (prev === z.id ? null : z.id))}
                         aria-expanded={open}
                       >
                         <span
                           className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-white shadow-inner"
-                          style={{ borderColor: `${z.accent}66`, background: `linear-gradient(135deg, ${z.accent}, color-mix(in srgb, ${z.accent} 40%, #0f172a))` }}
+                          style={{
+                            borderColor: `${z.accent}66`,
+                            background: `linear-gradient(135deg, ${z.accent}, color-mix(in srgb, ${z.accent} 40%, #0f172a))`,
+                          }}
                         >
                           <Icon className="h-6 w-6" aria-hidden />
                         </span>
                         <h3 className="mt-4 text-xl font-bold" style={{ color: "var(--color-text)" }}>
                           {z.titre}
                         </h3>
-                        <p className="mt-2 text-sm font-medium" style={{ color: "var(--color-text)" }}>
-                          {z.court}
-                        </p>
                       </button>
                       <ChevronDown
                         className={`mt-2 h-5 w-5 shrink-0 transition ${open ? "rotate-180" : ""}`}
@@ -471,20 +487,20 @@ export default function GuidePartiePubliqueExperience() {
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
-                        href={z.href}
+                        href={primaryHref}
                         className="inline-flex items-center gap-1 rounded-xl px-4 py-2 text-sm font-semibold text-white"
                         style={{ backgroundColor: z.accent }}
                       >
-                        Visiter
+                        Entrer dans la section
                         <ArrowRight className="h-4 w-4" aria-hidden />
                       </Link>
                       <button
                         type="button"
-                        onClick={() => setExpandedMenu((prev) => (prev === z.id ? null : z.id))}
+                        onClick={() => setExpandedZone((prev) => (prev === z.id ? null : z.id))}
                         className="rounded-xl border px-4 py-2 text-sm font-semibold"
                         style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                       >
-                        {open ? "Masquer les liens" : "Voir les sous-pages"}
+                        {open ? "Replier les liens" : "Voir tous les liens"}
                       </button>
                     </div>
 
@@ -492,16 +508,25 @@ export default function GuidePartiePubliqueExperience() {
                       className={`grid transition-all duration-300 ease-out ${open ? "mt-5 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
                     >
                       <div className="min-h-0 overflow-hidden">
-                        <div className="flex flex-wrap gap-2 border-t pt-4" style={{ borderColor: "var(--color-border)" }}>
-                          {z.sousPages.map((sp) => (
-                            <Link
-                              key={sp.href + sp.label}
-                              href={sp.href}
-                              className="rounded-full border px-3 py-1.5 text-xs font-medium transition hover:bg-white/5"
-                              style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
-                            >
-                              {sp.label}
-                            </Link>
+                        <div className="space-y-4 border-t pt-4" style={{ borderColor: "var(--color-border)" }}>
+                          {z.groupes.map((g) => (
+                            <div key={g.titre}>
+                              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--color-text-secondary)" }}>
+                                {g.titre}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {g.liens.map((sp) => (
+                                  <Link
+                                    key={sp.href + sp.label}
+                                    href={sp.href}
+                                    className="rounded-full border px-3 py-1.5 text-xs font-medium transition hover:bg-white/5"
+                                    style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                                  >
+                                    {sp.label}
+                                  </Link>
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -513,14 +538,12 @@ export default function GuidePartiePubliqueExperience() {
           </div>
         </section>
 
-        {/* Parcours stepper */}
         <section data-guide-section="parcours" id="parcours" className="scroll-mt-28">
           <h2 className="text-2xl font-bold sm:text-3xl" style={{ color: "var(--color-text)" }}>
             Parcours en 4 étapes
           </h2>
           <p className="mt-2 max-w-3xl text-sm sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
-            Clique sur une étape pour la déplier. L&apos;idée : passer du repérage sur le site à la décision d&apos;ouvrir l&apos;espace
-            membre.
+            De la connexion à la lecture du guide pédagogique : clique sur une étape pour afficher le détail.
           </p>
 
           <ol className="relative mt-10 space-y-4 border-l-2 pl-8" style={{ borderColor: "var(--color-border)" }}>
@@ -541,7 +564,7 @@ export default function GuidePartiePubliqueExperience() {
                   <button
                     type="button"
                     onClick={() => setOpenParcours((p) => (p === etape.id ? "" : etape.id))}
-                    className="flex w-full flex-col rounded-2xl border px-4 py-4 text-left transition hover:border-violet-400/40"
+                    className="flex w-full flex-col rounded-2xl border px-4 py-4 text-left transition hover:border-amber-400/35"
                     style={{
                       borderColor: open ? "color-mix(in srgb, var(--color-primary) 45%, transparent)" : "var(--color-border)",
                       backgroundColor: "var(--color-card)",
@@ -550,7 +573,7 @@ export default function GuidePartiePubliqueExperience() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-violet-300/90">{etape.duree}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-amber-200/90">{etape.duree}</p>
                         <p className="text-lg font-bold" style={{ color: "var(--color-text)" }}>
                           {etape.titre}
                         </p>
@@ -595,7 +618,6 @@ export default function GuidePartiePubliqueExperience() {
           </ol>
         </section>
 
-        {/* Checklist */}
         <section data-guide-section="checklist" id="checklist" className="scroll-mt-28">
           <div
             className="overflow-hidden rounded-3xl border sm:flex"
@@ -603,10 +625,10 @@ export default function GuidePartiePubliqueExperience() {
           >
             <div className="border-b p-6 sm:w-72 sm:border-b-0 sm:border-r" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
               <h2 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>
-                Checklist express
+                Première semaine
               </h2>
               <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                Cochée dans ton navigateur — idéal pour une première visite ou pour partager le parcours à un·e ami·e.
+                Coches sauvegardées localement : idéal pour ne rien oublier après ton arrivée.
               </p>
               <div className="mt-6">
                 <div className="flex items-center justify-between text-xs font-semibold" style={{ color: "var(--color-text-secondary)" }}>
@@ -618,7 +640,7 @@ export default function GuidePartiePubliqueExperience() {
                 <div className="mt-2 h-2 overflow-hidden rounded-full" style={{ backgroundColor: "var(--color-border)" }}>
                   <div
                     className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${checklistProgress.pct}%`, background: "linear-gradient(90deg, #22d3ee, #a78bfa)" }}
+                    style={{ width: `${checklistProgress.pct}%`, background: "linear-gradient(90deg, #a78bfa, #34d399)" }}
                   />
                 </div>
                 <p className="mt-2 text-2xl font-black tabular-nums" style={{ color: "var(--color-text)" }}>
@@ -649,12 +671,10 @@ export default function GuidePartiePubliqueExperience() {
                       <p className={`text-sm font-semibold ${isOn ? "line-through opacity-60" : ""}`} style={{ color: "var(--color-text)" }}>
                         {item.label}
                       </p>
-                      {item.href ? (
-                        <Link href={item.href} className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:underline">
-                          Ouvrir la page
-                          <ArrowRight className="h-3 w-3" aria-hidden />
-                        </Link>
-                      ) : null}
+                      <Link href={item.href} className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-violet-300 hover:underline">
+                        Ouvrir
+                        <ArrowRight className="h-3 w-3" aria-hidden />
+                      </Link>
                     </div>
                   </li>
                 );
@@ -663,10 +683,9 @@ export default function GuidePartiePubliqueExperience() {
           </div>
         </section>
 
-        {/* Extra resources grid */}
         <section className="scroll-mt-28">
           <h2 className="text-2xl font-bold sm:text-3xl" style={{ color: "var(--color-text)" }}>
-            Aller plus loin (toujours sans connexion)
+            Ressources liées
           </h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {extraRessources.map((r) => {
@@ -695,38 +714,16 @@ export default function GuidePartiePubliqueExperience() {
                       {r.description}
                     </p>
                     <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: r.color }}>
-                      Explorer
+                      Ouvrir
                       <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
                     </span>
                   </Link>
-                  {r.href === "/vip" ? (
-                    <div
-                      className="flex flex-wrap gap-2 border-t px-6 pb-5 text-xs"
-                      style={{ borderColor: "var(--color-border)" }}
-                    >
-                      <Link
-                        href="/soutenir-tenf"
-                        className="rounded-full border px-2 py-1 font-medium text-cyan-400 hover:underline"
-                        style={{ borderColor: "var(--color-border)" }}
-                      >
-                        Soutenir TENF
-                      </Link>
-                      <Link
-                        href="/postuler"
-                        className="rounded-full border px-2 py-1 font-medium text-cyan-400 hover:underline"
-                        style={{ borderColor: "var(--color-border)" }}
-                      >
-                        Postuler
-                      </Link>
-                    </div>
-                  ) : null}
                 </div>
               );
             })}
           </div>
         </section>
 
-        {/* FAQ */}
         <section data-guide-section="faq" id="faq" className="scroll-mt-28">
           <h2 className="text-2xl font-bold sm:text-3xl" style={{ color: "var(--color-text)" }}>
             Questions fréquentes
@@ -758,45 +755,53 @@ export default function GuidePartiePubliqueExperience() {
           </div>
         </section>
 
-        {/* CTA */}
         <section
-          data-guide-section="compte"
-          id="compte"
+          data-guide-section="actions"
+          id="actions"
           className="scroll-mt-28 overflow-hidden rounded-3xl border p-8 text-center sm:p-12"
           style={{
             borderColor: "color-mix(in srgb, var(--color-primary) 35%, transparent)",
             background:
-              "linear-gradient(145deg, color-mix(in srgb, var(--color-primary) 18%, var(--color-card)), var(--color-card) 55%, color-mix(in srgb, #06b6d4 12%, var(--color-card)))",
+              "linear-gradient(145deg, color-mix(in srgb, var(--color-primary) 18%, var(--color-card)), var(--color-card) 55%, color-mix(in srgb, #f59e0b 10%, var(--color-card)))",
           }}
         >
           <h2 className="text-2xl font-bold sm:text-3xl" style={{ color: "var(--color-text)" }}>
-            Prêt·e à ouvrir l&apos;espace membre ?
+            À toi de jouer
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
-            La partie publique te permet de tout comprendre avant de te connecter. Quand tu es aligné·e avec le fonctionnement,
-            passe par Discord : dashboard, profil, raids et inscriptions t&apos;attendent.
+            Connecte-toi pour activer les pages membre, ou reviens sur la carte du site public si tu veux partager TENF
+            autour de toi.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/auth/login"
               className="inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02]"
-              style={{ background: "linear-gradient(135deg, var(--color-primary), #6366f1)" }}
+              style={{ background: "linear-gradient(135deg, var(--color-primary), #7c3aed)" }}
             >
               <LogIn className="h-4 w-4" aria-hidden />
-              Se connecter avec Discord
+              Connexion Discord
             </Link>
             <Link
-              href="/rejoindre/guide-public"
+              href="/member/dashboard"
               className="inline-flex items-center gap-2 rounded-2xl border px-6 py-3 text-sm font-bold"
               style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
             >
-              Lire le guide public
+              <LayoutDashboard className="h-4 w-4" aria-hidden />
+              Tableau de bord
+            </Link>
+            <Link
+              href="/guides/partie-publique"
+              className="inline-flex items-center gap-2 rounded-2xl border px-6 py-3 text-sm font-bold"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            >
+              Guide partie publique
             </Link>
           </div>
         </section>
 
         <p className="pb-8 text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          D&apos;autres guides suivront dans le menu <span className="font-semibold text-violet-300">Guides &amp; parcours</span>.
+          Navigation membre alignée sur <span className="font-semibold text-violet-300">lib/navigation/memberSidebar.ts</span> — en
+          cas d’évolution du menu, cette page peut être ajustée.
         </p>
       </div>
     </div>

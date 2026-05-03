@@ -248,6 +248,7 @@ export async function PUT(request: Request) {
     const content = await upaEventRepository.upsertContent("upa-event", nextContent, writeAdmin.discordId);
 
     try {
+      revalidatePath("/partenaire-tenf");
       revalidatePath("/upa-event");
     } catch {
       /* ignore si hors contexte Next */

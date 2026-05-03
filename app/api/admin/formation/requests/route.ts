@@ -17,6 +17,8 @@ type FormationRequester = {
   memberTwitchLogin: string;
   requestedAt: string;
   status: string;
+  memberMessage: string | null;
+  sourceEventId: string | null;
 };
 
 function normalizeCategory(value?: string): string {
@@ -88,7 +90,9 @@ export async function GET() {
 
     const { data: requestRows, error: requestsError } = await supabaseAdmin
       .from("formation_requests")
-      .select("id,formation_title,member_discord_id,member_twitch_login,member_display_name,status,requested_at")
+      .select(
+        "id,formation_title,source_event_id,member_discord_id,member_twitch_login,member_display_name,status,requested_at,member_message",
+      )
       .order("requested_at", { ascending: false });
 
     if (requestsError && !isMissingRelationError(requestsError)) {
@@ -129,6 +133,11 @@ export async function GET() {
         memberTwitchLogin: String(request.member_twitch_login || ""),
         requestedAt: String(request.requested_at || new Date().toISOString()),
         status: String(request.status || "pending"),
+        memberMessage:
+          request.member_message != null && String(request.member_message).trim()
+            ? String(request.member_message).trim()
+            : null,
+        sourceEventId: request.source_event_id != null ? String(request.source_event_id) : null,
       });
       groups.set(key, group);
     }

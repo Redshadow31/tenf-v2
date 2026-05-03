@@ -188,7 +188,7 @@ export const adminNavigation: NavItem[] = [
     label: "Partenariats",
     icon: "🤝",
     sectionLabel: "PARTENARIATS",
-    children: [{ href: "/admin/upa-event", label: "UPA Event" }],
+    children: [{ href: "/admin/upa-event", label: "Partenaire TENF" }],
   },
   {
     href: "/admin/new-family-aventura",
@@ -538,7 +538,7 @@ export const adminNavigationSimple: NavItem[] = [
     href: "/admin/upa-event",
     label: "Partenariats",
     icon: "🤝",
-    children: [{ href: "/admin/upa-event", label: "UPA Event" }],
+    children: [{ href: "/admin/upa-event", label: "Partenaire TENF" }],
   },
   {
     href: "/admin/new-family-aventura",

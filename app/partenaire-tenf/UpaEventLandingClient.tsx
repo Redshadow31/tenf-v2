@@ -983,7 +983,7 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
           </div>
         </div>
 
-        <nav className={`${fnStyles.fnDiscoverJumpNav} mb-6`} aria-label="Sections UPA Event">
+        <nav className={`${fnStyles.fnDiscoverJumpNav} mb-6`} aria-label="Sections Partenaire TENF">
           <div className="flex min-w-min gap-1.5 px-0.5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
             {jumpSections.map(({ id, label }) => (
               <button

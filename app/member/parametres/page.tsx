@@ -1,10 +1,5 @@
-import MemberComingSoonPage from "@/components/member/ui/MemberComingSoonPage";
+import MemberParametresHub from "@/components/member/parametres/MemberParametresHub";
 
-export default function MemberSettingsPage() {
-  return (
-    <MemberComingSoonPage
-      title="Paramètres"
-      description="La gestion avancée des paramètres du compte arrive bientôt."
-    />
-  );
+export default function MemberParametresPage() {
+  return <MemberParametresHub />;
 }

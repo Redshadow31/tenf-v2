@@ -15,29 +15,32 @@ type NavLeaf = {
 
 type DropdownGroup = {
   label: string;
+  /** Libellé court sur la barre desktop (mobile garde `label`). */
+  compactLabel?: string;
   items: NavLeaf[];
 };
 
-const directLinks: NavLeaf[] = [{ href: "/boutique", label: "Boutique" }];
+const directLinks: NavLeaf[] = [
+  { href: "/boutique", label: "Boutique" },
+  { href: "/soutenir-tenf", label: "Soutenir TENF" },
+];
 
 const dropdownGroups: DropdownGroup[] = [
   {
-    label: "Guides & parcours",
-    items: [{ href: "/guides/partie-publique", label: "Guide — partie publique du site" }],
-  },
-  {
-    label: "La communauté",
+    label: "Comprendre TENF",
+    compactLabel: "Comprendre",
     items: [
       { href: "/a-propos", label: "À propos de TENF" },
       { href: "/fonctionnement-tenf/decouvrir", label: "Fonctionnement TENF" },
       { href: "/avis-tenf", label: "Témoignages" },
-      { href: "/upa-event", label: "UPA Event" },
-      { href: "/organisation-staff", label: "Organisation du staff" },
-      { href: "/organisation-staff/organigramme", label: "Organigramme interactif" },
+      { href: "/guides/partie-publique", label: "Guide — partie publique du site" },
+      { href: "/guides/espace-membre", label: "Guide — espace membre (carte)" },
+      { href: "/guides/tenf", label: "Guide TENF — nouveau membre" },
     ],
   },
   {
-    label: "Découvrir les créateurs",
+    label: "Créateurs & contenus",
+    compactLabel: "Créateurs",
     items: [
       { href: "/membres", label: "Membres" },
       { href: "/decouvrir-createurs", label: "Clips à découvrir" },
@@ -47,7 +50,7 @@ const dropdownGroups: DropdownGroup[] = [
     ],
   },
   {
-    label: "Événements",
+    label: "Agenda",
     items: [
       { href: "/events2", label: "Calendrier / événements" },
       { href: "/evenements-communautaires", label: "Événements communautaires" },
@@ -55,14 +58,21 @@ const dropdownGroups: DropdownGroup[] = [
     ],
   },
   {
-    label: "Rejoindre TENF",
+    label: "Rejoindre & intégrer",
+    compactLabel: "Rejoindre",
     items: [
       { href: "/integration", label: "Intégration" },
       { href: "/rejoindre/guide-integration", label: "Guide d'intégration" },
-      { href: "/rejoindre/guide-public", label: "Guide Public" },
-      { href: "/rejoindre/guide-espace-membre", label: "Guide Espace Membre" },
       { href: "/rejoindre/faq", label: "FAQ / comment rejoindre" },
-      { href: "/soutenir-tenf", label: "Soutenir TENF" },
+    ],
+  },
+  {
+    label: "Transparence & organisation",
+    compactLabel: "Transparence",
+    items: [
+      { href: "/organisation-staff", label: "Organisation du staff" },
+      { href: "/organisation-staff/organigramme", label: "Organigramme interactif" },
+      { href: "/partenaire-tenf", label: "Partenaire TENF" },
     ],
   },
 ];
@@ -188,14 +198,18 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
       className="sticky top-0 z-50 border-b backdrop-blur"
       style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 gap-4">
+      <div className="mx-auto grid max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
         {/* Logo TENF cliquable */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="relative z-20 flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
           <TENFLogo showTagline={true} size="xl" hideTaglineOnMobile />
         </div>
 
-        {/* Navigation desktop */}
-        <nav className="hidden xl:flex items-center gap-5 text-sm font-medium flex-1 justify-center min-w-0">
+        {/* Navigation desktop : zone centrée bornée + retour à la ligne pour éviter les chevauchements */}
+        <div className="relative z-10 hidden min-w-0 w-full xl:block">
+          <nav
+            className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 text-xs font-medium sm:gap-x-3 sm:text-sm"
+            aria-label="Navigation principale"
+          >
           {directLinks.map((link) => (
             <Link
               key={link.href}
@@ -215,22 +229,26 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
 
           {dropdownGroups.map((group) => {
             const isOpen = openDropdown === group.label;
+            const triggerText = group.compactLabel ?? group.label;
             return (
               <div key={group.label} className="relative">
                 <button
                   type="button"
                   onClick={() => setOpenDropdown(isOpen ? null : group.label)}
-                  className="inline-flex items-center gap-1 transition-colors whitespace-nowrap"
+                  className="inline-flex items-center gap-1 whitespace-nowrap transition-colors"
                   style={{ color: isOpen ? "var(--color-primary)" : "var(--color-text-secondary)" }}
                   aria-expanded={isOpen}
+                  aria-haspopup="menu"
+                  aria-label={group.compactLabel ? group.label : undefined}
+                  title={group.compactLabel ? group.label : undefined}
                 >
-                  <span>{group.label}</span>
-                  <span className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>▼</span>
+                  <span>{triggerText}</span>
+                  <span className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}>▼</span>
                 </button>
 
                 {isOpen && (
                   <div
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-72 rounded-xl border shadow-xl p-2"
+                    className="absolute top-full left-1/2 z-30 mt-3 w-72 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border p-2 shadow-xl"
                     style={{
                       backgroundColor: "var(--color-card)",
                       borderColor: "var(--color-border)",
@@ -260,10 +278,11 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
               </div>
             );
           })}
-        </nav>
+          </nav>
+        </div>
 
         {/* Zone droite : sociaux + thème + menu mobile */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="relative z-20 flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="hidden xl:flex items-center gap-1.5">
             {socialLinks.map((social) => (
               <div key={social.icon} className="relative">

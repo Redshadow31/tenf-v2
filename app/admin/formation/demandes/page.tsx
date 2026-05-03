@@ -19,6 +19,8 @@ type FormationRequester = {
   memberTwitchLogin: string;
   requestedAt: string;
   status: string;
+  memberMessage: string | null;
+  sourceEventId: string | null;
 };
 
 type FormationDemandRow = {
@@ -160,6 +162,33 @@ export default function AdminFormationDemandesPage() {
           )}
         </section>
 
+        <div className="mt-6 flex flex-col gap-2 rounded-xl border p-4 text-sm" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(139,92,246,0.06)" }}>
+          <p className="font-semibold" style={{ color: "var(--color-text)" }}>
+            Relier aux événements
+          </p>
+          <p style={{ color: "var(--color-text-secondary)" }}>
+            Les demandes avec <strong>événement source</strong> pointent vers la dernière session connue du catalogue.
+            Pour planifier un <strong>nouveau</strong> créneau ou traiter une idée hors calendrier, utilise aussi les
+            propositions.
+          </p>
+          <div className="flex flex-wrap gap-3 pt-1">
+            <Link
+              href="/admin/events/planification"
+              className="rounded-lg border px-3 py-2 text-xs font-semibold transition hover:border-violet-400/45"
+              style={{ borderColor: "rgba(145,70,255,0.45)", color: "#c4b5fd" }}
+            >
+              Planification événements
+            </Link>
+            <Link
+              href="/admin/communaute/evenements/propositions"
+              className="rounded-lg border px-3 py-2 text-xs font-semibold transition hover:border-sky-400/45"
+              style={{ borderColor: "rgba(56,189,248,0.4)", color: "#7dd3fc" }}
+            >
+              Propositions d&apos;événements
+            </Link>
+          </div>
+        </div>
+
         <div className="mt-4">
           <Link href="/admin/formation" className="text-sm underline" style={{ color: "var(--color-text-secondary)" }}>
             Retour au hub Formation
@@ -291,6 +320,27 @@ export default function AdminFormationDemandesPage() {
                           <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
                             Twitch: {request.memberTwitchLogin || "n/a"} | Discord ID: {request.memberDiscordId || "n/a"}
                           </p>
+                          {request.memberMessage ? (
+                            <div className="mt-3 rounded-lg border border-violet-500/25 bg-violet-500/5 px-3 py-2">
+                              <p className="text-[11px] font-bold uppercase tracking-wide text-violet-200/90">Message du membre</p>
+                              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed" style={{ color: "var(--color-text)" }}>
+                                {request.memberMessage}
+                              </p>
+                            </div>
+                          ) : null}
+                          {request.sourceEventId ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]" style={{ color: "var(--color-text-secondary)" }}>
+                              <span className="font-semibold text-emerald-200/90">Événement source (catalogue)</span>
+                              <code className="rounded bg-black/30 px-1.5 py-0.5 font-mono text-[10px]">{request.sourceEventId}</code>
+                              <Link
+                                href="/admin/events/planification"
+                                className="underline underline-offset-2"
+                                style={{ color: "#c4b5fd" }}
+                              >
+                                Ouvrir la planification
+                              </Link>
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>

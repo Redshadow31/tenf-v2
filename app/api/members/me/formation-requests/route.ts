@@ -64,8 +64,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const rawTitle = String(body?.formationTitle || "");
-    const formationTitle = sanitizeFormationTitle(rawTitle);
+    const formationTitle = sanitizeFormationTitle(rawTitle).slice(0, 200);
     const sourceEventId = body?.sourceEventId ? String(body.sourceEventId) : null;
+    const rawMessage = body?.message != null ? String(body.message) : "";
+    const memberMessage = rawMessage.replace(/\s+/g, " ").trim().slice(0, 2000);
 
     if (!formationTitle) {
       return NextResponse.json({ error: "Nom de formation requis" }, { status: 400 });
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, created: false, request: existing });
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       formation_title: formationTitle,
       source_event_id: sourceEventId,
       member_discord_id: discordId,
@@ -99,6 +101,9 @@ export async function POST(request: NextRequest) {
       member_display_name: member.displayName || member.siteUsername || member.twitchLogin,
       status: "pending",
     };
+    if (memberMessage) {
+      payload.member_message = memberMessage;
+    }
 
     const { data: created, error: insertError } = await supabaseAdmin
       .from("formation_requests")

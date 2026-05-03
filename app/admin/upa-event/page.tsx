@@ -354,7 +354,7 @@ export default function AdminUpaEventPage() {
         });
       } catch (error) {
         console.error("[admin/upa-event] load error:", error);
-        setFeedback("Impossible de charger la configuration UPA Event.");
+        setFeedback("Impossible de charger la configuration Partenaire TENF.");
       } finally {
         setLoading(false);
       }
@@ -472,7 +472,7 @@ export default function AdminUpaEventPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Erreur sauvegarde");
       setContent(data.content as UpaEventContent);
-      setFeedback("Configuration UPA Event enregistree avec succes.");
+      setFeedback("Configuration Partenaire TENF enregistrée avec succès.");
     } catch (error) {
       console.error("[admin/upa-event] save error:", error);
       setFeedback(error instanceof Error ? error.message : "Erreur lors de l'enregistrement.");
@@ -482,7 +482,7 @@ export default function AdminUpaEventPage() {
   }
 
   if (loading) {
-    return <div style={{ color: "var(--color-text)" }}>Chargement de la configuration UPA Event...</div>;
+    return <div style={{ color: "var(--color-text)" }}>Chargement de la configuration Partenaire TENF...</div>;
   }
 
   return (
@@ -504,7 +504,7 @@ export default function AdminUpaEventPage() {
             ← Retour au hub événements
             </Link>
             <h1 className="text-3xl font-bold" style={{ color: "#f8ecd0" }}>
-              Gestion UPA Event
+              Gestion Partenaire TENF
             </h1>
             <p style={{ color: "rgba(255,255,255,0.76)" }}>
               Pilote la periode active, les streamers caritatifs et l'equipe UPA depuis une seule interface.
@@ -830,7 +830,7 @@ export default function AdminUpaEventPage() {
         {activeTab === "sections" && (
           <div className="space-y-4">
             <p className="text-sm rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-              Contenu affiche sur <code className="text-xs">/upa-event</code> sous le titre « Bilan de l&apos;evenement ». Separer les paragraphes par une ligne vide. Pour le gras, entourer le passage de doubles etoiles, ex. <code className="text-xs">**merci**</code>. Pensez a crediter UPA et les benevoles comme sur vos canaux officiels.
+              Contenu affiche sur <code className="text-xs">/partenaire-tenf</code> sous le titre « Bilan de l&apos;evenement ». Separer les paragraphes par une ligne vide. Pour le gras, entourer le passage de doubles etoiles, ex. <code className="text-xs">**merci**</code>. Pensez a crediter UPA et les benevoles comme sur vos canaux officiels.
             </p>
             <button
               type="button"

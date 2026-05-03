@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Défilement horizontal sans barre visible (mini-navs guides, pills) */
+.scrollbar-x-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-x-none::-webkit-scrollbar {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
 :root {
   /* Mode sombre (par défaut) */
   --color-bg: #0e0e10;

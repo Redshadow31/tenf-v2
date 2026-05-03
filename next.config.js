@@ -7,7 +7,12 @@ const nextConfig = {
     return [
       {
         source: '/communaute/partenaires',
-        destination: '/upa-event',
+        destination: '/partenaire-tenf',
+        permanent: true,
+      },
+      {
+        source: '/upa-event',
+        destination: '/partenaire-tenf',
         permanent: true,
       },
       {

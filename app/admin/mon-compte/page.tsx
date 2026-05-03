@@ -6,7 +6,9 @@ import {
   AlertTriangle,
   ArrowUpRight,
   BookOpen,
+  CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   ClipboardCopy,
   ClipboardList,
@@ -14,6 +16,8 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  Globe2,
+  HeartHandshake,
   History,
   KeyRound,
   Loader2,
@@ -212,16 +216,23 @@ function StatTile({
   );
 }
 
+type CockpitMiniCardAction =
+  | { kind: "none" }
+  | { kind: "link"; href: string }
+  | { kind: "scroll"; targetId: string };
+
 function CockpitMiniCard({
   icon: Icon,
   label,
   value,
   tone,
+  action = { kind: "none" },
 }: {
   icon: typeof User;
   label: string;
   value: string;
   tone: "ok" | "warn" | "danger" | "neutral";
+  action?: CockpitMiniCardAction;
 }) {
   const bar =
     tone === "ok"
@@ -231,16 +242,49 @@ function CockpitMiniCard({
         : tone === "danger"
           ? "bg-red-500"
           : "bg-zinc-500";
-  return (
-    <div className="relative flex min-h-[88px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/35 pl-3.5 pr-3 py-3 shadow-inner">
+  const interactive =
+    action.kind !== "none"
+      ? "cursor-pointer transition hover:border-[#c9a227]/35 hover:bg-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0c10]"
+      : "";
+  const shellClass = `relative flex min-h-[88px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/35 pl-3.5 pr-3 py-3 text-left shadow-inner ${interactive}`;
+
+  const inner = (
+    <>
       <span className={`absolute left-0 top-0 h-full w-1 ${bar}`} aria-hidden />
       <div className="flex items-center gap-2 pl-1">
         <Icon className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
         <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">{label}</span>
       </div>
       <p className="mt-2 flex-1 pl-1 text-sm font-semibold leading-snug text-zinc-50">{value}</p>
-    </div>
+      {action.kind !== "none" ? (
+        <span className="mt-1 pl-1 text-[10px] font-semibold uppercase tracking-wider text-[#c9a227]/80">
+          {action.kind === "link" ? "Ouvrir →" : "Aller à la section →"}
+        </span>
+      ) : null}
+    </>
   );
+
+  if (action.kind === "link") {
+    return (
+      <Link href={action.href} className={`${shellClass} block`}>
+        {inner}
+      </Link>
+    );
+  }
+  if (action.kind === "scroll") {
+    return (
+      <button
+        type="button"
+        className={shellClass}
+        onClick={() =>
+          document.getElementById(action.targetId)?.scrollIntoView({ behavior: "smooth", block: "start" })
+        }
+      >
+        {inner}
+      </button>
+    );
+  }
+  return <div className={shellClass}>{inner}</div>;
 }
 
 function staffMissionLines(adminRole: string): string[] {
@@ -325,6 +369,45 @@ const quickAccentIcon: Record<(typeof QUICK_LINKS)[number]["accent"], string> = 
   emerald: "bg-emerald-500/15 text-emerald-200",
 };
 
+const EXPERIENCE_LINKS = [
+  {
+    href: "/member/dashboard",
+    title: "Espace membre",
+    description: "Tableau de bord créateur : le même parcours que les membres TENF (nouvel onglet).",
+    icon: Eye,
+    cardClass:
+      "border-violet-500/35 bg-gradient-to-br from-violet-950/45 to-black/35 hover:border-violet-400/55 hover:shadow-lg hover:shadow-violet-950/20",
+    iconClass: "bg-violet-500/20 text-violet-200",
+  },
+  {
+    href: "/rejoindre/guide-public/presentation-rapide",
+    title: "Parcours public",
+    description: "Ce que voit un visiteur avant d’adhérer — pour aligner ton discours staff avec le site.",
+    icon: Globe2,
+    cardClass:
+      "border-sky-500/35 bg-gradient-to-br from-sky-950/35 to-black/35 hover:border-sky-400/50 hover:shadow-lg hover:shadow-sky-950/15",
+    iconClass: "bg-sky-500/18 text-sky-200",
+  },
+  {
+    href: "/member/evenements",
+    title: "Événements côté membre",
+    description: "Inscriptions et rendez-vous tels qu’affichés dans l’espace connecté.",
+    icon: CalendarDays,
+    cardClass:
+      "border-emerald-500/35 bg-gradient-to-br from-emerald-950/35 to-black/35 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-950/15",
+    iconClass: "bg-emerald-500/18 text-emerald-200",
+  },
+] as const;
+
+const MC_NAV_SECTIONS = [
+  { id: "mc-hero", label: "Vue d’ensemble" },
+  { id: "mc-cockpit", label: "Cockpit" },
+  { id: "mc-actions", label: "Actions & stats" },
+  { id: "mc-identite", label: "Identité" },
+  { id: "mc-charte", label: "Charte" },
+  { id: "mc-notifications", label: "E-mail staff" },
+] as const;
+
 export default function AdminMonComptePage() {
   const [data, setData] = useState<AccountPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -338,6 +421,11 @@ export default function AdminMonComptePage() {
   const [showSensitiveIds, setShowSensitiveIds] = useState(false);
   const [testEmailBusy, setTestEmailBusy] = useState(false);
   const [testEmailMessage, setTestEmailMessage] = useState<string | null>(null);
+  const [expandedAnnIds, setExpandedAnnIds] = useState<Record<string, boolean>>({});
+
+  const scrollToMc = useCallback((id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -448,19 +536,35 @@ export default function AdminMonComptePage() {
 
   if (loading) {
     return (
-      <div className="relative min-h-[70vh] overflow-hidden rounded-3xl border border-white/10 bg-[#06080f]">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-90"
-          style={{
-            background:
-              "radial-gradient(ellipse 120% 80% at 10% -20%, rgba(201,162,39,0.18), transparent 55%), radial-gradient(ellipse 80% 60% at 100% 0%, rgba(99,102,241,0.12), transparent 50%)",
-          }}
-        />
-        <div className="relative flex min-h-[50vh] flex-col items-center justify-center gap-4 px-6 py-20">
-          <div className="relative">
-            <div className="h-16 w-16 animate-pulse rounded-full border-2 border-[#c9a227]/30 bg-white/5" />
-            <Loader2 className="absolute inset-0 m-auto h-7 w-7 animate-spin text-[#c9a227]" aria-hidden />
+      <div className="space-y-6 pb-12">
+        <div className="relative min-h-[22rem] overflow-hidden rounded-3xl border border-white/10 bg-[#06080f]">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-90"
+            style={{
+              background:
+                "radial-gradient(ellipse 120% 80% at 10% -20%, rgba(201,162,39,0.18), transparent 55%), radial-gradient(ellipse 80% 60% at 100% 0%, rgba(99,102,241,0.12), transparent 50%)",
+            }}
+          />
+          <div className="relative flex flex-col gap-8 p-8 md:flex-row md:items-center">
+            <div className="h-24 w-24 shrink-0 animate-pulse rounded-2xl bg-white/10" />
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="h-3 w-40 animate-pulse rounded bg-white/10" />
+              <div className="h-8 max-w-md animate-pulse rounded-lg bg-white/10" />
+              <div className="h-16 max-w-xl animate-pulse rounded-lg bg-white/5" />
+              <div className="flex flex-wrap gap-2">
+                <div className="h-7 w-32 animate-pulse rounded-full bg-white/5" />
+                <div className="h-7 w-40 animate-pulse rounded-full bg-white/5" />
+              </div>
+            </div>
           </div>
+          <div className="grid gap-3 border-t border-white/5 p-6 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-36 animate-pulse rounded-2xl bg-white/5" />
+            ))}
+          </div>
+        </div>
+        <div className="flex min-h-[120px] items-center justify-center gap-3 rounded-2xl border border-white/10 bg-black/30 py-8">
+          <Loader2 className="h-6 w-6 shrink-0 animate-spin text-[#c9a227]" aria-hidden />
           <p className="text-sm font-medium text-zinc-400">Chargement de ton espace staff…</p>
         </div>
       </div>
@@ -501,15 +605,157 @@ export default function AdminMonComptePage() {
 
   return (
     <div className="space-y-8 pb-12">
+      {/* Hero : staff + ancrage visuel membres & public */}
+      <section
+        id="mc-hero"
+        className="scroll-mt-24 relative overflow-hidden rounded-3xl border text-white shadow-2xl"
+        style={{
+          borderColor: "rgba(212, 175, 55, 0.22)",
+          background:
+            "linear-gradient(145deg, rgba(18,16,28,0.98) 0%, rgba(8,10,18,0.99) 45%, rgba(12,14,24,1) 100%), radial-gradient(ellipse 100% 80% at 0% 0%, rgba(201,162,39,0.16), transparent 55%), radial-gradient(ellipse 70% 50% at 100% 20%, rgba(99,102,241,0.14), transparent 50%), radial-gradient(ellipse 50% 40% at 80% 100%, rgba(16,185,129,0.08), transparent 45%)",
+        }}
+      >
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#c9a227]/12 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-indigo-500/12 blur-3xl" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-600/5 blur-3xl" />
+
+        <div className="relative flex flex-col gap-8 p-6 md:flex-row md:items-end md:justify-between md:p-10">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+            <div
+              className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border-2 text-2xl font-bold tracking-tight shadow-inner ring-1 ring-white/10 transition hover:ring-[#c9a227]/30"
+              style={{
+                borderColor: "rgba(201,162,39,0.45)",
+                background: "linear-gradient(160deg, rgba(201,162,39,0.25), rgba(20,22,32,0.9))",
+                color: "#f5edd8",
+                boxShadow: "0 0 48px rgba(201,162,39,0.12)",
+              }}
+              aria-hidden
+            >
+              {initials}
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c9a227]/90">
+                Staff TENF · profil & impact communauté
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white md:text-4xl">Mon compte</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
+                Tu es aussi <strong className="font-medium text-zinc-200">membre TENF</strong> : cette page relie ton
+                rôle staff, ta <strong className="font-medium text-violet-200/95">fiche utilisateur</strong> et ce que
+                voient le <strong className="font-medium text-sky-200/95">public</strong> sur le site. Utilise les
+                cartes ci-dessous pour te recaler visuellement avant d’agir dans l’admin.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/25 px-2.5 py-1">
+                  <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                  Fiche membre depuis {formatDateFr(data.memberCreatedAtIso)}
+                </span>
+                {data.integrationDateIso && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1 text-emerald-200/90">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Intégration : {formatDateFr(data.integrationDateIso)}
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-violet-200/90">
+                  <HeartHandshake className="h-3.5 w-3.5" />
+                  Rôle staff : {data.adminRoleLabel}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col">
+            <button
+              type="button"
+              onClick={() => void load()}
+              className={`inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-[#c9a227]/40 hover:bg-[#c9a227]/10 hover:text-white ${focusRingClass}`}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Actualiser
+            </button>
+            <Link
+              href="/admin/moderation/staff"
+              className={`inline-flex items-center justify-center gap-2 rounded-xl border border-[#c9a227]/35 bg-[#c9a227]/15 px-4 py-2.5 text-sm font-semibold text-[#f5edd8] transition hover:bg-[#c9a227]/25 ${focusRingClass}`}
+            >
+              Modération staff
+              <ArrowUpRight className="h-4 w-4 opacity-80" />
+            </Link>
+          </div>
+        </div>
+
+        <div
+          id="mc-experience"
+          className="scroll-mt-24 relative border-t border-white/10 bg-gradient-to-b from-black/35 to-black/55 px-5 py-6 md:px-10 md:py-8"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-300/90">
+                Vues interactives · membres & public
+              </p>
+              <p className="mt-1 max-w-2xl text-sm text-zinc-400">
+                Ouvre chaque carte dans un nouvel onglet pour comparer avec l’admin — idéal avant une réponse à un
+                membre ou une annonce Discord.
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {EXPERIENCE_LINKS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`group flex flex-col rounded-2xl border p-4 transition duration-200 hover:-translate-y-0.5 ${item.cardClass} ${focusRingClass}`}
+                >
+                  <span
+                    className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${item.iconClass} transition group-hover:scale-105`}
+                  >
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <p className="mt-3 text-sm font-bold text-white">{item.title}</p>
+                  <p className="mt-1 flex-1 text-xs leading-relaxed text-zinc-400 group-hover:text-zinc-300">
+                    {item.description}
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[#e8d89a]">
+                    Ouvrir
+                    <ExternalLink className="h-3 w-3 opacity-80" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <nav
+        className="sticky top-2 z-10 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-[#0a0c12]/92 p-2 shadow-lg shadow-black/40 backdrop-blur-md"
+        aria-label="Sections de la page Mon compte"
+      >
+        {MC_NAV_SECTIONS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => scrollToMc(item.id)}
+            className={`rounded-xl border border-transparent px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 transition hover:border-[#c9a227]/35 hover:bg-[#c9a227]/10 hover:text-white ${focusRingClass}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
       {/* Cockpit — statut staff en un coup d’œil */}
       <section
-        className="rounded-3xl border border-white/10 bg-gradient-to-br from-[#0c0f18] to-[#06080f] p-4 shadow-xl sm:p-5"
+        id="mc-cockpit"
+        className="scroll-mt-24 rounded-3xl border border-white/10 bg-gradient-to-br from-[#0c0f18] to-[#06080f] p-4 shadow-xl sm:p-5"
         aria-label="Résumé statut staff"
       >
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c9a227]/85">Cockpit staff</p>
-            <p className="mt-1 text-sm text-zinc-400">Priorités et alertes synthétisées pour démarrer ta session.</p>
+            <p className="mt-1 text-sm text-zinc-400">
+              Synthèse opérationnelle : les cartes cliquables t’emmènent vers l’organigramme, la charte ou les alertes.
+            </p>
           </div>
           <button
             type="button"
@@ -521,15 +767,44 @@ export default function AdminMonComptePage() {
           </button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <CockpitMiniCard icon={Shield} label="Rôle" value={data.adminRoleLabel} tone="neutral" />
-          <CockpitMiniCard icon={BookOpen} label="Charte" value={charterCockpitValue} tone={charterCockpitTone} />
+          <CockpitMiniCard
+            icon={Shield}
+            label="Rôle"
+            value={data.adminRoleLabel}
+            tone="neutral"
+            action={{ kind: "link", href: "/admin/gestion-acces/organigramme-staff" }}
+          />
+          <CockpitMiniCard
+            icon={BookOpen}
+            label="Charte"
+            value={charterCockpitValue}
+            tone={charterCockpitTone}
+            action={{ kind: "link", href: "/admin/moderation/staff/info/charte" }}
+          />
           <CockpitMiniCard
             icon={KeyRound}
             label="Accès"
             value={data.hasAdvancedAdminView ? "Complet (IDs visibles)" : "Standard"}
             tone={data.hasAdvancedAdminView ? "ok" : "neutral"}
+            action={
+              data.hasAdvancedAdminView
+                ? data.sensitive
+                  ? { kind: "scroll", targetId: "mc-tech" }
+                  : { kind: "scroll", targetId: "mc-identite" }
+                : { kind: "link", href: "/admin/gestion-acces/admin-avance" }
+            }
           />
-          <CockpitMiniCard icon={AlertTriangle} label="Alertes" value={alertsValue} tone={alertsTone} />
+          <CockpitMiniCard
+            icon={AlertTriangle}
+            label="Alertes"
+            value={alertsValue}
+            tone={alertsTone}
+            action={
+              alertsDanger || alertsAttention
+                ? { kind: "scroll", targetId: "mc-alertes" }
+                : { kind: "scroll", targetId: "mc-charte" }
+            }
+          />
         </div>
 
         {emergencyOpen && (
@@ -595,78 +870,6 @@ export default function AdminMonComptePage() {
         </div>
       )}
 
-      {/* Hero */}
-      <section
-        className="relative overflow-hidden rounded-3xl border text-white shadow-2xl"
-        style={{
-          borderColor: "rgba(212, 175, 55, 0.22)",
-          background:
-            "linear-gradient(145deg, rgba(18,16,28,0.98) 0%, rgba(8,10,18,0.99) 45%, rgba(12,14,24,1) 100%), radial-gradient(ellipse 100% 80% at 0% 0%, rgba(201,162,39,0.14), transparent 55%), radial-gradient(ellipse 70% 50% at 100% 20%, rgba(99,102,241,0.1), transparent 50%)",
-        }}
-      >
-        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#c9a227]/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-indigo-500/10 blur-3xl" />
-
-        <div className="relative flex flex-col gap-8 p-6 md:flex-row md:items-end md:justify-between md:p-10">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-            <div
-              className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border-2 text-2xl font-bold tracking-tight shadow-inner"
-              style={{
-                borderColor: "rgba(201,162,39,0.45)",
-                background: "linear-gradient(160deg, rgba(201,162,39,0.2), rgba(20,22,32,0.9))",
-                color: "#f5edd8",
-                boxShadow: "0 0 40px rgba(201,162,39,0.08)",
-              }}
-              aria-hidden
-            >
-              {initials}
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c9a227]/85">
-                Espace personnel · Staff TENF
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white md:text-4xl">
-                Mon compte
-              </h1>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400">
-                Cockpit personnel : pilotage rapide (statut, alertes, actions), fiche identité et canaux critiques
-                (e-mail d’urgence, charte, IDs techniques si autorisé).
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/20 px-2.5 py-1">
-                  <Clock className="h-3.5 w-3.5 text-zinc-500" />
-                  Fiche membre depuis {formatDateFr(data.memberCreatedAtIso)}
-                </span>
-                {data.integrationDateIso && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1 text-emerald-200/90">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Intégration : {formatDateFr(data.integrationDateIso)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col">
-            <button
-              type="button"
-              onClick={() => void load()}
-              className={`inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-[#c9a227]/40 hover:bg-[#c9a227]/10 hover:text-white ${focusRingClass}`}
-            >
-              <RefreshCw className="h-4 w-4" />
-              Actualiser
-            </button>
-            <Link
-              href="/admin/moderation/staff"
-              className={`inline-flex items-center justify-center gap-2 rounded-xl border border-[#c9a227]/35 bg-[#c9a227]/15 px-4 py-2.5 text-sm font-semibold text-[#f5edd8] transition hover:bg-[#c9a227]/25 ${focusRingClass}`}
-            >
-              Modération staff
-              <ArrowUpRight className="h-4 w-4 opacity-80" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* Alerts */}
       {!data.hasAdvancedAdminView && (
         <div
@@ -690,32 +893,58 @@ export default function AdminMonComptePage() {
         </div>
       )}
 
-      {charterUrgent && (
-        <div className="flex gap-4 rounded-2xl border border-red-500/35 bg-gradient-to-r from-red-950/40 to-red-950/10 p-5 shadow-lg shadow-red-950/10">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/20">
-            <AlertTriangle className="h-5 w-5 text-red-300" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-red-100">Charte de modération</p>
-            <p className="mt-1 text-sm text-red-100/85">
-              {charter.graceElapsed
-                ? "Le délai de 15 jours est dépassé sans validation : l’accès au dashboard peut être limité. Valide la charte tout de suite."
-                : `Il te reste environ ${charter.daysRemainingApprox} jour(s) pour valider la charte (délai 15 jours depuis l’entrée dans l’équipe).`}
-            </p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-red-950/60">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-red-400 to-amber-400 transition-all duration-500"
-                style={{ width: `${charterPercent}%` }}
-              />
+      {(charterUrgent || !emailConfigured) && (
+        <div id="mc-alertes" className="scroll-mt-24 space-y-4">
+          {charterUrgent && (
+            <div className="flex gap-4 rounded-2xl border border-red-500/35 bg-gradient-to-r from-red-950/40 to-red-950/10 p-5 shadow-lg shadow-red-950/10">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/20">
+                <AlertTriangle className="h-5 w-5 text-red-300" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-red-100">Charte de modération</p>
+                <p className="mt-1 text-sm text-red-100/85">
+                  {charter.graceElapsed
+                    ? "Le délai de 15 jours est dépassé sans validation : l’accès au dashboard peut être limité. Valide la charte tout de suite."
+                    : `Il te reste environ ${charter.daysRemainingApprox} jour(s) pour valider la charte (délai 15 jours depuis l’entrée dans l’équipe).`}
+                </p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-red-950/60">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-red-400 to-amber-400 transition-all duration-500"
+                    style={{ width: `${charterPercent}%` }}
+                  />
+                </div>
+                <Link
+                  href="/admin/moderation/staff/info/charte"
+                  className={`mt-4 inline-flex items-center gap-2 rounded-xl bg-red-500/90 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-red-500 ${focusRingClass}`}
+                >
+                  Ouvrir la charte et valider
+                  <ExternalLink className="h-4 w-4 opacity-90" />
+                </Link>
+              </div>
             </div>
-            <Link
-              href="/admin/moderation/staff/info/charte"
-              className={`mt-4 inline-flex items-center gap-2 rounded-xl bg-red-500/90 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-red-500 ${focusRingClass}`}
-            >
-              Ouvrir la charte et valider
-              <ExternalLink className="h-4 w-4 opacity-90" />
-            </Link>
-          </div>
+          )}
+          {!emailConfigured && (
+            <div className="flex gap-4 rounded-2xl border border-amber-500/35 bg-gradient-to-r from-amber-950/35 to-black/20 p-5 shadow-md">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
+                <Mail className="h-5 w-5 text-amber-200" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-amber-100">E-mail staff non renseigné</p>
+                <p className="mt-1 text-sm text-amber-100/85">
+                  Les alertes critiques hors Discord ne pourront pas te joindre. Renseigne-le dans la section dédiée
+                  ci-dessous.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => scrollToMc("mc-notifications")}
+                  className={`mt-3 inline-flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-xs font-semibold text-amber-50 transition hover:bg-amber-500/25 ${focusRingClass}`}
+                >
+                  Aller à l’e-mail staff
+                  <ChevronDown className="h-3.5 w-3.5 -rotate-90" aria-hidden />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -734,44 +963,70 @@ export default function AdminMonComptePage() {
             </Link>
           </div>
           <p className="text-xs text-zinc-500">
-            Uniquement les annonces « staff dashboard ». Format Markdown ; bannière 16:9 si présente. La cloche membre
-            reprend les mêmes messages pour les comptes admin.
+            Uniquement les annonces « staff dashboard » (Markdown, bannière 16:9). Clique sur une ligne pour développer
+            — la cloche membre reprend les mêmes messages pour les comptes admin.
           </p>
           <ul className="space-y-3">
-            {staffAnnouncements.map((a) => (
-              <li key={a.id} className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-sm font-semibold text-zinc-50">{a.title}</p>
-                {a.imageUrl ? (
-                  <div className="relative mt-3 aspect-video max-w-xl overflow-hidden rounded-xl border border-white/10">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={a.imageUrl} alt="" className="h-full w-full object-cover" />
-                  </div>
-                ) : null}
-                <div className="mt-2 max-h-[320px] overflow-y-auto text-sm leading-relaxed text-zinc-400">
-                  <AnnouncementMarkdown content={a.body} />
-                </div>
-                {a.link ? (
-                  <a
-                    href={a.link}
-                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-300 underline-offset-2 hover:underline"
+            {staffAnnouncements.map((a) => {
+              const open = Boolean(expandedAnnIds[a.id]);
+              return (
+                <li key={a.id} className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedAnnIds((prev) => ({ ...prev, [a.id]: !prev[a.id] }))}
+                    className={`flex w-full items-start justify-between gap-3 p-4 text-left transition hover:bg-white/[0.04] ${focusRingClass}`}
                   >
-                    Lien associé <ArrowUpRight className="h-3 w-3 opacity-80" aria-hidden />
-                  </a>
-                ) : null}
-                <p className="mt-2 text-[11px] text-zinc-600">
-                  {formatDateFr(a.createdAt)}
-                </p>
-              </li>
-            ))}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-zinc-50">{a.title}</p>
+                      <p className="mt-1 text-[11px] text-zinc-500">{formatDateFr(a.createdAt)}</p>
+                      <p className="mt-2 text-[11px] font-medium uppercase tracking-wider text-amber-200/80">
+                        {open ? "Masquer le détail" : "Lire l’annonce"}
+                      </p>
+                    </div>
+                    <ChevronDown
+                      className={`mt-1 h-5 w-5 shrink-0 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
+                      aria-hidden
+                    />
+                  </button>
+                  {open ? (
+                    <div className="border-t border-white/5 px-4 pb-4 pt-2">
+                      {a.imageUrl ? (
+                        <div className="relative mt-2 aspect-video max-w-xl overflow-hidden rounded-xl border border-white/10">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={a.imageUrl} alt="" className="h-full w-full object-cover" />
+                        </div>
+                      ) : null}
+                      <div className="mt-3 max-h-[min(60vh,420px)] overflow-y-auto text-sm leading-relaxed text-zinc-400">
+                        <AnnouncementMarkdown content={a.body} />
+                      </div>
+                      {a.link ? (
+                        <a
+                          href={a.link}
+                          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-indigo-300 underline-offset-2 hover:underline"
+                        >
+                          Lien associé <ArrowUpRight className="h-3 w-3 opacity-80" aria-hidden />
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}
 
       {/* Pilotage — actions rapides + fil d’activité + chiffres */}
-      <section className="space-y-5 rounded-3xl border border-white/10 bg-[#080a12]/90 p-5 shadow-lg">
+      <section
+        id="mc-actions"
+        className="scroll-mt-24 space-y-5 rounded-3xl border border-white/10 bg-[#080a12]/90 p-5 shadow-lg"
+      >
         <div>
           <h2 className="text-lg font-semibold text-white">Actions rapides</h2>
-          <p className="mt-1 text-xs text-zinc-500">Les allers-retours les plus fréquents pour le staff.</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Raccourcis staff ; pense aux vues « membre & public » en haut de page avant une communication vers la
+            communauté.
+          </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               href="/admin/membres/gestion"
@@ -832,12 +1087,18 @@ export default function AdminMonComptePage() {
               </div>
               <p className="mt-1 text-[11px] text-zinc-500">Vue communauté & modération (agrégées côté serveur).</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <StatTile
-                  icon={User}
-                  label="Membres actifs"
-                  value={snap?.activeCommunityMembers != null ? String(snap.activeCommunityMembers) : "—"}
-                  tone="neutral"
-                />
+                <Link
+                  href="/admin/membres"
+                  title="Ouvrir l’annuaire membres"
+                  className={`group block rounded-2xl ring-offset-[#080a12] transition hover:opacity-95 ${focusRingClass}`}
+                >
+                  <StatTile
+                    icon={User}
+                    label="Membres actifs (clic)"
+                    value={snap?.activeCommunityMembers != null ? String(snap.activeCommunityMembers) : "—"}
+                    tone="neutral"
+                  />
+                </Link>
                 <StatTile
                   icon={Shield}
                   label="Modos actifs / en pause"
@@ -870,7 +1131,8 @@ export default function AdminMonComptePage() {
         {/* Colonne gauche : identité + raccourcis */}
         <div className="space-y-8 lg:col-span-5">
           <section
-            className="rounded-2xl border p-6 shadow-lg"
+            id="mc-identite"
+            className="scroll-mt-24 rounded-2xl border p-6 shadow-lg"
             style={{ borderColor: "rgba(255,255,255,0.08)", background: "rgba(14,16,24,0.92)" }}
           >
             <div className="flex items-center justify-between gap-3">
@@ -1025,14 +1287,14 @@ export default function AdminMonComptePage() {
           <section className="rounded-2xl border border-white/8 bg-zinc-900/40 p-6 text-sm leading-relaxed text-zinc-400">
             <h3 className="text-sm font-semibold text-zinc-200">À propos de cette page</h3>
             <p className="mt-3">
-              Chaque administrateur dispose de sa propre fiche : les informations affichées concernent uniquement ton
-              compte connecté. Les identifiants bruts (IDs Discord et Twitch) sont réservés aux profils avec accès
-              administrateur avancé, pour limiter la diffusion de données sensibles.
+              Les données affichées concernent uniquement ton compte connecté — à la fois comme{" "}
+              <strong className="text-zinc-300">staff</strong> et comme <strong className="text-zinc-300">membre TENF</strong>.
+              Les identifiants bruts (IDs Discord / Twitch) restent réservés aux profils avec accès administrateur avancé.
             </p>
             <p className="mt-3">
-              L’e-mail renseigné sert aux <strong className="text-zinc-300">notifications importantes</strong>{" "}
-              (alertes staff, messages critiques). Tu peux le laisser vide si tu préfères être contacté uniquement sur
-              Discord.
+              L’e-mail renseigné sert aux <strong className="text-zinc-300">notifications importantes</strong> hors Discord.
+              Les cartes du haut te permettent de revoir l’expérience <strong className="text-zinc-300">publique</strong> et{" "}
+              <strong className="text-zinc-300">membre</strong> sans quitter l’admin.
             </p>
           </section>
         </div>
@@ -1113,7 +1375,8 @@ export default function AdminMonComptePage() {
           )}
 
           <section
-            className="rounded-2xl border border-amber-500/35 bg-gradient-to-br from-amber-950/35 via-[#0f121c] to-[#0a0c12] p-6 shadow-lg shadow-amber-950/10"
+            id="mc-notifications"
+            className="scroll-mt-24 rounded-2xl border border-amber-500/35 bg-gradient-to-br from-amber-950/35 via-[#0f121c] to-[#0a0c12] p-6 shadow-lg shadow-amber-950/10"
             aria-labelledby="staff-notif-email-heading"
           >
             <div className="flex flex-wrap items-start gap-3">
@@ -1184,7 +1447,8 @@ export default function AdminMonComptePage() {
           </section>
 
           <section
-            className="overflow-hidden rounded-2xl border shadow-lg"
+            id="mc-charte"
+            className="scroll-mt-24 overflow-hidden rounded-2xl border shadow-lg"
             style={{ borderColor: "rgba(255,255,255,0.08)", background: "rgba(14,16,24,0.92)" }}
           >
             <div className="border-b border-white/5 bg-gradient-to-r from-emerald-900/20 to-transparent px-6 py-4">
@@ -1299,8 +1563,9 @@ export default function AdminMonComptePage() {
           </section>
 
           <footer className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-6 py-5 text-center text-xs leading-relaxed text-zinc-600">
-            TENF New Family · Espace staff sécurisé. En cas de problème de fiche (Discord / Twitch), contacte un
-            fondateur ou un admin coordinateur.
+            TENF New Family · Espace staff sécurisé. Rappelle-toi que les membres voient une interface différente : les
+            cartes « membre & public » en haut de page t’aident à rester aligné. Pour un souci de fiche Discord / Twitch,
+            contacte un fondateur ou un admin coordinateur.
           </footer>
         </div>
       </div>

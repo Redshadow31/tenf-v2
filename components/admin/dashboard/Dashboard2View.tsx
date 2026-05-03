@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
   ResponsiveContainer,
@@ -16,11 +16,15 @@ import {
 import {
   Activity,
   ArrowUpRight,
+  BookOpen,
   CalendarRange,
   Compass,
+  ExternalLink,
+  Eye,
   HeartHandshake,
   LayoutDashboard,
   Radio,
+  Scale,
   ShieldCheck,
   Sparkles,
   TrendingUp,
@@ -218,6 +222,25 @@ function createToast(type: AdminToastType, title: string, description?: string):
   };
 }
 
+type StaffPersona = "moderateur" | "admin" | "soutien" | "general";
+
+function deriveStaffPersona(role: string | null): StaffPersona {
+  const normalized = (role || "").toUpperCase();
+  if (normalized.includes("MODERATEUR")) return "moderateur";
+  if (normalized.includes("SOUTIEN")) return "soutien";
+  if (normalized.includes("ADMIN")) return "admin";
+  return "general";
+}
+
+function formatRoleLabel(role: string | null): string {
+  if (!role) return "Staff TENF";
+  const u = role.toUpperCase();
+  if (u.includes("MODERATEUR")) return "Modérateur";
+  if (u.includes("SOUTIEN")) return "Soutien";
+  if (u.includes("ADMIN")) return "Administrateur";
+  return role.replace(/_/g, " ");
+}
+
 function defaultViewForRole(role: string | null): DashboardSavedView {
   const normalized = (role || "").toUpperCase();
   if (normalized.includes("MODERATEUR")) {
@@ -251,6 +274,73 @@ function defaultViewForRole(role: string | null): DashboardSavedView {
     filters: { priorities: ["P1", "P2", "P3"], onlyWithCount: true },
   };
 }
+
+const QUICK_ACTION_DEFS: Record<
+  string,
+  { label: string; href: string }
+> = {
+  raids: { label: "Raids à valider", href: "/admin/engagement/raids-a-valider" },
+  points: { label: "Points Discord", href: "/admin/engagement/points-discord" },
+  presence: { label: "Présences événements", href: "/admin/events/presence" },
+  propositions: { label: "Propositions événements", href: "/admin/communaute/evenements/propositions" },
+  incomplets: { label: "Membres incomplets", href: "/admin/membres/incomplets" },
+  gestion: { label: "Gestion membres", href: "/admin/membres/gestion" },
+  postulations: { label: "Postulations staff", href: "/admin/membres/postulations" },
+  validation: { label: "Validation profils", href: "/admin/membres/validation-profil" },
+  formations: { label: "Demandes formation", href: "/admin/formation/demandes" },
+  eval: { label: "Synthèse évaluation", href: "/admin/evaluation/d" },
+  follow: { label: "Suivi follow", href: "/admin/follow" },
+  audit: { label: "Audit", href: "/admin/founders/audit" },
+  sync: { label: "Sync Discord", href: "/admin/membres/synchronisation" },
+};
+
+const QUICK_ACTION_ORDER: Record<Exclude<StaffPersona, "general">, string[]> = {
+  moderateur: [
+    "raids",
+    "points",
+    "presence",
+    "propositions",
+    "validation",
+    "incomplets",
+    "postulations",
+    "formations",
+    "gestion",
+    "eval",
+    "follow",
+    "audit",
+    "sync",
+  ],
+  admin: [
+    "incomplets",
+    "raids",
+    "validation",
+    "postulations",
+    "points",
+    "formations",
+    "gestion",
+    "eval",
+    "follow",
+    "presence",
+    "propositions",
+    "audit",
+    "sync",
+  ],
+  soutien: [
+    "incomplets",
+    "validation",
+    "gestion",
+    "formations",
+    "follow",
+    "sync",
+    "presence",
+    "raids",
+    "points",
+    "postulations",
+    "eval",
+    "propositions",
+    "audit",
+  ],
+};
 
 export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
   const [currentAdmin, setCurrentAdmin] = useState<{ username: string; role: string | null } | null>(null);
@@ -505,6 +595,20 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
   }, [currentMonth, evaluationMonth]);
   const communityMonthCount = dashboardSummary.communityMonthCount;
   const isPilotage = variant === "pilotage";
+  const staffPersona = useMemo(() => deriveStaffPersona(currentAdmin?.role ?? null), [currentAdmin?.role]);
+
+  const personaLeadLine = useMemo(() => {
+    switch (staffPersona) {
+      case "moderateur":
+        return "Tes raccourcis mettent en avant raids, points Discord et événements.";
+      case "soutien":
+        return "Tes raccourcis privilégient fiches membres, validations et suivis du quotidien.";
+      case "admin":
+        return "Vue étendue : données membres, recrutement staff et pilotage opérationnel.";
+      default:
+        return "Choisis une vue « à traiter » adaptée à ton rôle pour rester aligné avec l’équipe.";
+    }
+  }, [staffPersona]);
 
   const kpis = useMemo(() => {
     return {
@@ -878,16 +982,12 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
   ];
 
   const quickActions = useMemo(() => {
-    const base: Array<{ label: string; href: string; accent?: boolean }> = [
-      { label: "Membres incomplets", href: "/admin/membres/incomplets" },
-      { label: "Gestion membres", href: "/admin/membres/gestion" },
-      { label: "Postulations staff", href: "/admin/membres/postulations" },
-      { label: "Validation profils", href: "/admin/membres/validation-profil" },
-      { label: "Synthèse évaluation", href: "/admin/evaluation/d" },
-      { label: "Suivi follow", href: "/admin/follow" },
-      { label: "Audit", href: "/admin/founders/audit" },
-      { label: "Sync Discord", href: "/admin/membres/synchronisation" },
-    ];
+    const personaKey = staffPersona === "general" ? "admin" : staffPersona;
+    const keys = QUICK_ACTION_ORDER[personaKey];
+    const base: Array<{ label: string; href: string; accent?: boolean }> = keys.map((key) => {
+      const def = QUICK_ACTION_DEFS[key];
+      return { label: def.label, href: def.href };
+    });
     if (!isPilotage) return base;
     return [
       ...base.slice(0, 4),
@@ -898,7 +998,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
       },
       ...base.slice(4),
     ];
-  }, [isPilotage]);
+  }, [isPilotage, staffPersona]);
 
   const statusStyle = (status: WorkflowStep["status"]) => {
     if (status === "done") return "bg-green-500/20 text-green-300 border-green-500/30";
@@ -907,19 +1007,34 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
   };
 
   const adminDisplayName = currentAdmin?.username || "Admin";
-  const adminRoleLabel = currentAdmin?.role || "Administrateur TENF";
+  const adminRoleLabel = useMemo(() => formatRoleLabel(currentAdmin?.role ?? null), [currentAdmin?.role]);
+
+  const scrollToDashSection = useCallback((id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   if (loading) {
     return (
-      <div className="text-white">
+      <div className="space-y-4 text-white">
         <div
-          className="flex h-64 items-center justify-center rounded-2xl border"
+          className="animate-pulse rounded-3xl border p-8"
           style={{
-            borderColor: "rgba(212,175,55,0.24)",
-            background: "linear-gradient(145deg, rgba(20,20,24,0.95), rgba(33,33,40,0.95))",
+            borderColor: "rgba(148,163,184,0.2)",
+            background: "linear-gradient(145deg, rgba(22,23,35,0.9), rgba(15,16,24,0.95))",
           }}
         >
-          <div className="h-10 w-10 animate-spin rounded-full border-b-2" style={{ borderBottomColor: "rgba(230, 199, 115, 0.95)" }}></div>
+          <div className="h-4 w-40 rounded bg-white/10" />
+          <div className="mt-4 h-10 max-w-md rounded bg-white/10" />
+          <div className="mt-4 h-20 max-w-2xl rounded bg-white/5" />
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-24 rounded-2xl bg-white/5" />
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="h-40 rounded-2xl bg-white/5" />
+          <div className="h-40 rounded-2xl bg-white/5" />
         </div>
       </div>
     );
@@ -932,7 +1047,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
         onClose={(id) => setToasts((prev) => prev.filter((toast) => toast.id !== id))}
       />
       <section
-        className={`rounded-3xl border p-6 md:p-8 ${isPilotage ? "relative overflow-hidden" : ""}`}
+        className="relative overflow-hidden rounded-3xl border p-6 md:p-8"
         style={{
           borderColor: "rgba(148,163,184,0.24)",
           background:
@@ -940,21 +1055,19 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
           boxShadow: "0 20px 45px rgba(0, 0, 0, 0.28)",
         }}
       >
-        {isPilotage && (
-          <>
-            <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-violet-600/25 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl" />
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/10 blur-3xl" />
-          </>
-        )}
-        <div className={isPilotage ? "relative z-10" : ""}>
+        <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-violet-600/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl" />
+        {isPilotage ? (
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/10 blur-3xl" />
+        ) : null}
+        <div className="relative z-10">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
               <p className="text-xs uppercase tracking-[0.18em]" style={{ color: "rgba(196,181,253,0.92)" }}>
-                {isPilotage ? "Cockpit TENF · Vue collective" : "Espace administration premium"}
+                {isPilotage ? "Cockpit TENF · Staff" : "Tableau de bord · utilisateurs, modération, admin"}
               </p>
               <h1 className="mt-3 text-2xl font-semibold sm:text-3xl md:text-4xl">
-                {isPilotage ? "Une vue claire pour soutenir les créateurs" : `Bonjour ${adminDisplayName}`}
+                {isPilotage ? "Piloter TENF : membres, modération, administration" : `Bonjour ${adminDisplayName}`}
               </h1>
               {!isPilotage && (
                 <p className="mt-1 text-xs uppercase tracking-[0.11em]" style={{ color: "rgba(191,219,254,0.86)" }}>
@@ -969,18 +1082,25 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
               <p className="mt-3 text-sm md:text-base leading-relaxed" style={{ color: "rgba(236, 236, 239, 0.84)" }}>
                 {isPilotage ? (
                   <>
-                    Ce tableau relie <strong className="text-violet-200/95">l&apos;expérience des membres</strong> et{" "}
-                    <strong className="text-amber-200/90">le travail du staff</strong> : priorités, Discord, raids et
-                    événements — pour garder TENF fluide et accueillant.
+                    Trois angles complémentaires :{" "}
+                    <strong className="text-violet-200/95">l&apos;utilisateur membre</strong> (parcours, confort),{" "}
+                    <strong className="text-sky-200/95">la modération</strong> (files, présences, Discord live) et{" "}
+                    <strong className="text-amber-200/90">l&apos;administration</strong> (données, recrutement, gouvernance).
+                    Les sections ci-dessous regroupent les signaux utiles à chacun.
                     <span className="mt-2 block text-xs text-slate-400/95">
                       {currentLongDate.charAt(0).toUpperCase() + currentLongDate.slice(1)}
                     </span>
                   </>
                 ) : (
                   <>
-                    Esprit TENF : entraide, progression et exigence bienveillante au service de la communaute.
-                    <br />
-                    {currentLongDate.charAt(0).toUpperCase() + currentLongDate.slice(1)}
+                    Cette page sert le <strong className="text-violet-200/95">membre TENF</strong> (expérience visible),
+                    les <strong className="text-sky-200/95">modérateurs</strong> (files raids / points / événements) et les{" "}
+                    <strong className="text-amber-200/90">administrateurs</strong> (données, évaluations, audit). Les KPI
+                    et files « à traiter » reflètent l&apos;impact sur les utilisateurs ; les raccourcis sont ordonnés selon
+                    ton rôle. <span className="text-slate-300/95">{personaLeadLine}</span>
+                    <span className="mt-2 block text-xs text-slate-400/95">
+                      {currentLongDate.charAt(0).toUpperCase() + currentLongDate.slice(1)}
+                    </span>
                   </>
                 )}
               </p>
@@ -1016,6 +1136,40 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
                   })}
                 </div>
               )}
+              {!isPilotage && (
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    { label: "Membres actifs", value: kpis.total, icon: Users, tone: "text-violet-200" },
+                    {
+                      label: "Complétude moy.",
+                      value: `${kpis.avgCompletion}%`,
+                      icon: TrendingUp,
+                      tone: "text-emerald-200",
+                    },
+                    { label: "Raids à traiter", value: kpis.raidsPendingCount, icon: Zap, tone: "text-amber-200" },
+                    {
+                      label: "Tâches (vue active)",
+                      value: filteredOpsQueue.length,
+                      icon: Activity,
+                      tone: "text-sky-200",
+                    },
+                  ].map((cell) => {
+                    const Icon = cell.icon;
+                    return (
+                      <button
+                        key={cell.label}
+                        type="button"
+                        onClick={() => scrollToDashSection("admin-dash-ops")}
+                        className="rounded-2xl border border-white/10 bg-black/25 px-3 py-3 text-left transition hover:border-violet-400/35 hover:bg-black/40"
+                      >
+                        <Icon className={`mb-2 h-4 w-4 ${cell.tone}`} aria-hidden />
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">{cell.label}</p>
+                        <p className="mt-1 text-xl font-bold tabular-nums text-white">{cell.value}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div className="grid gap-2">
               <span
@@ -1027,7 +1181,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
                 }}
               >
                 {isPilotage ? <Radio size={14} className="shrink-0" /> : <ShieldCheck size={14} />}
-                {isPilotage ? "Signaux temps réel" : "Pilotage operationnel"}
+                {isPilotage ? "Signaux temps réel" : "Rôle & priorités"}
               </span>
               <Link
                 href="/admin/control-center"
@@ -1041,7 +1195,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
                 Ouvrir le control center
                 <ArrowUpRight size={14} />
               </Link>
-              {isPilotage && (
+              {isPilotage ? (
                 <div className="flex flex-wrap gap-2">
                   <Link
                     href="/admin/pilotage/backlog"
@@ -1066,6 +1220,45 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
                   >
                     Événements
                     <CalendarRange size={12} />
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href="/admin/events/planification"
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition hover:-translate-y-[1px] ${focusRingClass}`}
+                    style={{
+                      borderColor: "rgba(148,163,184,0.3)",
+                      backgroundColor: "rgba(0,0,0,0.18)",
+                      color: "rgba(226,232,240,0.9)",
+                    }}
+                  >
+                    Planification
+                    <CalendarRange size={12} />
+                  </Link>
+                  <Link
+                    href="/admin/formation/demandes"
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition hover:-translate-y-[1px] hover:border-emerald-400/35 ${focusRingClass}`}
+                    style={{
+                      borderColor: "rgba(52,211,153,0.35)",
+                      backgroundColor: "rgba(6,78,59,0.15)",
+                      color: "rgba(167,243,208,0.95)",
+                    }}
+                  >
+                    Demandes formation
+                    <BookOpen size={12} />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements/propositions"
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition hover:-translate-y-[1px] hover:border-sky-400/35 ${focusRingClass}`}
+                    style={{
+                      borderColor: "rgba(56,189,248,0.35)",
+                      backgroundColor: "rgba(12,74,110,0.2)",
+                      color: "rgba(186,230,253,0.95)",
+                    }}
+                  >
+                    Propositions
+                    <ExternalLink size={12} />
                   </Link>
                 </div>
               )}
@@ -1106,27 +1299,138 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
               </Link>
             ))}
           </div>
+          {!isPilotage && (
+            <>
+              <nav
+                className="mt-6 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 backdrop-blur-sm"
+                aria-label="Sections du tableau de bord (membres, modération, admin)"
+              >
+                {(
+                  [
+                    { id: "admin-dash-alertes", label: "Alertes" },
+                    { id: "admin-dash-ops", label: "À traiter" },
+                    { id: "admin-dash-vitals", label: "Indicateurs" },
+                    { id: "admin-dash-agenda", label: "Agenda" },
+                    { id: "admin-dash-activite", label: "Activité & raids" },
+                    { id: "admin-dash-graphs", label: "Graphiques" },
+                    { id: "admin-dash-workflow", label: "Workflow" },
+                    { id: "admin-dash-events", label: "Événements" },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => scrollToDashSection(item.id)}
+                    className={`rounded-xl border border-transparent px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 transition hover:border-violet-400/35 hover:bg-violet-500/15 hover:text-white ${focusRingClass}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <Link
+                  href="/member/dashboard"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`group flex flex-col rounded-2xl border border-white/12 bg-gradient-to-br from-violet-950/40 to-black/30 p-4 transition hover:-translate-y-0.5 hover:border-violet-400/40 ${focusRingClass}`}
+                >
+                  <Eye className="h-6 w-6 text-violet-200" aria-hidden />
+                  <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-300/80">
+                    Utilisateur · membre TENF
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-white">Voir comme un créateur</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400 group-hover:text-slate-300">
+                    Tableau de bord membre, formations et parcours — pour vérifier ce que vivent les utilisateurs après
+                    une action staff.
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-200/90">
+                    Espace membre (nouvel onglet)
+                    <ExternalLink className="h-3 w-3" />
+                  </span>
+                </Link>
+                <Link
+                  href="/admin/engagement/raids-a-valider"
+                  className={`group flex flex-col rounded-2xl border border-white/12 bg-gradient-to-br from-sky-950/35 to-black/30 p-4 transition hover:-translate-y-0.5 hover:border-sky-400/40 ${focusRingClass}`}
+                >
+                  <Scale className="h-6 w-6 text-sky-200/90" aria-hidden />
+                  <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-300/85">
+                    Modérateur
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-white">Files & événements live</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400 group-hover:text-slate-300">
+                    Entrée rapide sur les raids à valider ; enchaîne avec points Discord, présences et propositions depuis
+                    les pastilles ci-dessus.
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-sky-200/90">
+                    Ouvrir les raids à valider
+                    <ArrowUpRight className="h-3 w-3" />
+                  </span>
+                </Link>
+                <Link
+                  href="/admin/control-center"
+                  className={`group flex flex-col rounded-2xl border border-white/12 bg-gradient-to-br from-amber-950/25 to-black/30 p-4 transition hover:-translate-y-0.5 hover:border-amber-400/35 ${focusRingClass}`}
+                >
+                  <ShieldCheck className="h-6 w-6 text-amber-200/90" aria-hidden />
+                  <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-300/80">
+                    Administrateur
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-white">Pilotage & gouvernance</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400 group-hover:text-slate-300">
+                    Control center, audit, postulations et données sensibles — le prolongement naturel des sections
+                    workflow et graphiques.
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-200/90">
+                    Ouvrir le control center
+                    <ArrowUpRight className="h-3 w-3" />
+                  </span>
+                </Link>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                <span className="font-semibold uppercase tracking-[0.08em] text-slate-500">Rappels utiles</span>
+                <Link
+                  href="/rejoindre/guide-espace-membre/tableau-de-bord"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-slate-300 transition hover:border-amber-400/35 hover:text-white ${focusRingClass}`}
+                >
+                  <BookOpen className="h-3 w-3 shrink-0" aria-hidden />
+                  Guide membre (public)
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+                <Link
+                  href="/member/formations"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-slate-300 transition hover:border-emerald-400/35 hover:text-white ${focusRingClass}`}
+                >
+                  <Sparkles className="h-3 w-3 shrink-0" aria-hidden />
+                  Formations côté membre
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              </div>
+            </>
+          )}
           {isPilotage && (
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               {[
                 {
-                  title: "Les créateurs",
-                  body: "Fiches, validations et raids : ce que tu traites ici impacte directement leur confort sur TENF.",
+                  title: "Membres & utilisateurs",
+                  body: "Fiches, validations, formations : chaque correction améliore l’expérience visible côté espace membre.",
                   icon: HeartHandshake,
                   href: "/admin/membres/gestion",
-                  cta: "Ouvrir la gestion",
+                  cta: "Gestion membres",
                 },
                 {
-                  title: "Le staff",
-                  body: "Priorités, SLA et owners : garde la chaîne courte entre décision et action.",
+                  title: "Modération & live",
+                  body: "Raids, points Discord, présences et propositions : le rythme du Discord et des événements.",
+                  icon: Scale,
+                  href: "/admin/engagement/raids-a-valider",
+                  cta: "Files modération",
+                },
+                {
+                  title: "Administration",
+                  body: "Pilotage staff, communauté au sens large, audits : cadre et cohérence pour toute l’équipe.",
                   icon: Compass,
-                  href: "/admin/mon-compte/pilotage-staff",
-                  cta: "Pilotage staff",
-                },
-                {
-                  title: "La communauté",
-                  body: "Discord, présences et spotlights : la santé collective se lit aussi dans les courbes.",
-                  icon: Users,
                   href: "/admin/communaute",
                   cta: "Hub communauté",
                 },
@@ -1200,7 +1504,8 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
         kpis.profileValidationPendingCount > 0 ||
         kpis.staffApplicationsRedFlagCount > 0) && (
         <div
-          className="rounded-2xl border p-4"
+          id="admin-dash-alertes"
+          className="scroll-mt-24 rounded-2xl border p-4"
           style={{
             borderColor: "rgba(248,113,113,0.4)",
             background: "linear-gradient(145deg, rgba(54,26,29,0.75), rgba(26,16,20,0.9))",
@@ -1219,12 +1524,13 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
       )}
 
       {(!isPilotage || pilotTab === "cockpit") && (
-      <section className="rounded-2xl border p-5" style={premiumCardStyle}>
+      <section id="admin-dash-ops" className="scroll-mt-24 rounded-2xl border p-5" style={premiumCardStyle}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold">À traiter maintenant</h2>
             <p className="text-xs text-gray-300/80">
-              Vue pilotage avec priorité, SLA et owner.
+              File partagée modérateurs / administrateurs — priorité, SLA et assignation ; filtre selon ton rôle avec la
+              vue enregistrée.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1312,11 +1618,13 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
 
       {(!isPilotage || pilotTab === "vitals") && (
       <Fragment>
-      <section className="rounded-2xl border p-4 md:p-5" style={softCardStyle}>
+      <section id="admin-dash-vitals" className="scroll-mt-24 rounded-2xl border p-4 md:p-5" style={softCardStyle}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-200">Alertes immédiates</h3>
-            <p className="text-xs text-gray-400">Priorités opérationnelles à traiter maintenant</p>
+            <p className="text-xs text-gray-400">
+              Impact direct sur les membres ; utile en priorité aux modérateurs et à l’administration des comptes
+            </p>
           </div>
           <span className="rounded-full border border-white/15 bg-black/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-300">
             Temps réel
@@ -1342,11 +1650,11 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
         </div>
       </section>
 
-      <section className="rounded-2xl border p-4 md:p-5" style={softCardStyle}>
+      <section id="admin-dash-agenda" className="scroll-mt-24 rounded-2xl border p-4 md:p-5" style={softCardStyle}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-200">Prévisions & agenda</h3>
-            <p className="text-xs text-gray-400">Ce qui arrive prochainement côté membres et événements</p>
+            <p className="text-xs text-gray-400">Ce qui arrive pour les membres et la modération événementielle</p>
           </div>
           <span className="rounded-full border border-white/15 bg-black/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-300">
             Horizon court terme
@@ -1372,7 +1680,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div id="admin-dash-activite" className="scroll-mt-24 grid grid-cols-1 gap-6 md:grid-cols-3">
         <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h3 className="text-lg font-semibold mb-3 text-center">Raids envoyés</h3>
           <p className="text-4xl font-bold text-center text-white">{raidStats.totalRaidsSent}</p>
@@ -1458,7 +1766,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div id="admin-dash-graphs" className="scroll-mt-24 grid grid-cols-1 gap-6 md:grid-cols-3">
         <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h3 className="text-lg font-semibold mb-3">Activité Discord</h3>
           <div className="h-56">
@@ -1508,85 +1816,61 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
 
       {(!isPilotage || pilotTab === "cockpit") && (
       <Fragment>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 rounded-2xl border p-6" style={premiumCardStyle}>
-          <h2 className="text-xl font-semibold mb-4">Workflow mensuel</h2>
-          {isPilotage ? (
-            <>
-              <p className="mb-4 text-xs text-slate-400">
-                Touche une carte pour voir le détail — chaque étape relie un geste staff à un effet visible pour les membres.
-              </p>
-              <div className="flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-violet-600/40">
-                {workflow.map((step) => {
-                  const open = workflowExpandedId === step.id;
-                  return (
-                    <button
-                      key={step.id}
-                      type="button"
-                      onClick={() => setWorkflowExpandedId((prev) => (prev === step.id ? null : step.id))}
-                      className={`min-w-[240px] flex-shrink-0 rounded-2xl border p-4 text-left transition ${focusRingClass} ${
-                        open
-                          ? "border-amber-400/45 bg-amber-500/10 shadow-[0_0_24px_rgba(212,175,55,0.12)]"
-                          : "border-white/12 bg-white/[0.02] hover:border-violet-400/35"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold text-white">{step.label}</p>
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide border ${statusStyle(step.status)}`}>
-                          {step.status === "done" ? "OK" : step.status === "in_progress" ? "En cours" : "À faire"}
-                        </span>
-                      </div>
-                      <p className="mt-2 line-clamp-2 text-xs text-slate-400">{step.helper}</p>
-                    </button>
-                  );
-                })}
-              </div>
-              {workflowExpandedId ? (
-                <div
-                  className="mt-4 rounded-2xl border border-violet-500/25 bg-violet-950/20 p-4 animate-in fade-in duration-200"
-                  role="region"
-                  aria-live="polite"
-                >
-                  {workflow
-                    .filter((s) => s.id === workflowExpandedId)
-                    .map((step) => (
-                      <div key={`detail-${step.id}`}>
-                        <p className="text-sm font-medium text-white">{step.label}</p>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-300">{step.helper}</p>
-                        <Link
-                          href={step.href}
-                          className={`mt-4 inline-flex items-center gap-1.5 rounded-full border border-amber-400/35 px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-amber-100 transition hover:bg-amber-500/10 ${focusRingClass}`}
-                        >
-                          Ouvrir la page dédiée
-                          <ArrowUpRight className="h-3.5 w-3.5" />
-                        </Link>
-                      </div>
-                    ))}
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <div className="space-y-3">
-              {workflow.map((step) => (
-                <Link
+      <div id="admin-dash-workflow" className="scroll-mt-24 grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="rounded-2xl border p-6 xl:col-span-2" style={premiumCardStyle}>
+          <h2 className="mb-2 text-xl font-semibold">Workflow mensuel</h2>
+          <p className="mb-4 text-xs text-slate-400">
+            Touche une carte pour le détail — la plupart des étapes concernent surtout les administrateurs (données,
+            évaluations) ; certaines tâches sont partagées avec la modération (profils, visibilité).
+          </p>
+          <div className="flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-violet-600/40">
+            {workflow.map((step) => {
+              const open = workflowExpandedId === step.id;
+              return (
+                <button
                   key={step.id}
-                  href={step.href}
-                  className={`flex items-center justify-between rounded-xl border p-3 transition-colors hover:border-[#c9a85b] ${focusRingClass}`}
-                  style={{ borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.02)" }}
+                  type="button"
+                  onClick={() => setWorkflowExpandedId((prev) => (prev === step.id ? null : step.id))}
+                  className={`min-w-[240px] flex-shrink-0 rounded-2xl border p-4 text-left transition ${focusRingClass} ${
+                    open
+                      ? "border-amber-400/45 bg-amber-500/10 shadow-[0_0_24px_rgba(212,175,55,0.12)]"
+                      : "border-white/12 bg-white/[0.02] hover:border-violet-400/35"
+                  }`}
                 >
-                  <div>
-                    <p className="font-medium">{step.label}</p>
-                    <p className="text-xs" style={subtleMutedText}>
-                      {step.helper}
-                    </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-white">{step.label}</p>
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusStyle(step.status)}`}>
+                      {step.status === "done" ? "OK" : step.status === "in_progress" ? "En cours" : "À faire"}
+                    </span>
                   </div>
-                  <span className={`rounded-full px-2 py-1 text-xs border ${statusStyle(step.status)}`}>
-                    {step.status === "done" ? "Terminé" : step.status === "in_progress" ? "En cours" : "À faire"}
-                  </span>
-                </Link>
-              ))}
+                  <p className="mt-2 line-clamp-2 text-xs text-slate-400">{step.helper}</p>
+                </button>
+              );
+            })}
+          </div>
+          {workflowExpandedId ? (
+            <div
+              className="mt-4 rounded-2xl border border-violet-500/25 bg-violet-950/20 p-4"
+              role="region"
+              aria-live="polite"
+            >
+              {workflow
+                .filter((s) => s.id === workflowExpandedId)
+                .map((step) => (
+                  <div key={`detail-${step.id}`}>
+                    <p className="text-sm font-medium text-white">{step.label}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-300">{step.helper}</p>
+                    <Link
+                      href={step.href}
+                      className={`mt-4 inline-flex items-center gap-1.5 rounded-full border border-amber-400/35 px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-amber-100 transition hover:bg-amber-500/10 ${focusRingClass}`}
+                    >
+                      Ouvrir la page dédiée
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                ))}
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="rounded-2xl border p-6" style={premiumCardStyle}>
@@ -1646,7 +1930,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
       )}
 
       {(!isPilotage || pilotTab === "evenements") && (
-      <div className="rounded-2xl border p-6" style={softCardStyle}>
+      <div id="admin-dash-events" className="scroll-mt-24 rounded-2xl border p-6" style={softCardStyle}>
         <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
           <h2 className="text-xl font-semibold">Suivi événements (tableaux)</h2>
           <div className="flex items-center gap-2">

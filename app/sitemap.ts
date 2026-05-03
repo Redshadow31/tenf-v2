@@ -37,7 +37,7 @@ const routes: Array<{
   { path: "/rejoindre", changeFrequency: "weekly", priority: 0.8 },
   { path: "/postuler", changeFrequency: "weekly", priority: 0.8 },
   { path: "/postuler/merci", changeFrequency: "monthly", priority: 0.3 },
-  { path: "/upa-event", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/partenaire-tenf", changeFrequency: "monthly", priority: 0.5 },
   { path: "/soutien-nexou", changeFrequency: "monthly", priority: 0.5 },
 ];
 

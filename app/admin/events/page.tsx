@@ -858,7 +858,7 @@ export default function CommunityDashboardPage() {
               Animation & engagement — pilotage consolidé
             </h1>
             <p className="text-gray-300 max-w-3xl">
-              Vue d’ensemble pour le staff : événements, Spotlight, anniversaires, UPA Event et leviers d’engagement —
+              Vue d’ensemble pour le staff : événements, Spotlight, anniversaires, Partenaire TENF et leviers d’engagement —
               utile aux modérateurs comme aux administrateurs pour suivre l’activité sans multiplier les écrans.
             </p>
           </div>
@@ -1388,7 +1388,7 @@ export default function CommunityDashboardPage() {
         <section className={`${sectionCardClass} min-h-[340px]`} style={softCardStyle}>
           <div className="flex items-center gap-2 mb-4">
             <HeartHandshake className="h-5 w-5 text-[#d4af37]" />
-            <h3 className="text-lg font-semibold">UPA Event</h3>
+            <h3 className="text-lg font-semibold">Partenaire TENF</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className={denseStatCardClass}>
@@ -1408,7 +1408,7 @@ export default function CommunityDashboardPage() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             <Link href="/admin/partenariat/upa" className={quickLinkClass}>
-              Gestion UPA Event
+              Gestion Partenaire TENF
             </Link>
           </div>
         </section>

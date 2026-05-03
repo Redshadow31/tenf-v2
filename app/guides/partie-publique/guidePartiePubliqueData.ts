@@ -2,11 +2,12 @@ import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
   CalendarDays,
+  Compass,
   GraduationCap,
+  Heart,
   HeartHandshake,
   LayoutGrid,
   Megaphone,
-  Sparkles,
   Store,
   UserPlus,
   Users,
@@ -26,36 +27,39 @@ export type MenuZone = {
 export const menuZones: MenuZone[] = [
   {
     id: "boutique",
-    titre: "Boutique",
+    titre: "Boutique & soutien",
     href: "/boutique",
-    court: "Soutenir TENF avec des produits dérivés ou goodies.",
+    court: "Produits dérivés et soutien direct au projet.",
     detail:
-      "La vitrine matérielle de la communauté : idées cadeaux, visibilité sur le projet, et manière concrète d’aider au-delà du live.",
-    sousPages: [{ href: "/boutique", label: "Boutique principale" }],
+      "Liens rapides du menu : la boutique matérielle et la page « Soutenir TENF » pour les autres façons d’aider.",
+    sousPages: [
+      { href: "/boutique", label: "Boutique" },
+      { href: "/soutenir-tenf", label: "Soutenir TENF" },
+    ],
     icon: Store,
     accent: "#f472b6",
   },
   {
-    id: "communaute",
-    titre: "La communauté",
+    id: "comprendre",
+    titre: "Comprendre TENF",
     href: "/a-propos",
-    court: "Histoire, valeurs, staff et transparence.",
+    court: "ADN du collectif, preuves sociales et grands guides.",
     detail:
-      "Comprendre qui porte TENF, comment les décisions sont expliquées, et ce que « entraide streamers » veut dire chez nous.",
+      "À propos, fonctionnement, témoignages, puis les trois guides interactifs (partie publique, espace membre, nouveau membre).",
     sousPages: [
-      { href: "/a-propos", label: "À propos" },
+      { href: "/a-propos", label: "À propos de TENF" },
       { href: "/fonctionnement-tenf/decouvrir", label: "Fonctionnement TENF" },
       { href: "/avis-tenf", label: "Témoignages" },
-      { href: "/upa-event", label: "UPA Event" },
-      { href: "/organisation-staff", label: "Organisation du staff" },
-      { href: "/organisation-staff/organigramme", label: "Organigramme interactif" },
+      { href: "/guides/partie-publique", label: "Guide — partie publique du site" },
+      { href: "/guides/espace-membre", label: "Guide — espace membre (carte)" },
+      { href: "/guides/tenf", label: "Guide TENF — nouveau membre" },
     ],
     icon: HeartHandshake,
     accent: "#a78bfa",
   },
   {
     id: "createurs",
-    titre: "Découvrir les créateurs",
+    titre: "Créateurs & contenus",
     href: "/membres",
     court: "Annuaire, clips, interviews et planning des lives.",
     detail:
@@ -72,7 +76,7 @@ export const menuZones: MenuZone[] = [
   },
   {
     id: "evenements",
-    titre: "Événements",
+    titre: "Agenda",
     href: "/events2",
     court: "Calendrier, soirées communautaires et Aventura.",
     detail:
@@ -87,21 +91,33 @@ export const menuZones: MenuZone[] = [
   },
   {
     id: "rejoindre",
-    titre: "Rejoindre TENF",
-    href: "/rejoindre",
-    court: "Intégration, guides, FAQ et soutien financier.",
+    titre: "Rejoindre & intégrer",
+    href: "/integration",
+    court: "Sessions, guide d’intégration et FAQ.",
     detail:
-      "Le couloir d’entrée : comprendre les étapes, réserver une session, lire les guides, ou soutenir le projet.",
+      "Réserver un créneau, suivre le guide d’intégration et lever les dernières questions avant de t’installer dans l’espace membre.",
     sousPages: [
       { href: "/integration", label: "Intégration" },
       { href: "/rejoindre/guide-integration", label: "Guide d’intégration" },
-      { href: "/rejoindre/guide-public", label: "Guide public" },
-      { href: "/rejoindre/guide-espace-membre", label: "Guide espace membre" },
-      { href: "/rejoindre/faq", label: "FAQ rejoindre" },
-      { href: "/soutenir-tenf", label: "Soutenir TENF" },
+      { href: "/rejoindre/faq", label: "FAQ / comment rejoindre" },
     ],
     icon: UserPlus,
     accent: "#c084fc",
+  },
+  {
+    id: "transparence",
+    titre: "Transparence & organisation",
+    href: "/organisation-staff",
+    court: "Staff, organigramme et partenariat caritatif.",
+    detail:
+      "Qui fait quoi dans l’équipe, comment la structure est présentée, et la page Partenaire TENF (rétrospective UPA × TENF).",
+    sousPages: [
+      { href: "/organisation-staff", label: "Organisation du staff" },
+      { href: "/organisation-staff/organigramme", label: "Organigramme interactif" },
+      { href: "/partenaire-tenf", label: "Partenaire TENF" },
+    ],
+    icon: LayoutGrid,
+    accent: "#94a3b8",
   },
 ];
 
@@ -181,7 +197,7 @@ export const parcoursEtapes: ParcoursEtape[] = [
     id: "carte",
     titre: "Lire la carte du site",
     duree: "2 min",
-    description: "Repère où vivent les contenus publics : communauté, créateurs, événements, rejoindre.",
+    description: "Repère où vivent les contenus publics : comprendre TENF, créateurs, agenda, rejoindre, transparence.",
     liens: [{ href: "#carte-menu", label: "Aller à la carte du menu" }],
   },
   {
@@ -266,6 +282,20 @@ export const extraRessources = [
     description: "Pages pédagogiques sur le tableau de bord, les raids, les réglages — lisibles sans connexion.",
     icon: LayoutGrid,
     color: "#a78bfa",
+  },
+  {
+    titre: "Carte interactive — espace membre",
+    href: "/guides/espace-membre",
+    description: "Même logique que ce guide : menu /member, profils types, checklist et FAQ.",
+    icon: Compass,
+    color: "#818cf8",
+  },
+  {
+    titre: "Guide TENF — nouveau membre",
+    href: "/guides/tenf",
+    description: "Culture TENF : entraide, Spotlights, points, événements, formations et conclusion.",
+    icon: Heart,
+    color: "#fb7185",
   },
   {
     titre: "Academy",

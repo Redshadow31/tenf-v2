@@ -109,7 +109,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
                 aria-label="Fermer le panneau membre"
               />
               <UserSidebar
-                className="relative z-10 h-full w-72 max-w-[85vw] overflow-y-auto shadow-2xl animate-[member-sidebar-slide-in_0.25s_ease-out]"
+                className="relative z-10 h-full w-[min(20rem,90vw)] max-w-[22rem] overflow-y-auto shadow-2xl animate-[member-sidebar-slide-in_0.25s_ease-out]"
                 onNavigate={() => setIsMobileSidebarOpen(false)}
                 onRequestClose={() => setIsMobileSidebarOpen(false)}
                 showMobileCloseButton={true}

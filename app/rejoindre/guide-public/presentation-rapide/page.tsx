@@ -35,8 +35,8 @@ const targetProfiles = [
 const menuCategories = [
   {
     icon: "🤝",
-    title: "UPA Events",
-    description: "Association et Discord partenaire, orientés événements caritatifs entre streamers.",
+    title: "Partenaire TENF",
+    description: "Page publique sur le partenariat caritatif UPA × TENF (rétrospective, liens utiles).",
   },
   {
     icon: "🛍️",
