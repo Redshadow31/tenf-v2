@@ -55,7 +55,7 @@ function DateHighlight({ iso, browserTimezone }: { iso: string; browserTimezone:
         {d.toLocaleDateString("fr-FR", { month: "short" })}
       </span>
       <span className="mt-0.5 text-[11px] capitalize text-gray-400">{d.toLocaleDateString("fr-FR", { weekday: "short" })}</span>
-      <span className="mt-2 text-[10px] text-gray-500 border-t border-white/10 pt-2 w-full">Fuseau : {browserTimezone}</span>
+      <span className="mt-2 w-full border-t border-white/10 pt-2 text-[10px] text-gray-500">Heure locale</span>
     </div>
   );
 }
@@ -175,7 +175,7 @@ export default function EventDetailModal({
   const seatsLine =
     typeof event.remainingSeats === "number"
       ? `${Math.max(0, event.remainingSeats)} place(s) restante(s)`
-      : "Capacité : places ouvertes (sous réserve de l’organisateur)";
+      : "Places ouvertes (dans la limite prévue par l’organisateur)";
 
   return (
     <div
@@ -199,13 +199,23 @@ export default function EventDetailModal({
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative max-h-[38vh] min-h-[140px] shrink-0 overflow-hidden bg-[#0a0a0c] sm:max-h-[220px]">
+        <div className="relative max-h-[44vh] min-h-[170px] shrink-0 overflow-hidden bg-[#09090c] sm:max-h-[280px]">
           {event.image ? (
-            <img src={event.image} alt="" className="h-full w-full object-cover object-center opacity-90" />
+            <>
+              <img
+                src={event.image}
+                alt=""
+                className="absolute inset-0 h-full w-full scale-110 object-cover object-center opacity-30 blur-md"
+                aria-hidden
+              />
+              <div className="absolute inset-x-3 bottom-3 top-3 overflow-hidden rounded-xl border border-white/15 bg-black/25 shadow-[0_18px_34px_rgba(0,0,0,0.45)] sm:inset-x-5 sm:bottom-4 sm:top-4">
+                <img src={event.image} alt="" className="h-full w-full object-contain object-center" />
+              </div>
+            </>
           ) : (
             <div className="h-full w-full bg-gradient-to-br from-violet-900/40 via-[#1a1025] to-[#0a0a0c]" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f14] via-[#0f0f14]/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f14] via-[#0f0f14]/58 to-[#0f0f14]/10" />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${categoryBadgeClass}`}>{categoryLabel}</span>
@@ -226,24 +236,34 @@ export default function EventDetailModal({
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-5">
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="border-b border-white/8 bg-[#10101a] px-3 pb-3 pt-3 sm:px-5 sm:pb-4">
             {urgencyLabel && !isPast && (
               <p className="mb-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-100">
                 <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 {urgencyLabel}
               </p>
             )}
-            <h2 id={titleId} className="text-xl font-bold leading-tight text-white sm:text-2xl md:text-3xl pr-4">
+            <h2 id={titleId} className="pr-2 text-xl font-bold leading-tight text-white sm:text-2xl md:text-3xl">
               {event.title}
             </h2>
-            <p className="mt-1.5 text-sm text-gray-300/95 line-clamp-2 sm:line-clamp-none">
-              <span className="text-violet-200/90">TENF</span> — moment communautaire, en visio ou en présentiel selon l’événement. Membres : pense
-              à vérifier Discord pour les rappels.
+            <p className="mt-1.5 text-sm text-gray-300/95">
+              <span className="text-violet-200/90">TENF</span> — un moment convivial à vivre ensemble, en ligne ou sur place selon l’événement.
+              Pense à vérifier Discord pour les rappels.
             </p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/30 bg-sky-500/15 px-2.5 py-1 font-medium text-sky-100">
+                <Users className="h-3.5 w-3.5" aria-hidden />
+                Grand public
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/30 bg-violet-500/15 px-2.5 py-1 font-medium text-violet-100">
+                <HeartHandshake className="h-3.5 w-3.5" aria-hidden />
+                Membres TENF
+              </span>
+            </div>
           </div>
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <div className="border-b border-white/8 bg-[#12121a]/90 px-3 py-3 sm:px-5">
             <div className="flex flex-wrap items-stretch gap-3">
               <DateHighlight iso={event.date} browserTimezone={browserTimezone} />
@@ -326,7 +346,7 @@ export default function EventDetailModal({
                   <div>
                     <h3 className="text-sm font-semibold text-white">Quand</h3>
                     <p className="mt-1 text-sm text-gray-300">{fullWhen}</p>
-                    <p className="mt-1 text-xs text-gray-500">Affiché selon le fuseau de ton navigateur ({browserTimezone}).</p>
+                    <p className="mt-1 text-xs text-gray-500">Horaires adaptés à ton heure locale.</p>
                   </div>
                 </div>
 
@@ -345,13 +365,13 @@ export default function EventDetailModal({
                         <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       </a>
                     ) : (
-                      <p className="mt-1 text-sm text-gray-400">Lieu communiqué par l’organisateur (souvent salon vocal ou lien Discord).</p>
+                      <p className="mt-1 text-sm text-gray-400">Le lieu exact est communiqué par l’équipe TENF avant l’événement.</p>
                     )}
                   </div>
                 </div>
 
                 <p className="text-xs text-gray-500">
-                  Une question sur le déroulé ? Passe par{" "}
+                  Une question sur le déroulé ? Consulte{" "}
                   <Link href="/evenements-communautaires" className="text-violet-300 hover:underline" onClick={onClose}>
                     la page communautaire
                   </Link>{" "}
@@ -364,14 +384,14 @@ export default function EventDetailModal({
               <div className="space-y-4 animate-fadeIn" role="tabpanel">
                 {!hideRegistration && (
                   <div className="rounded-2xl border border-blue-500/25 bg-blue-500/10 p-4 text-sm text-blue-100/95">
-                    <strong className="text-white">Membres TENF</strong> : connecte-toi avec ton compte pour t’inscrire ou te désinscrire. Le bouton
-                    ci-dessous utilise ta session en cours.
+                    <strong className="text-white">Membres TENF</strong> : inscris-toi en un clic pour recevoir les rappels et suivre tes
+                    participations.
                   </div>
                 )}
                 {hideRegistration && (
                   <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-100/95">
-                    <strong className="text-white">Événement réservé ou masqué</strong> : certaines actions (lien public, places) peuvent être
-                    limitées. Renseigne-toi sur Discord ou auprès du staff.
+                    <strong className="text-white">Accès limité</strong> : cet événement est réservé à un groupe précis. Renseigne-toi sur Discord
+                    ou auprès du staff TENF.
                   </div>
                 )}
 
@@ -387,7 +407,7 @@ export default function EventDetailModal({
                     </div>
                     <div>
                       <p className="font-semibold text-white">Ajouter au calendrier</p>
-                      <p className="text-xs text-gray-400">Google Calendar — rappels sur téléphone ou bureau</p>
+                      <p className="text-xs text-gray-400">Ajoute-le à ton calendrier pour ne rien rater</p>
                     </div>
                   </a>
 
@@ -403,7 +423,7 @@ export default function EventDetailModal({
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-white">{event.ctaLabel || "En savoir plus"}</p>
-                        <p className="truncate text-xs text-gray-400">Lien fourni par l’organisateur</p>
+                        <p className="truncate text-xs text-gray-400">Plus de détails sur la page dédiée</p>
                       </div>
                     </a>
                   )}
@@ -436,7 +456,7 @@ export default function EventDetailModal({
                   )}
                   {isPast && (
                     <span className="inline-flex items-center justify-center rounded-xl border border-gray-600 bg-[#15151c] px-5 py-3 text-sm text-gray-400">
-                      Événement terminé — merci d’avoir participé !
+                      Événement terminé — merci pour ta participation !
                     </span>
                   )}
                 </div>

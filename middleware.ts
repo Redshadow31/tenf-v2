@@ -7,9 +7,8 @@ import { redirectAuthLoginOAuthErrorToMobileIfPossible } from "@/lib/mobileAuthL
 import { redirectMemberDashboardToHandoffIfMobileContext } from "@/lib/mobileDashboardHandoffRecover";
 
 /**
- * Middleware Next.js pour protéger les routes admin
- * Utilise NextAuth JWT pour vérifier l'authentification
- * La vérification des permissions spécifiques se fait dans chaque route API
+ * Middleware Next.js : protection admin + espace membre.
+ * Les API restent sécurisées route par route ; ici on force la session sur les pages /member.
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -23,6 +22,20 @@ export async function middleware(request: NextRequest) {
   const devAuthBypassEnabled =
     process.env.NODE_ENV !== "production" &&
     process.env.ENABLE_DEV_AUTH === "true";
+
+  // Espace membre : aligné sur /api/members/me/* (Discord connecté, cookie de session)
+  if (pathname === "/member" || pathname.startsWith("/member/")) {
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+    if (!token?.discordId) {
+      const loginUrl = new URL("/api/auth/signin", request.url);
+      const callbackDest = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+      loginUrl.searchParams.set("callbackUrl", callbackDest || "/member/dashboard");
+      return NextResponse.redirect(loginUrl);
+    }
+  }
 
   // Vérifier si c'est une route admin
   if (pathname.startsWith("/admin")) {
@@ -72,7 +85,8 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/auth/login",
-    "/member/dashboard",
+    "/member",
+    "/member/:path*",
   ],
 };
 

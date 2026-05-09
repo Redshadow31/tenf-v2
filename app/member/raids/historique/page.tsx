@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -11,20 +11,21 @@ import {
   Compass,
   ExternalLink,
   Filter,
+  Gift,
   Heart,
   History,
   PlusCircle,
   RefreshCw,
-  Reply,
+  Search,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   Target,
   Users,
   XCircle,
+  Zap,
 } from "lucide-react";
 import MemberSurface from "@/components/member/ui/MemberSurface";
-import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 
 type RaidEntry = {
   id: string;
@@ -67,6 +68,9 @@ type ReturnPendingMeta = {
   monthsScanned: number;
   uniqueRaidersReceived: number;
   pendingReturnTotal: number;
+  displayedCount?: number;
+  sampleRandomized?: boolean;
+  sampleMax?: number;
   truncated?: boolean;
   explanation?: string;
 };
@@ -155,15 +159,15 @@ function statusPointsBadge(status: RaidEntry["pointsStatus"]) {
 function sourceBadge(source: RaidEntry["source"]) {
   if (source === "manual") {
     return {
-      label: "Déclaration manuelle",
-      short: "Manuel",
+      label: "Tu l’as déclaré",
+      short: "Déclaration",
       border: "rgba(250,204,21,0.45)",
       bg: "rgba(250,204,21,0.12)",
       color: "#fde68a",
     };
   }
   return {
-    label: "Raids-sub automatique",
+    label: "Détecté pour toi",
     short: "Auto",
     border: "rgba(96,165,250,0.45)",
     bg: "rgba(96,165,250,0.12)",
@@ -196,6 +200,14 @@ function twitchChannelUrl(login: string): string | null {
   return `https://www.twitch.tv/${clean}`;
 }
 
+function normalizeRaidSearch(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
 export default function MemberRaidHistoryPage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey);
   const [months, setMonths] = useState<string[]>([]);
@@ -210,12 +222,16 @@ export default function MemberRaidHistoryPage() {
   const [returnMeta, setReturnMeta] = useState<ReturnPendingMeta | null>(null);
   const [returnLoading, setReturnLoading] = useState(true);
   const [returnError, setReturnError] = useState("");
+  const [timelineQuery, setTimelineQuery] = useState("");
 
   const loadReturnSuggestions = useCallback(async () => {
     setReturnLoading(true);
     setReturnError("");
     try {
-      const res = await fetch("/api/members/me/raid-suggestions/return-pending", { cache: "no-store" });
+      const res = await fetch("/api/members/me/raid-suggestions/return-pending", {
+        cache: "no-store",
+        credentials: "include",
+      });
       const body = (await res.json()) as {
         suggestions?: ReturnPendingSuggestion[];
         meta?: ReturnPendingMeta;
@@ -247,6 +263,7 @@ export default function MemberRaidHistoryPage() {
         setError("");
         const response = await fetch(`/api/members/me/raids-history?month=${encodeURIComponent(selectedMonth)}`, {
           cache: "no-store",
+          credentials: "include",
         });
         const body = (await response.json()) as RaidHistoryResponse & { error?: string };
         if (!response.ok) {
@@ -263,6 +280,7 @@ export default function MemberRaidHistoryPage() {
         setMonths(body.months || []);
         setExpandedRaidId(null);
         setRaidFilter("all");
+        setTimelineQuery("");
       } finally {
         setLoading(false);
       }
@@ -277,9 +295,17 @@ export default function MemberRaidHistoryPage() {
   const monthOptions = months.length > 0 ? months : [selectedMonth];
 
   const filteredRaids = useMemo(() => {
-    if (raidFilter === "all") return raids;
-    return raids.filter((r) => r.raidStatus === raidFilter);
-  }, [raids, raidFilter]);
+    let list = raidFilter === "all" ? raids : raids.filter((r) => r.raidStatus === raidFilter);
+    const q = normalizeRaidSearch(timelineQuery);
+    if (q) {
+      list = list.filter(
+        (r) =>
+          normalizeRaidSearch(r.targetLabel).includes(q) ||
+          normalizeRaidSearch(r.targetLogin || "").includes(q)
+      );
+    }
+    return list;
+  }, [raids, raidFilter, timelineQuery]);
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedRaidId((prev) => (prev === id ? null : id));
@@ -294,42 +320,120 @@ export default function MemberRaidHistoryPage() {
 
   const filterButtons: { id: RaidFilter; label: string; count: number }[] = useMemo(
     () => [
-      { id: "all", label: "Tous", count: summary?.total ?? raids.length },
+      { id: "all", label: "Tout voir", count: summary?.total ?? raids.length },
       { id: "validated", label: "Validés", count: summary?.validated ?? 0 },
-      { id: "pending", label: "En attente", count: summary?.pending ?? 0 },
-      { id: "rejected", label: "Refusés", count: summary?.rejected ?? 0 },
+      { id: "pending", label: "En cours de vérif", count: summary?.pending ?? 0 },
+      { id: "rejected", label: "Non retenus", count: summary?.rejected ?? 0 },
     ],
     [summary, raids.length],
   );
 
+  const scrollToRaid = useCallback((id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   return (
     <MemberSurface>
-      <MemberPageHeader
-        title="Mes raids TENF"
-        description="Retrouve chaque raid enregistré pour ton compte : validation staff, points d’engagement et source (déclaration ou automatique). Filtre par mois, comprends les statuts et garde le cap sur l’esprit bienveillant de la communauté."
-        badge="Historique"
-      />
+      <section
+        id="raid-hero"
+        className="relative mb-6 overflow-hidden rounded-2xl border px-5 py-6 shadow-[0_18px_45px_rgba(0,0,0,0.22)] sm:px-7 sm:py-7"
+        style={{
+          borderColor: "rgba(212,175,55,0.28)",
+          background:
+            "linear-gradient(145deg, rgba(212,175,55,0.14) 0%, rgba(22,18,35,0.92) 40%, rgba(10,12,18,0.96) 100%)",
+        }}
+      >
+        <div className="pointer-events-none absolute -left-16 -top-10 h-40 w-40 rounded-full bg-amber-400/18 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-12 -right-8 h-36 w-36 rounded-full bg-violet-500/20 blur-3xl" />
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 max-w-2xl">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/35 bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.11em] text-amber-100/95">
+                <History className="h-3.5 w-3.5" aria-hidden />
+                Tes raids
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-500/12 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-100">
+                <Heart className="h-3.5 w-3.5" aria-hidden />
+                Communauté TENF
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-amber-300/30 bg-amber-500/15 text-amber-50">
+                <Sparkles className="h-5 w-5" aria-hidden />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Ton historique de raids</h1>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-200 sm:text-[15px]">
+              Ici tu retrouves <strong className="font-semibold text-amber-100/95">ce que tu as envoyé</strong> comme soutien à d’autres chaînes,
+              mois par mois — sans jargon technique : juste les dates, les chaînes et où en est ta demande.
+            </p>
+            <p className="mt-2 text-sm text-violet-100/90">
+              <Zap className="mr-1.5 inline-block h-3.5 w-3.5 align-[-0.12em] text-violet-300" aria-hidden />
+              Plus bas : une petite sélection de personnes qui t’ont soutenu·e et vers qui tu n’as pas encore de raid retour enregistré chez nous — au
+              hasard, pour rester léger.
+            </p>
+          </div>
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:flex-row lg:max-w-md lg:flex-col">
+            <Link
+              href="/member/raids/declarer"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-amber-400/35 bg-amber-500/15 px-4 py-3 text-sm font-semibold text-amber-50 transition hover:border-amber-300/50 hover:bg-amber-500/22"
+            >
+              <PlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+              Envoyer un raid
+            </Link>
+            <Link
+              href="/member/raids/statistiques"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-violet-400/30 bg-violet-500/12 px-4 py-3 text-sm font-semibold text-violet-50 transition hover:border-violet-300/45 hover:bg-violet-500/18"
+            >
+              <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
+              Voir mes stats
+              <ArrowRight className="h-4 w-4 opacity-80" aria-hidden />
+            </Link>
+          </div>
+        </div>
+      </section>
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        <Link
-          href="/member/raids/declarer"
-          className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-100 transition hover:border-amber-400/50 hover:bg-amber-500/15"
+      <nav
+        aria-label="Accès rapide"
+        className="sticky top-14 z-20 mb-6 flex flex-wrap gap-2 rounded-2xl border border-white/[0.08] bg-[#0c0e14]/80 p-2 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-[#0c0e14]/65"
+      >
+        <button
+          type="button"
+          onClick={() => scrollToRaid("raid-month")}
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-transparent bg-white/[0.04] px-3 py-2.5 text-xs font-semibold text-zinc-200 transition hover:border-amber-400/25 hover:bg-amber-500/10 hover:text-white sm:flex-none sm:px-4"
         >
-          <PlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Déclarer un raid
-        </Link>
-        <Link
-          href="/member/raids/statistiques"
-          className="inline-flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400/45 hover:bg-violet-500/15"
+          <CalendarDays className="h-3.5 w-3.5 text-amber-300" aria-hidden />
+          Choisir le mois
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollToRaid("raid-kpis")}
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-transparent bg-white/[0.04] px-3 py-2.5 text-xs font-semibold text-zinc-200 transition hover:border-emerald-400/20 hover:bg-emerald-500/10 hover:text-white sm:flex-none sm:px-4"
         >
-          <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
-          Statistiques
-          <ArrowRight className="h-4 w-4 opacity-70" aria-hidden />
-        </Link>
-      </div>
+          <Target className="h-3.5 w-3.5 text-emerald-300" aria-hidden />
+          Synthèse
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollToRaid("raid-gratitude")}
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-transparent bg-white/[0.04] px-3 py-2.5 text-xs font-semibold text-zinc-200 transition hover:border-cyan-400/25 hover:bg-cyan-500/10 hover:text-white sm:flex-none sm:px-4"
+        >
+          <Gift className="h-3.5 w-3.5 text-cyan-300" aria-hidden />
+          Petits retours
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollToRaid("raid-timeline")}
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-transparent bg-white/[0.04] px-3 py-2.5 text-xs font-semibold text-zinc-200 transition hover:border-violet-400/25 hover:bg-violet-500/12 hover:text-white sm:flex-none sm:px-4"
+        >
+          <Search className="h-3.5 w-3.5 text-violet-300" aria-hidden />
+          Liste & recherche
+        </button>
+      </nav>
 
       <section
-        className="relative mb-8 overflow-hidden rounded-3xl border p-5 shadow-2xl sm:p-8"
+        id="raid-month"
+        className="relative mb-8 scroll-mt-[5.5rem] overflow-hidden rounded-3xl border p-5 shadow-2xl sm:p-8"
         style={{
           borderColor: "rgba(212, 175, 55, 0.38)",
           background:
@@ -341,21 +445,21 @@ export default function MemberRaidHistoryPage() {
           <div className="min-w-0 flex-1">
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-200/90">
               <History className="h-3.5 w-3.5" aria-hidden />
-              Espace raids
+              Calendrier
             </p>
-            <h2 className="mt-2 text-balance text-2xl font-black text-white sm:text-3xl">Ton impact mois par mois</h2>
+            <h2 className="mt-2 text-balance text-2xl font-black text-white sm:text-3xl">Quel mois veux-tu revoir ?</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              Les raids comptent pour l’engagement TENF : visibilité mutuelle, découverte de créateurs et points une fois validés. Choisis un mois
-              ci-dessous pour explorer la timeline détaillée.
+              Glisse sur les pastilles ou ouvre le menu : tu vois tout ce qui est enregistré pour toi sur ce mois — les validations suivent leur cours,
+              tu n’as rien à « forcer » depuis ici.
             </p>
             {summary && summary.total > 0 ? (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <div className="rounded-xl border border-white/10 bg-black/35 px-4 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Taux validés / déclarés</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Part déjà validée</p>
                   <p className="text-xl font-black tabular-nums text-white">{validationRate}%</p>
                 </div>
                 <p className="max-w-md text-xs text-zinc-500">
-                  Indicatif sur le mois affiché : utile pour voir si des dossiers sont encore en revue staff.
+                  Sur le mois affiché : une idée simple de combien de lignes sont déjà passées au vert côté équipe.
                 </p>
               </div>
             ) : null}
@@ -400,65 +504,75 @@ export default function MemberRaidHistoryPage() {
         </div>
       </section>
 
-      <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <section
+        id="raid-kpis"
+        className="mb-8 scroll-mt-[5.5rem] grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+      >
         <StatCard
-          label="Raids du mois"
+          label="Enregistrés ce mois"
           value={summary?.total ?? 0}
           icon={<Sparkles className="h-4 w-4 text-amber-300" />}
           gradient="from-amber-500/15 to-transparent"
         />
         <StatCard
-          label="Validés"
+          label="Déjà validés"
           value={summary?.validated ?? 0}
           icon={<ShieldCheck className="h-4 w-4 text-emerald-400" />}
           gradient="from-emerald-500/15 to-transparent"
         />
         <StatCard
-          label="En attente"
+          label="En vérification"
           value={summary?.pending ?? 0}
           icon={<Clock3 className="h-4 w-4 text-amber-400" />}
           gradient="from-amber-500/12 to-transparent"
         />
         <StatCard
-          label="Refusés"
+          label="Non retenus"
           value={summary?.rejected ?? 0}
           icon={<XCircle className="h-4 w-4 text-red-400" />}
           gradient="from-red-500/12 to-transparent"
         />
         <StatCard
-          label="Points OK"
+          label="Récompense OK"
           value={summary?.pointsAwarded ?? 0}
           icon={<Target className="h-4 w-4 text-sky-400" />}
           gradient="from-sky-500/15 to-transparent"
         />
         <StatCard
-          label="Points attente"
+          label="Récompense en attente"
           value={summary?.pointsPending ?? 0}
           icon={<ShieldAlert className="h-4 w-4 text-violet-400" />}
           gradient="from-violet-500/15 to-transparent"
         />
       </section>
 
-      <section className="mb-8 rounded-3xl border border-cyan-500/25 bg-gradient-to-br from-cyan-950/35 via-black/40 to-violet-950/20 p-5 sm:p-7">
+      <section
+        id="raid-gratitude"
+        className="mb-8 scroll-mt-[5.5rem] rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/40 via-[#0f121c] to-violet-950/25 p-5 shadow-[0_18px_48px_rgba(0,0,0,0.28)] sm:p-7"
+      >
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-500/35 bg-cyan-500/15">
-              <Reply className="h-5 w-5 text-cyan-300" aria-hidden />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-500/35 bg-cyan-500/15 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
+              <Gift className="h-5 w-5 text-cyan-300" aria-hidden />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Qui t’a soutenu·e — et à qui rendre la pareille ?</h3>
+              <h3 className="text-lg font-bold text-white sm:text-xl">Quelques idées de « merci » en raid</h3>
               <p className="mt-1 max-w-3xl text-sm leading-relaxed text-zinc-400">
-                Chez TENF, un raid, c’est un geste fort entre créateurs. Sur environ{" "}
-                <strong className="text-zinc-300">{returnMeta?.monthsScanned ?? "…"} mois</strong> d’historique communautaire, on repère les
-                membres qui sont déjà venus sur <strong className="text-zinc-300">ta chaîne</strong> alors qu’aucun raid de ta part vers eux ne
-                figure encore dans les données que nous suivons ensemble. Ce n’est ni une obligation ni un classement : simplement une invitation à
-                la réciprocité et à la bienveillance, au même titre que tes autres stats raids.
+                On te propose <strong className="text-cyan-100/95">au plus quatre noms</strong>, tirés au hasard parmi les personnes qui{" "}
+                <strong className="text-zinc-200">t’ont déjà raidé·e</strong> et pour qui{" "}
+                <strong className="text-zinc-200">aucun raid de toi vers elles</strong> n’apparaît encore dans nos données sur environ{" "}
+                <strong className="text-zinc-300">{returnMeta?.monthsScanned ?? "…"} mois</strong>. Ce n’est pas une liste complète ni une obligation :
+                juste une piste bienveillante. Actualise pour en voir d’autres si la liste est longue.
               </p>
-              {returnMeta?.uniqueRaidersReceived != null ? (
+              {returnMeta?.pendingReturnTotal != null ? (
                 <p className="mt-2 text-xs text-zinc-500">
-                  Personnes différentes qui t’ont envoyé un raid sur cette période : {returnMeta.uniqueRaidersReceived}. Pour qui aucun retour
-                  n’apparaît encore dans nos outils : {returnMeta.pendingReturnTotal}
-                  {returnMeta.truncated ? ` — on t’en affiche ${returnSuggestions.length} pour garder la liste lisible.` : "."}
+                  Personnes concernées (sans raid retour enregistré de ta part) :{" "}
+                  <span className="font-semibold text-zinc-400">{returnMeta.pendingReturnTotal}</span>
+                  {returnMeta.pendingReturnTotal > (returnMeta.sampleMax ?? 4)
+                    ? ` — tu en vois ${returnSuggestions.length} ici.`
+                    : returnMeta.pendingReturnTotal > 0
+                      ? ` — affichage complet ce coup-ci.`
+                      : "."}
                 </p>
               ) : null}
             </div>
@@ -467,10 +581,11 @@ export default function MemberRaidHistoryPage() {
             type="button"
             onClick={() => void loadReturnSuggestions()}
             disabled={returnLoading}
-            className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-white/12 bg-black/35 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/10 disabled:opacity-50"
+            title="Tirer un autre petit échantillon au hasard"
+            className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-cyan-400/25 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/18 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${returnLoading ? "animate-spin" : ""}`} aria-hidden />
-            Mettre à jour
+            Autres idées
           </button>
         </div>
 
@@ -487,8 +602,8 @@ export default function MemberRaidHistoryPage() {
             <Sparkles className="mx-auto h-9 w-9 text-cyan-500/60" aria-hidden />
             <p className="mt-3 text-sm font-semibold text-zinc-200">Tout va bien de ce côté — ou la liste n’a pas encore assez d’infos</p>
             <p className="mx-auto mt-2 max-w-lg text-xs text-zinc-500">
-              Peut-être as-tu déjà rendu des raids à celles et ceux qui t’ont soutenu·e, ou bien tout n’est pas encore remonté dans l’outil. Pour
-              trouver d’autres chaînes à soutenir (par exemple des membres moins exposés aux raids ce mois-ci), passe aussi par la page dédiée.
+              Soit tu as déjà renvoyé l’ascenseur à tout le monde côté données, soit tout n’est pas encore remonté chez nous. Tu peux quand même
+              déclarer un raid depuis la page dédiée, vers qui tu veux.
             </p>
             <Link
               href="/member/raids/declarer"
@@ -498,7 +613,7 @@ export default function MemberRaidHistoryPage() {
             </Link>
           </div>
         ) : (
-          <ul className="flex flex-wrap gap-2">
+          <ul className="grid gap-3 sm:grid-cols-2">
             {returnSuggestions.map((s) => {
               const last = new Date(s.lastReceivedAt);
               const lastLabel = Number.isNaN(last.getTime()) ? "—" : last.toLocaleDateString("fr-FR");
@@ -506,23 +621,23 @@ export default function MemberRaidHistoryPage() {
               return (
                 <li
                   key={s.login}
-                  className="flex min-w-[min(100%,280px)] flex-1 flex-col gap-2 rounded-2xl border border-white/10 bg-black/35 p-4 sm:min-w-[260px] sm:max-w-[320px]"
+                  className="flex min-w-0 flex-col gap-3 rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-black/50 to-cyan-950/20 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-400/35 hover:shadow-[0_12px_28px_rgba(0,0,0,0.25)]"
                 >
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-white">{s.label}</p>
                     <p className="truncate text-xs text-zinc-500">@{s.login}</p>
                   </div>
                   <p className="text-xs text-zinc-400">
-                    Est déjà passé·e sur ta chaîne <span className="font-semibold text-cyan-300/90">{s.receivedCount}</span> fois · dernier passage
-                    : {lastLabel}
+                    Déjà venu·e sur ta chaîne <span className="font-semibold text-cyan-200/90">{s.receivedCount}</span> fois · dernier passage :{" "}
+                    {lastLabel}
                   </p>
                   <div className="mt-auto flex flex-wrap gap-2 pt-1">
                     <Link
                       href={`/member/raids/declarer?cible=${encodeURIComponent(s.login)}`}
-                      className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 px-3 py-2 text-center text-xs font-bold text-white hover:brightness-110 sm:flex-none"
-                      title={`Préremplir une déclaration de raid vers ${s.label}`}
+                      className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 px-3 py-2.5 text-center text-xs font-bold text-white shadow-md hover:brightness-110 sm:flex-none"
+                      title={`Ouvrir la déclaration avec @${s.login} en cible`}
                     >
-                      Préparer un raid retour <ArrowRight className="h-3 w-3" aria-hidden />
+                      Dire merci en raid <ArrowRight className="h-3 w-3" aria-hidden />
                     </Link>
                     {tw ? (
                       <a
@@ -548,7 +663,7 @@ export default function MemberRaidHistoryPage() {
         </section>
       ) : null}
 
-      <section className="mb-8 grid gap-4 md:grid-cols-3">
+      <section id="raid-values" className="mb-8 scroll-mt-[5.5rem] grid gap-4 md:grid-cols-3">
         {TENF_VALUES.map((item) => {
           const Icon = item.icon;
           return (
@@ -568,7 +683,7 @@ export default function MemberRaidHistoryPage() {
         })}
       </section>
 
-      <section className="mb-8 overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+      <section className="mb-8 overflow-hidden rounded-2xl border border-white/10 bg-black/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         <div className="flex flex-wrap border-b border-white/10">
           <button
             type="button"
@@ -638,23 +753,41 @@ export default function MemberRaidHistoryPage() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/10 bg-gradient-to-b from-[#12141c]/90 to-black/40 p-5 sm:p-7">
-        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-violet-500/30 bg-violet-500/15">
-              <CalendarDays className="h-5 w-5 text-violet-300" aria-hidden />
+      <section
+        id="raid-timeline"
+        className="scroll-mt-[5.5rem] rounded-3xl border border-white/10 bg-gradient-to-b from-[#12141c]/90 to-black/40 p-5 shadow-[0_14px_40px_rgba(0,0,0,0.22)] sm:p-7"
+      >
+        <div className="mb-5 flex flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-violet-500/30 bg-violet-500/15">
+                <CalendarDays className="h-5 w-5 text-violet-300" aria-hidden />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Tes envois du mois</h3>
+                <p className="text-sm text-zinc-500">
+                  {loading
+                    ? "Chargement…"
+                    : `${filteredRaids.length} ligne${filteredRaids.length !== 1 ? "s" : ""}${timelineQuery.trim() ? " avec ta recherche" : ""}`}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-white">Timeline du mois</h3>
-              <p className="text-sm text-zinc-500">
-                {loading ? "Chargement…" : `${filteredRaids.length} entrée${filteredRaids.length !== 1 ? "s" : ""} affichée${filteredRaids.length !== 1 ? "s" : ""}`}
-              </p>
+            <div className="relative w-full min-w-0 lg:max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden />
+              <input
+                type="search"
+                value={timelineQuery}
+                onChange={(e) => setTimelineQuery(e.target.value)}
+                placeholder="Chercher une chaîne…"
+                className="w-full rounded-xl border border-white/12 bg-black/40 py-2.5 pl-10 pr-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-400/35 focus:outline-none focus:ring-2 focus:ring-violet-500/15"
+                autoComplete="off"
+              />
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               <Filter className="h-3.5 w-3.5" aria-hidden />
-              Filtrer
+              Statut
             </span>
             {filterButtons.map((fb) => (
               <button
@@ -692,27 +825,36 @@ export default function MemberRaidHistoryPage() {
           <div className="rounded-2xl border border-dashed border-white/15 bg-black/30 px-6 py-12 text-center">
             <Sparkles className="mx-auto h-10 w-10 text-amber-400/80" aria-hidden />
             <p className="mt-4 text-base font-semibold text-white">
-              {raids.length === 0 ? "Aucun raid sur cette période" : "Aucun raid pour ce filtre"}
+              {raids.length === 0
+                ? "Aucun raid sur cette période"
+                : timelineQuery.trim()
+                  ? "Aucune chaîne ne correspond à ta recherche"
+                  : "Aucune ligne pour ce filtre"}
             </p>
             <p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">
               {raids.length === 0
-                ? "Quand tu enverras un raid (ou qu’un événement sera synchronisé), il apparaîtra ici avec son statut."
-                : "Change de filtre ou consulte une autre catégorie pour voir tes entrées."}
+                ? "Dès que tu enverras un raid (ou qu’il sera pris en compte automatiquement), il apparaîtra ici."
+                : timelineQuery.trim()
+                  ? "Efface la recherche ou essaie un autre mot-clé."
+                  : "Essaie un autre statut ou repasse sur « Tout voir »."}
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 href="/member/raids/declarer"
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110"
               >
-                Déclarer un raid <ArrowRight className="h-4 w-4" aria-hidden />
+                Envoyer un raid <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
-              {raidFilter !== "all" ? (
+              {raidFilter !== "all" || timelineQuery.trim() ? (
                 <button
                   type="button"
-                  onClick={() => setRaidFilter("all")}
+                  onClick={() => {
+                    setRaidFilter("all");
+                    setTimelineQuery("");
+                  }}
                   className="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold text-zinc-300 hover:bg-white/5"
                 >
-                  Réinitialiser le filtre
+                  Tout réafficher
                 </button>
               ) : null}
             </div>
@@ -793,13 +935,13 @@ export default function MemberRaidHistoryPage() {
                               backgroundColor: statusPointsBadge(raid.pointsStatus).bg,
                             }}
                           >
-                            Points : {raid.pointsStatusLabel}
+                            Récompense : {raid.pointsStatusLabel}
                           </span>
                           <span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-zinc-400">{src.label}</span>
                         </div>
                         {raid.note ? (
                           <p className="mt-3 rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-sm text-zinc-300">
-                            <span className="font-semibold text-zinc-400">Note staff : </span>
+                            <span className="font-semibold text-zinc-400">Message équipe : </span>
                             {raid.note}
                           </p>
                         ) : null}
@@ -843,7 +985,7 @@ function StatCard({
 }: {
   label: string;
   value: number;
-  icon: React.ReactNode;
+  icon: ReactNode;
   gradient: string;
 }) {
   return (

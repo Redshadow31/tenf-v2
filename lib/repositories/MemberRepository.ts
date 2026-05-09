@@ -182,6 +182,35 @@ export class MemberRepository {
   }
 
   /**
+   * Lecture directe Supabase (sans cache Redis) puis ré-écriture du cache `discord:{id}`.
+   * À utiliser quand une vue membre doit refléter immédiatement un changement Twitch / profil —
+   * le TTL du cache peut sinon laisser d’anciens logins qui ne rejoignent plus les lignes `event_presences`.
+   */
+  async findByDiscordIdFresh(discordId: string): Promise<MemberData | null> {
+    const id = String(discordId ?? '').trim();
+    if (!id) return null;
+
+    const { data, error } = await supabaseAdmin
+      .from('members')
+      .select('*')
+      .eq('discord_id', id)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    const member = data ? this.mapToMemberData(data) : null;
+
+    if (member) {
+      const cacheKeyStr = cacheKey('members', 'discord', id);
+      await cacheSetWithNamespace('members', cacheKeyStr, member, CACHE_TTL.MEMBERS_ACTIVE);
+    }
+
+    return member;
+  }
+
+  /**
    * Récupère un membre par son identifiant Twitch numérique (colonne twitch_id).
    */
   async findByTwitchId(twitchId: string): Promise<MemberData | null> {

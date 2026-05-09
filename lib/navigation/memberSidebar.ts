@@ -12,8 +12,10 @@ import {
   ListChecks,
   Rocket,
   Shield,
+  Smartphone,
   Target,
   UserCircle,
+  UserCog,
   Users,
 } from "lucide-react";
 
@@ -37,15 +39,15 @@ export type SidebarNavSection = {
 
 export const memberSidebarSections: SidebarNavSection[] = [
   {
-    title: "Espace membre",
+    title: "Accueil membre",
     groups: [
       {
         title: "Navigation",
         items: [
-          { href: "/member/dashboard", label: "Dashboard", icon: LayoutDashboard },
-          { href: "/postuler", label: "Postuler modérateur / soutien TENF", icon: ClipboardList },
+          { href: "/member/dashboard", label: "Mon accueil", icon: LayoutDashboard },
+          { href: "/postuler", label: "Rejoindre l’équipe TENF", icon: ClipboardList },
           { href: "/member/evenements", label: "Agenda TENF", icon: Calendar },
-          { href: "/member/notifications", label: "Tes nouvelles", icon: Bell },
+          { href: "/member/notifications", label: "Mes nouvelles", icon: Bell },
         ],
       },
     ],
@@ -57,7 +59,7 @@ export const memberSidebarSections: SidebarNavSection[] = [
         title: "Profil",
         items: [
           { href: "/member/profil", label: "Mon profil", icon: UserCircle },
-          { href: "/member/profil/completer", label: "Compléter mon profil", icon: ListChecks },
+          { href: "/member/profil/completer", label: "Compléter ma fiche", icon: ListChecks },
         ],
       },
       {
@@ -69,13 +71,13 @@ export const memberSidebarSections: SidebarNavSection[] = [
     ],
   },
   {
-    title: "Participation TENF",
+    title: "Vie TENF",
     groups: [
       {
         title: "Raids",
         items: [
           { href: "/member/raids/historique", label: "Mes raids", icon: History },
-          { href: "/member/raids/statistiques", label: "Statistiques de raids", icon: Activity },
+          { href: "/member/raids/statistiques", label: "Mes stats raids", icon: Activity },
           { href: "/member/raids/declarer", label: "Signaler un raid", icon: Rocket },
         ],
       },
@@ -88,9 +90,9 @@ export const memberSidebarSections: SidebarNavSection[] = [
         ],
       },
       {
-        title: "Engagement",
+        title: "Communauté",
         items: [
-          { href: "/member/engagement/score", label: "Mon score d'engagement", icon: Activity },
+          { href: "/member/engagement/score", label: "Mon niveau de participation", icon: Activity },
           { href: "/member/engagement/a-decouvrir", label: "À découvrir", icon: Flag },
           { href: "/member/engagement/amis", label: "Mes amis", icon: Users },
         ],
@@ -117,16 +119,16 @@ export const memberSidebarSections: SidebarNavSection[] = [
       {
         title: "TENF Academy",
         items: [
-          { href: "/member/academy", label: "Présentation Academy", icon: GraduationCap },
-          { href: "/member/academy/postuler", label: "Postuler à l'Academy", icon: ClipboardList },
-          { href: "/member/academy/parcours", label: "Suivi de mon parcours", icon: Flag },
+          { href: "/member/academy", label: "Découvrir l’Academy", icon: GraduationCap },
+          { href: "/member/academy/postuler", label: "Postuler à l’Academy", icon: ClipboardList },
+          { href: "/member/academy/parcours", label: "Mon parcours Academy", icon: Flag },
         ],
       },
       {
         title: "Formations",
         items: [
-          { href: "/member/formations", label: "Catalogue des formations", icon: GraduationCap },
-          { href: "/member/formations/validees", label: "Mes formations validées", icon: ListChecks },
+          { href: "/member/formations", label: "Explorer les formations", icon: GraduationCap },
+          { href: "/member/formations/validees", label: "Mes formations terminées", icon: ListChecks },
         ],
       },
     ],
@@ -160,6 +162,8 @@ export const memberSidebarSections: SidebarNavSection[] = [
         title: "Administration",
         items: [
           { href: "/admin/dashboard", label: "Dashboard Admin", icon: LayoutDashboard, adminOnly: true },
+          { href: "/admin/onboarding/staff", label: "Onboarding staff", icon: UserCog, adminOnly: true },
+          { href: "/admin/onboarding/staff-mobile", label: "Onboarding (mobile)", icon: Smartphone, adminOnly: true },
           { href: "/admin/membres/gestion", label: "Gestion membres", icon: Users, adminOnly: true },
           { href: "/admin/profils", label: "Gestion profils site", icon: UserCircle, adminOnly: true },
           { href: "/admin/engagement/raids-a-valider", label: "Gestion raids", icon: Rocket, adminOnly: true },

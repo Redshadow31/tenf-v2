@@ -2,25 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import ModeratorRegistrationModal from "@/components/admin/ModeratorRegistrationModal";
-
-type Integration = {
-  id: string;
-  title: string;
-  description: string;
-  image?: string;
-  date: string; // ISO date string
-  category: string;
-  location?: string;
-};
-
-type ModeratorStats = {
-  total: number;
-  adminCount: number;
-};
-
-type RegistrationStats = {
-  normalCount: number; // Nombre d'inscrits normaux (hors modérateurs)
-};
+import {
+  loadStaffOnboardingSnapshot,
+  type StaffOnboardingIntegration as Integration,
+  type StaffOnboardingModeratorStats as ModeratorStats,
+  type StaffOnboardingRegistrationStats as RegistrationStats,
+} from "@/lib/admin/staffOnboardingSnapshot";
 
 const glassCardClass =
   "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
@@ -37,73 +24,26 @@ export default function InscriptionModerateurPage() {
   const [moderatorStats, setModeratorStats] = useState<Record<string, ModeratorStats>>({});
   const [registrationStats, setRegistrationStats] = useState<Record<string, RegistrationStats>>({});
 
-  // Charger les intégrations depuis l'API (admin=true pour toutes)
   useEffect(() => {
-    async function loadIntegrations() {
+    let cancelled = false;
+    (async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/integrations?admin=true', {
-          cache: 'no-store',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const integrationsList = data.integrations || [];
-          setIntegrations(integrationsList);
-          
-          // Charger les stats de modérateurs et inscriptions normales pour chaque intégration
-          const stats: Record<string, ModeratorStats> = {};
-          const regStats: Record<string, RegistrationStats> = {};
-          await Promise.all(
-            integrationsList.map(async (integration: Integration) => {
-              try {
-                // Charger les modérateurs
-                const modResponse = await fetch(`/api/integrations/${integration.id}/moderators`, {
-                  cache: 'no-store',
-                });
-                if (modResponse.ok) {
-                  const modData = await modResponse.json();
-                  const registrations = modData.registrations || [];
-                  const adminCount = registrations.filter((r: any) => 
-                    r.role && r.role.toLowerCase().includes('admin')
-                  ).length;
-                  stats[integration.id] = {
-                    total: registrations.length,
-                    adminCount,
-                  };
-                } else {
-                  stats[integration.id] = { total: 0, adminCount: 0 };
-                }
-                
-                // Charger les inscriptions normales
-                const regResponse = await fetch(`/api/admin/integrations/${integration.id}/registrations`, {
-                  cache: 'no-store',
-                });
-                if (regResponse.ok) {
-                  const regData = await regResponse.json();
-                  const normalRegistrations = regData.registrations || [];
-                  regStats[integration.id] = {
-                    normalCount: normalRegistrations.length,
-                  };
-                } else {
-                  regStats[integration.id] = { normalCount: 0 };
-                }
-              } catch (error) {
-                console.error(`Erreur chargement données pour ${integration.id}:`, error);
-                stats[integration.id] = { total: 0, adminCount: 0 };
-                regStats[integration.id] = { normalCount: 0 };
-              }
-            })
-          );
-          setModeratorStats(stats);
-          setRegistrationStats(regStats);
+        const snap = await loadStaffOnboardingSnapshot();
+        if (!cancelled) {
+          setIntegrations(snap.integrations);
+          setModeratorStats(snap.moderatorStats);
+          setRegistrationStats(snap.registrationStats);
         }
       } catch (error) {
-        console.error('Erreur chargement intégrations:', error);
+        console.error("Erreur chargement intégrations:", error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    }
-    loadIntegrations();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const getCategoryColor = (category: string) => {
@@ -134,9 +74,9 @@ export default function InscriptionModerateurPage() {
     try {
       setIsRegistering(true);
       const response = await fetch(`/api/integrations/${selectedIntegration.id}/moderators/register`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
       
@@ -148,7 +88,8 @@ export default function InscriptionModerateurPage() {
         // Recharger les stats de modérateurs pour cette intégration
         try {
           const modResponse = await fetch(`/api/integrations/${selectedIntegration.id}/moderators`, {
-            cache: 'no-store',
+            cache: "no-store",
+            credentials: "include",
           });
           if (modResponse.ok) {
             const modData = await modResponse.json();

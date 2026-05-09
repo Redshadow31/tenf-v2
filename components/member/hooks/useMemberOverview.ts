@@ -97,7 +97,10 @@ export function useMemberOverview() {
     (async () => {
       try {
         setError(null);
-        const response = await fetch("/api/members/me/overview", { cache: "no-store" });
+        const response = await fetch("/api/members/me/overview", {
+          cache: "no-store",
+          credentials: "include",
+        });
         const body = await response.json();
         if (!mounted) return;
         if (!response.ok) {

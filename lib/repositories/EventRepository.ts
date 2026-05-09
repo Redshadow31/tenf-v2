@@ -1052,6 +1052,13 @@ export class EventRepository {
       added_manually: presence.addedManually || false,
     };
 
+    if (presence.discordId) {
+      presenceRecord.discord_id = String(presence.discordId).trim();
+    }
+    if (presence.discordUsername) {
+      presenceRecord.discord_username = String(presence.discordUsername).trim();
+    }
+
     const { data, error } = await supabaseAdmin
       .from('event_presences')
       .upsert(presenceRecord, {

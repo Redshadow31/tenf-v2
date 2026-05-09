@@ -9,6 +9,13 @@ import { supabaseAdmin } from "@/lib/db/supabase";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function memberPrivateJson(data: unknown, init?: Parameters<typeof NextResponse.json>[1]) {
+  const res = NextResponse.json(data, init);
+  res.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  res.headers.set("Vary", "Cookie");
+  return res;
+}
+
 const ADMIN_ROLE_TO_MEMBER_ROLE: Record<string, string> = {
   FONDATEUR: "Admin",
   ADMIN_COORDINATEUR: "Admin Coordinateur",
@@ -289,21 +296,21 @@ function buildSafeOverviewPayload(input: {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    const discordId = session?.user?.discordId;
+    const discordId = typeof session?.user?.discordId === "string" ? session.user.discordId.trim() : "";
     if (!discordId) {
-      return NextResponse.json({ error: "Connexion requise" }, { status: 401 });
+      return memberPrivateJson({ error: "Connexion requise" }, { status: 401 });
     }
 
     let member: Awaited<ReturnType<typeof memberRepository.findByDiscordId>> = null;
     try {
-      member = await memberRepository.findByDiscordId(discordId);
+      member = await memberRepository.findByDiscordIdFresh(discordId);
     } catch (repoError) {
-      console.error("[members/me/overview] memberRepository.findByDiscordId failed, fallback to direct Supabase query", repoError);
+      console.error("[members/me/overview] memberRepository.findByDiscordIdFresh failed, fallback to direct Supabase query", repoError);
       const { data, error } = await supabaseAdmin
         .from("members")
         .select("*")
         .eq("discord_id", discordId)
-        .single();
+        .maybeSingle();
       if (error) {
         console.error("[members/me/overview] direct members lookup failed", error);
       } else {
@@ -311,7 +318,7 @@ export async function GET() {
       }
     }
     if (!member) {
-      return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
+      return memberPrivateJson({ error: "Membre introuvable" }, { status: 404 });
     }
     const rawMember = member as any;
     const memberDiscordId = String(member.discordId || rawMember.discord_id || discordId || "");
@@ -337,8 +344,24 @@ export async function GET() {
       (authenticatedAdmin?.role && ADMIN_ROLE_TO_MEMBER_ROLE[authenticatedAdmin.role]) || memberRole;
 
     const identity = new Set<string>();
+    // Discord de session = source de vérité pour rapprocher les présences même si la fiche a un décalage
+    getIdentityAliases(discordId).forEach((alias) => identity.add(alias));
     [memberTwitchLogin, memberDiscordId, memberDiscordUsername, memberDisplayName, memberSiteUsername]
       .forEach((value) => getIdentityAliases(value).forEach((alias) => identity.add(alias)));
+
+    const twitchUrlRaw = String(member.twitchUrl || rawMember.twitch_url || "").trim();
+    if (twitchUrlRaw) {
+      try {
+        const parsed = new URL(twitchUrlRaw.startsWith("http") ? twitchUrlRaw : `https://${twitchUrlRaw}`);
+        if (parsed.hostname.toLowerCase().includes("twitch")) {
+          const seg = parsed.pathname.split("/").filter(Boolean)[0];
+          if (seg) getIdentityAliases(seg).forEach((alias) => identity.add(alias));
+        }
+      } catch {
+        const slug = twitchUrlRaw.match(/twitch\.tv\/([^/?#]+)/i)?.[1];
+        if (slug) getIdentityAliases(slug).forEach((alias) => identity.add(alias));
+      }
+    }
 
     const now = new Date();
     const monthKey = getCurrentMonthKey();
@@ -428,11 +451,19 @@ export async function GET() {
       // fallback raidsThisMonth
     }
 
-    let allEvents: Awaited<ReturnType<typeof eventRepository.findAll>> = [];
+    // Événements publiés = même périmètre que le calendrier membre ; fallback si périmètre vide (dev / données atypiques)
+    let allEvents: Awaited<ReturnType<typeof eventRepository.findPublished>> = [];
     try {
-      allEvents = await eventRepository.findAll(1000, 0);
+      allEvents = await eventRepository.findPublished(1000, 0);
     } catch {
       allEvents = [];
+    }
+    if (!allEvents.length) {
+      try {
+        allEvents = await eventRepository.findAll(1000, 0);
+      } catch {
+        allEvents = [];
+      }
     }
     if (!allEvents.length) {
       try {
@@ -718,7 +749,7 @@ export async function GET() {
     const computedOnboardingStatus =
       memberOnboardingStatus || (normalizedRole.includes("nouveau") ? "a_faire" : "termine");
 
-    return NextResponse.json({
+    return memberPrivateJson({
       member: {
         discordId: memberDiscordId || null,
         twitchLogin: memberTwitchLogin,
@@ -778,28 +809,28 @@ export async function GET() {
     }
     try {
       const session = await getServerSession(authOptions);
-      const discordId = session?.user?.discordId;
-      if (!discordId) {
-        return NextResponse.json({ error: "Connexion requise" }, { status: 401 });
+      const discordIdFb = typeof session?.user?.discordId === "string" ? session.user.discordId.trim() : "";
+      if (!discordIdFb) {
+        return memberPrivateJson({ error: "Connexion requise" }, { status: 401 });
       }
 
       const monthKey = getCurrentMonthKey();
       const { data } = await supabaseAdmin
         .from("members")
         .select("*")
-        .eq("discord_id", discordId)
-        .single();
+        .eq("discord_id", discordIdFb)
+        .maybeSingle();
 
-      return NextResponse.json(
+      return memberPrivateJson(
         buildSafeOverviewPayload({
-          discordId,
+          discordId: discordIdFb,
           monthKey,
           member: data || null,
         })
       );
     } catch (fallbackError) {
       console.error("[members/me/overview] fallback response failed:", fallbackError);
-      return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+      return memberPrivateJson({ error: "Erreur serveur" }, { status: 500 });
     }
   }
 }

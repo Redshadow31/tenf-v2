@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -30,6 +30,20 @@ interface NotificationItem {
   isRead: boolean;
   imageUrl?: string | null;
   bodyFormat?: "markdown" | "plain";
+}
+
+type TimeBucket = "today" | "week" | "older";
+
+function getTimeBucket(iso: string): TimeBucket {
+  const d = new Date(iso);
+  const t = d.getTime();
+  if (Number.isNaN(t)) return "older";
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (t >= startOfToday) return "today";
+  const diffDays = Math.floor((startOfToday - t) / (1000 * 60 * 60 * 24));
+  if (diffDays <= 7) return "week";
+  return "older";
 }
 
 function formatRelativeFr(iso: string): string {
@@ -130,14 +144,60 @@ export default function MemberNotificationsPage() {
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [lightbox, setLightbox] = useState<{ src: string; title: string } | null>(null);
-  const [listFilter, setListFilter] = useState<"all" | "unread">("all");
+  const [listFilter, setListFilter] = useState<"unread" | "read">("unread");
+  const [typeFilter, setTypeFilter] = useState<"all" | "agenda" | "annonces" | "compte">("all");
+  const [query, setQuery] = useState("");
+  const [autoReadDone, setAutoReadDone] = useState(false);
+  const autoReadOnceRef = useRef(false);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.isRead).length, [notifications]);
+  const readCount = useMemo(() => notifications.filter((item) => item.isRead).length, [notifications]);
+  const unreadAgendaCount = useMemo(
+    () =>
+      notifications.filter(
+        (item) => !item.isRead && (item.type === "registration_reminder_eve" || item.type === "registration_reminder_day"),
+      ).length,
+    [notifications],
+  );
+  const unreadAnnouncementsCount = useMemo(
+    () => notifications.filter((item) => !item.isRead && item.type === "server_announcement").length,
+    [notifications],
+  );
+  const unreadAccountCount = useMemo(
+    () =>
+      notifications.filter(
+        (item) =>
+          !item.isRead &&
+          item.type !== "server_announcement" &&
+          item.type !== "registration_reminder_eve" &&
+          item.type !== "registration_reminder_day",
+      ).length,
+    [notifications],
+  );
 
   const displayedNotifications = useMemo(() => {
-    if (listFilter === "unread") return notifications.filter((n) => !n.isRead);
-    return notifications;
-  }, [notifications, listFilter]);
+    let list = notifications;
+    list = listFilter === "unread" ? list.filter((n) => !n.isRead) : list.filter((n) => n.isRead);
+    if (typeFilter === "agenda") {
+      list = list.filter((n) => n.type === "registration_reminder_eve" || n.type === "registration_reminder_day");
+    } else if (typeFilter === "annonces") {
+      list = list.filter((n) => n.type === "server_announcement");
+    } else if (typeFilter === "compte") {
+      list = list.filter((n) => n.type !== "server_announcement" && n.type !== "registration_reminder_eve" && n.type !== "registration_reminder_day");
+    }
+    const q = query.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((n) => n.title.toLowerCase().includes(q) || n.message.toLowerCase().includes(q));
+  }, [notifications, listFilter, query, typeFilter]);
+
+  const groupedNotifications = useMemo(() => {
+    const sorted = [...displayedNotifications].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return {
+      today: sorted.filter((n) => getTimeBucket(n.updatedAt) === "today"),
+      week: sorted.filter((n) => getTimeBucket(n.updatedAt) === "week"),
+      older: sorted.filter((n) => getTimeBucket(n.updatedAt) === "older"),
+    };
+  }, [displayedNotifications]);
 
   const notifySidebarRefresh = useCallback(() => {
     window.dispatchEvent(new CustomEvent("member-notifications-refresh"));
@@ -214,6 +274,17 @@ export default function MemberNotificationsPage() {
     }
   }
 
+  useEffect(() => {
+    if (loading) return;
+    if (autoReadOnceRef.current) return;
+    if (unreadCount <= 0) return;
+    autoReadOnceRef.current = true;
+    void (async () => {
+      await markAllAsRead();
+      setAutoReadDone(true);
+    })();
+  }, [loading, unreadCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (loading) {
     return (
       <MemberSurface>
@@ -283,26 +354,55 @@ export default function MemberNotificationsPage() {
 
   return (
     <MemberSurface>
-      <MemberPageHeader
-        title="Tes nouvelles"
-        description={
-          hasAdminAccess
-            ? "Tout ce qui concerne la communauté — et parfois des petites actions côté orga — au même endroit, pour toi."
-            : "Un seul endroit pour les annonces et les rappels de la New Family, rédigés pour les membres."
-        }
-      />
-
-      <p
-        className="-mt-2 mb-2 max-w-2xl text-sm leading-relaxed sm:text-[15px]"
-        style={{ color: "var(--color-text-secondary)" }}
+      <section
+        className="relative overflow-hidden rounded-2xl border px-4 py-5 shadow-[0_18px_45px_rgba(0,0,0,0.24)] sm:px-6 sm:py-6"
+        style={{
+          borderColor: "rgba(145,70,255,0.32)",
+          background:
+            "linear-gradient(145deg, rgba(145,70,255,0.18) 0%, rgba(20,16,35,0.92) 45%, rgba(13,13,19,0.95) 100%)",
+        }}
       >
-        <Heart
-          className="mr-1.5 inline-block h-3.5 w-3.5 text-fuchsia-400/90 align-[-0.12em]"
-          aria-hidden
-          strokeWidth={2}
-        />
-        Prends le temps de lire tranquillement : rien n’est urgent comme un DM Discord, tout reste disponible ici.
-      </p>
+        <div className="pointer-events-none absolute -top-14 -left-12 h-48 w-48 rounded-full bg-violet-500/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 -right-10 h-44 w-44 rounded-full bg-fuchsia-500/15 blur-3xl" />
+        <div className="relative">
+          <div className="mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/35 bg-violet-500/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.11em] text-violet-100/95">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              Espace membre
+            </span>
+          </div>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 text-violet-100">
+                  <Bell className="h-5 w-5" aria-hidden />
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Tes nouvelles</h1>
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-200 sm:text-[15px]">
+                {hasAdminAccess
+                  ? "Ton fil membre TENF : annonces de la communauté, rappels d’événements et informations utiles au quotidien."
+                  : "Un espace simple pour retrouver les annonces de TENF, les rappels d’événements et les infos importantes."}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-violet-100/90">
+                <Heart className="mr-1.5 inline-block h-3.5 w-3.5 align-[-0.12em]" aria-hidden strokeWidth={2} />
+                Prends deux minutes pour parcourir ton fil : tout reste ici, au calme, pour ne rien rater.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-violet-300/35 bg-violet-500/18 px-3 py-1.5 text-xs font-semibold text-violet-100">
+                {listFilter === "unread" ? "Focus non lues" : "Historique lu"}
+              </span>
+              <span className="rounded-full border border-fuchsia-300/30 bg-fuchsia-500/15 px-3 py-1.5 text-xs font-semibold text-fuchsia-100 tabular-nums">
+                {unreadCount} à lire
+              </span>
+              <span className="rounded-full border border-white/20 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-zinc-100 tabular-nums">
+                {notifications.length} au total
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Résumé + filtres — ton convivial */}
       <section className="relative overflow-hidden rounded-2xl border shadow-[0_16px_40px_rgba(0,0,0,0.2)] sm:rounded-[1.25rem]">
@@ -357,25 +457,27 @@ export default function MemberNotificationsPage() {
               >
                 <button
                   type="button"
-                  onClick={() => setListFilter("all")}
+                  onClick={() => setListFilter("unread")}
                   className={`rounded-lg px-3.5 py-2 text-[13px] font-medium transition sm:px-4 sm:text-sm ${
-                    listFilter === "all"
+                    listFilter === "unread"
                       ? "bg-white/10 text-white shadow-sm"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
-                  Tout afficher
+                  Non lues
+                  <span className="ml-1.5 rounded-full bg-black/25 px-1.5 py-0.5 text-[11px] tabular-nums">{unreadCount}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setListFilter("unread")}
+                  onClick={() => setListFilter("read")}
                   className={`rounded-lg px-3.5 py-2 text-[13px] font-medium transition sm:px-4 sm:text-sm ${
-                    listFilter === "unread"
+                    listFilter === "read"
                       ? "bg-violet-600/90 text-white shadow-md shadow-violet-900/30"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
-                  Seulement à lire
+                  Anciennes (déjà lues)
+                  <span className="ml-1.5 rounded-full bg-black/25 px-1.5 py-0.5 text-[11px] tabular-nums">{readCount}</span>
                 </button>
               </div>
 
@@ -391,6 +493,80 @@ export default function MemberNotificationsPage() {
               </button>
             </div>
           </div>
+        </div>
+      </section>
+
+      {autoReadDone ? (
+        <section
+          className="rounded-xl border px-4 py-3 text-sm"
+          style={{
+            borderColor: "rgba(99, 102, 241, 0.35)",
+            backgroundColor: "rgba(99, 102, 241, 0.12)",
+            color: "var(--color-text)",
+          }}
+        >
+          Ta page est ouverte : tes nouvelles ont été marquées comme lues automatiquement.
+        </section>
+      ) : null}
+
+      <section className="rounded-2xl border p-4 sm:p-5" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
+        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: "À lire", value: unreadCount, tone: "text-violet-200 border-violet-400/30 bg-violet-500/12" },
+            { label: "Déjà lues", value: readCount, tone: "text-zinc-200 border-white/15 bg-white/[0.05]" },
+            { label: "Agenda", value: unreadAgendaCount, tone: "text-sky-200 border-sky-400/30 bg-sky-500/12" },
+            { label: "Annonces", value: unreadAnnouncementsCount, tone: "text-amber-100 border-amber-400/30 bg-amber-500/[0.11]" },
+          ].map((cell) => (
+            <div key={cell.label} className={`rounded-xl border px-3 py-2 ${cell.tone}`}>
+              <p className="text-[11px] uppercase tracking-wide">{cell.label}</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">{cell.value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {(
+            [
+              { id: "agenda" as const, label: "Agenda", hint: "Rappels d’événements", count: unreadAgendaCount },
+              { id: "annonces" as const, label: "Annonces", hint: "Infos communauté", count: unreadAnnouncementsCount },
+              { id: "compte" as const, label: "Compte", hint: "Nouvelles personnelles", count: unreadAccountCount },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setTypeFilter((prev) => (prev === item.id ? "all" : item.id))}
+              className={`rounded-xl border p-3 text-left transition ${
+                typeFilter === item.id ? "border-violet-400/45 bg-violet-500/12" : "border-white/[0.08] bg-black/20 hover:border-violet-400/30"
+              }`}
+            >
+              <p className="text-sm font-semibold text-white">{item.label}</p>
+              <p className="mt-0.5 text-xs text-zinc-400">{item.hint}</p>
+              <p className="mt-2 text-xs font-semibold text-violet-200">{item.count} non lu{item.count > 1 ? "s" : ""}</p>
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher une nouvelle..."
+            className="w-full rounded-xl border px-3.5 py-2.5 text-sm"
+            style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(0,0,0,0.22)", color: "var(--color-text)" }}
+          />
+          {(typeFilter !== "all" || query.trim().length > 0 || listFilter !== "unread") && (
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter("all");
+                setQuery("");
+                setListFilter("unread");
+              }}
+              className="rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-zinc-300 transition hover:border-violet-400/35 hover:text-white"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(0,0,0,0.2)" }}
+            >
+              Réinitialiser
+            </button>
+          )}
         </div>
       </section>
 
@@ -430,151 +606,169 @@ export default function MemberNotificationsPage() {
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
         >
           <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Avec ce filtre, il n’y a plus rien à lire pour l’instant.
+            {listFilter === "unread"
+              ? "Tu as tout lu pour le moment. 🎉"
+              : "Aucune ancienne nouvelle à afficher avec ce filtre."}
           </p>
           <button
             type="button"
-            onClick={() => setListFilter("all")}
+            onClick={() => setListFilter(listFilter === "unread" ? "read" : "unread")}
             className="mt-4 text-sm font-semibold text-violet-400 underline-offset-4 hover:text-violet-300 hover:underline"
           >
-            Revoir tout le fil
+            {listFilter === "unread" ? "Voir mes anciennes nouvelles" : "Revenir aux non lues"}
           </button>
         </section>
       ) : (
         <section className="space-y-4 sm:space-y-5">
-          {displayedNotifications.map((notification) => {
-            const kind = notificationKind(notification.type);
-            const KindIcon = kind.Icon;
-            const rel = formatRelativeFr(notification.updatedAt);
-            const abs = absoluteDateFr(notification.updatedAt);
+          {(
+            [
+              { key: "today" as const, title: "Aujourd’hui", items: groupedNotifications.today },
+              { key: "week" as const, title: "Cette semaine", items: groupedNotifications.week },
+              { key: "older" as const, title: "Plus ancien", items: groupedNotifications.older },
+            ] as const
+          ).map((group) => (
+            group.items.length > 0 ? (
+              <div key={group.key} className="space-y-3">
+                <div className="sticky top-[72px] z-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0e0e13]/85 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-zinc-300 backdrop-blur">
+                  {group.title}
+                  <span className="tabular-nums text-zinc-500">{group.items.length}</span>
+                </div>
+                {group.items.map((notification) => {
+                  const kind = notificationKind(notification.type);
+                  const KindIcon = kind.Icon;
+                  const rel = formatRelativeFr(notification.updatedAt);
+                  const abs = absoluteDateFr(notification.updatedAt);
 
-            return (
-              <article
-                key={notification.id}
-                className={`group relative overflow-hidden rounded-2xl border transition duration-300 sm:rounded-[1.25rem] ${
-                  notification.isRead
-                    ? "border-white/[0.07] opacity-[0.98] hover:border-white/[0.12]"
-                    : "border-violet-400/30 shadow-[0_0_0_1px_rgba(167,139,250,0.12),0_18px_40px_rgba(0,0,0,0.22)] hover:border-violet-400/40"
-                }`}
-                style={{
-                  backgroundColor: "var(--color-card)",
-                  backgroundImage: notification.isRead
-                    ? undefined
-                    : "linear-gradient(135deg, rgba(145,70,255,0.07) 0%, transparent 42%)",
-                }}
-              >
-                {!notification.isRead ? (
-                  <div
-                    className="absolute bottom-0 left-0 top-0 w-[3px] bg-gradient-to-b from-violet-400 via-fuchsia-500 to-violet-600 opacity-90"
-                    aria-hidden
-                  />
-                ) : null}
-
-                <div className={`relative px-4 py-5 sm:px-7 sm:py-6 ${!notification.isRead ? "pl-5 sm:pl-8" : ""}`}>
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 flex-1 space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium ${kind.chipClass}`}
-                        >
-                          <KindIcon className="h-3.5 w-3.5 opacity-85" aria-hidden />
-                          {kind.label}
-                        </span>
-                        {!notification.isRead ? (
-                          <span className="rounded-full bg-fuchsia-600/85 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm shadow-fuchsia-950/30">
-                            À lire
-                          </span>
-                        ) : (
-                          <span className="text-[12px] font-medium text-zinc-500">Déjà lu</span>
-                        )}
-                      </div>
-
-                      <h2
-                        className="text-lg font-bold leading-snug tracking-tight sm:text-xl"
-                        style={{ color: "var(--color-text)" }}
-                      >
-                        {notification.title}
-                      </h2>
-
-                      {notification.imageUrl ? (
-                        <button
-                          type="button"
-                          className="group/img relative block w-full max-w-xl overflow-hidden rounded-xl border text-left outline-none ring-offset-2 transition hover:opacity-[0.98] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
-                          style={{ borderColor: "var(--color-border)" }}
-                          title="Voir l’image en grand"
-                          aria-label={`Voir l’image en grand : ${notification.title}`}
-                          onClick={() =>
-                            setLightbox({
-                              src: notification.imageUrl as string,
-                              title: notification.title,
-                            })
-                          }
-                        >
-                          <span className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/0 opacity-0 transition group-hover/img:bg-black/30 group-hover/img:opacity-100">
-                            <span className="rounded-lg bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-                              Agrandir l’image
-                            </span>
-                          </span>
-                          <div className="aspect-video w-full">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={notification.imageUrl} alt="" className="h-full w-full object-cover" />
-                          </div>
-                        </button>
+                  return (
+                    <article
+                      key={notification.id}
+                      className={`group relative overflow-hidden rounded-2xl border transition duration-300 sm:rounded-[1.25rem] ${
+                        notification.isRead
+                          ? "border-white/[0.07] opacity-[0.98] hover:border-white/[0.12]"
+                          : "border-violet-400/30 shadow-[0_0_0_1px_rgba(167,139,250,0.12),0_18px_40px_rgba(0,0,0,0.22)] hover:border-violet-400/40"
+                      }`}
+                      style={{
+                        backgroundColor: "var(--color-card)",
+                        backgroundImage: notification.isRead
+                          ? undefined
+                          : "linear-gradient(135deg, rgba(145,70,255,0.07) 0%, transparent 42%)",
+                      }}
+                    >
+                      {!notification.isRead ? (
+                        <div
+                          className="absolute bottom-0 left-0 top-0 w-[3px] bg-gradient-to-b from-violet-400 via-fuchsia-500 to-violet-600 opacity-90"
+                          aria-hidden
+                        />
                       ) : null}
 
-                      <div
-                        className="text-[15px] leading-relaxed sm:text-base sm:leading-[1.65]"
-                        style={{ color: "var(--color-text-secondary)" }}
-                      >
-                        {notification.bodyFormat === "markdown" ? (
-                          <AnnouncementMarkdown
-                            content={notification.message}
-                            className="prose-p:leading-relaxed prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline"
-                          />
-                        ) : (
-                          <p className="whitespace-pre-wrap">{notification.message}</p>
-                        )}
+                      <div className={`relative px-4 py-5 sm:px-7 sm:py-6 ${!notification.isRead ? "pl-5 sm:pl-8" : ""}`}>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 flex-1 space-y-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium ${kind.chipClass}`}
+                              >
+                                <KindIcon className="h-3.5 w-3.5 opacity-85" aria-hidden />
+                                {kind.label}
+                              </span>
+                              {!notification.isRead ? (
+                                <span className="rounded-full bg-fuchsia-600/85 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm shadow-fuchsia-950/30">
+                                  À lire
+                                </span>
+                              ) : (
+                                <span className="text-[12px] font-medium text-zinc-500">Déjà lu</span>
+                              )}
+                            </div>
+
+                            <h2
+                              className="text-lg font-bold leading-snug tracking-tight sm:text-xl"
+                              style={{ color: "var(--color-text)" }}
+                            >
+                              {notification.title}
+                            </h2>
+
+                            {notification.imageUrl ? (
+                              <button
+                                type="button"
+                                className="group/img relative block w-full max-w-xl overflow-hidden rounded-xl border text-left outline-none ring-offset-2 transition hover:opacity-[0.98] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                                style={{ borderColor: "var(--color-border)" }}
+                                title="Voir l’image en grand"
+                                aria-label={`Voir l’image en grand : ${notification.title}`}
+                                onClick={() =>
+                                  setLightbox({
+                                    src: notification.imageUrl as string,
+                                    title: notification.title,
+                                  })
+                                }
+                              >
+                                <span className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/0 opacity-0 transition group-hover/img:bg-black/30 group-hover/img:opacity-100">
+                                  <span className="rounded-lg bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+                                    Agrandir l’image
+                                  </span>
+                                </span>
+                                <div className="aspect-video w-full">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={notification.imageUrl} alt="" className="h-full w-full object-cover" />
+                                </div>
+                              </button>
+                            ) : null}
+
+                            <div
+                              className="text-[15px] leading-relaxed sm:text-base sm:leading-[1.65]"
+                              style={{ color: "var(--color-text-secondary)" }}
+                            >
+                              {notification.bodyFormat === "markdown" ? (
+                                <AnnouncementMarkdown
+                                  content={notification.message}
+                                  className="prose-p:leading-relaxed prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline"
+                                />
+                              ) : (
+                                <p className="whitespace-pre-wrap">{notification.message}</p>
+                              )}
+                            </div>
+
+                            <p className="text-xs tabular-nums text-zinc-500">
+                              <time dateTime={notification.updatedAt} title={abs || undefined}>
+                                {rel}
+                              </time>
+                              {abs ? <span className="sr-only"> ({abs})</span> : null}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 flex flex-wrap gap-2 border-t border-white/[0.06] pt-5 sm:gap-3">
+                          {notification.link ? (
+                            <Link
+                              href={notification.link}
+                              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+                              style={{ backgroundColor: "var(--color-primary)" }}
+                            >
+                              Voir le lien
+                              <ExternalLink className="h-4 w-4 opacity-90" aria-hidden />
+                            </Link>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => void markAsRead(notification.id)}
+                            disabled={notification.isRead || actioningId === notification.id}
+                            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-45"
+                            style={{ color: "var(--color-text)" }}
+                          >
+                            {actioningId === notification.id ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <CheckCheck size={16} className="opacity-80" />
+                            )}
+                            {notification.isRead ? "C’est bon, j’ai lu" : "J’ai fini de lire"}
+                          </button>
+                        </div>
                       </div>
-
-                      <p className="text-xs tabular-nums text-zinc-500">
-                        <time dateTime={notification.updatedAt} title={abs || undefined}>
-                          {rel}
-                        </time>
-                        {abs ? <span className="sr-only"> ({abs})</span> : null}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-2 border-t border-white/[0.06] pt-5 sm:gap-3">
-                    {notification.link ? (
-                      <Link
-                        href={notification.link}
-                        className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
-                        style={{ backgroundColor: "var(--color-primary)" }}
-                      >
-                        Voir le lien
-                        <ExternalLink className="h-4 w-4 opacity-90" aria-hidden />
-                      </Link>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => void markAsRead(notification.id)}
-                      disabled={notification.isRead || actioningId === notification.id}
-                      className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-45"
-                      style={{ color: "var(--color-text)" }}
-                    >
-                      {actioningId === notification.id ? (
-                        <Loader2 size={16} className="animate-spin" />
-                      ) : (
-                        <CheckCheck size={16} className="opacity-80" />
-                      )}
-                      {notification.isRead ? "C’est bon, j’ai lu" : "J’ai fini de lire"}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null
+          ))}
         </section>
       )}
     </MemberSurface>

@@ -110,6 +110,38 @@ const vibeModes = [
   },
 ];
 
+const sectionAnchors = [
+  { id: "prochains-evenements", label: "À venir" },
+  { id: "types-evenements", label: "Formats" },
+  { id: "proposer-evenement", label: "Proposer" },
+  { id: "idees-communaute", label: "Idées membres" },
+  { id: "rejoindre-evenements", label: "Nous rejoindre" },
+] as const;
+
+const audienceCards = [
+  {
+    title: "Je découvre TENF",
+    desc: "Tu veux commencer simplement ? Regarde les événements ouverts et rejoins le Discord pour les rappels.",
+    cta: "Voir le calendrier",
+    href: "/events2",
+    emoji: "🌱",
+  },
+  {
+    title: "Je suis membre actif",
+    desc: "Tu participes déjà ? Trouve la prochaine date, ajoute-la à ton calendrier et invite un autre membre.",
+    cta: "Prochains événements",
+    href: "#prochains-evenements",
+    emoji: "🚀",
+  },
+  {
+    title: "J’ai une idée d’événement",
+    desc: "Propose un format qui te ressemble. Les meilleures idées de la communauté prennent vie ici.",
+    cta: "Proposer mon idée",
+    href: "#proposer-evenement",
+    emoji: "💡",
+  },
+] as const;
+
 function useAnimatedNumber(target: number, durationMs = 900): number {
   const [value, setValue] = useState(target);
 
@@ -441,13 +473,13 @@ export default function EvenementsCommunautairesPage() {
             style={{ background: "rgba(52,211,153,0.18)" }}
           />
 
-          <div className="relative grid grid-cols-2 gap-4 lg:grid-cols-2 gap-6 items-center">
+          <div className="relative grid grid-cols-1 items-center gap-6 lg:grid-cols-2">
             <div>
               <h1 className="text-3xl md:text-5xl font-bold mb-3" style={{ color: "var(--color-text)" }}>
-                Evenements communautaires TENF
+                Événements communautaires TENF
               </h1>
               <p className="text-base md:text-xl mb-6" style={{ color: "var(--color-text-secondary)" }}>
-                Des moments pour jouer, rire et creer des souvenirs ensemble.
+                Des rendez-vous pensés pour les membres : jouer, partager, rencontrer du monde et vivre TENF ensemble.
               </p>
               <div className="flex flex-wrap gap-3">
                 <a
@@ -455,20 +487,20 @@ export default function EvenementsCommunautairesPage() {
                   className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
                   style={{ backgroundColor: "var(--color-primary)" }}
                 >
-                  🎯 Voir le calendrier complet
+                  🎯 Voir le calendrier des événements
                 </a>
                 <a
                   href="#proposer-evenement"
                   className="px-4 py-2 rounded-lg text-sm font-semibold border"
                   style={{ borderColor: "rgba(145,70,255,0.5)", color: "var(--color-text)" }}
                 >
-                  💡 Proposer une idee
+                  💡 Proposer une idée
                 </a>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              {["🎮 Soiree jeux", "🎤 Karaoke", "⭐ Spotlight createurs"].map((label) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {["🎮 Soirée jeux", "🎤 Karaoké", "⭐ Spotlight créateurs"].map((label) => (
                 <div
                   key={label}
                   className={`rounded-xl border p-4 text-center ${hoverGlowClass} float-slow`}
@@ -482,6 +514,46 @@ export default function EvenementsCommunautairesPage() {
               ))}
             </div>
           </div>
+        </section>
+
+        <section
+          className="sticky top-20 z-20 rounded-xl border p-3"
+          style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(13,13,18,0.92)", backdropFilter: "blur(12px)" }}
+        >
+          <div className="flex flex-wrap gap-2">
+            {sectionAnchors.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)", backgroundColor: "var(--color-surface)" }}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {audienceCards.map((card) => (
+            <a
+              key={card.title}
+              href={card.href}
+              className={`rounded-xl border p-4 ${hoverGlowClass}`}
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+            >
+              <p className="text-xl mb-2">{card.emoji}</p>
+              <h2 className="text-base font-semibold mb-1" style={{ color: "var(--color-text)" }}>
+                {card.title}
+              </h2>
+              <p className="text-sm mb-3" style={{ color: "var(--color-text-secondary)" }}>
+                {card.desc}
+              </p>
+              <span className="text-xs font-semibold" style={{ color: "var(--color-primary)" }}>
+                {card.cta} →
+              </span>
+            </a>
+          ))}
         </section>
 
         {/* MODE AMBIANCE */}
@@ -534,10 +606,10 @@ export default function EvenementsCommunautairesPage() {
         <section id="prochains-evenements" className="space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
-              A venir cette semaine
+              À venir cette semaine
             </h2>
             <a href="/events2" className="text-sm font-medium" style={{ color: "var(--color-primary)" }}>
-              Gerer mes inscriptions
+              Gérer mes inscriptions
             </a>
           </div>
 
@@ -577,7 +649,7 @@ export default function EvenementsCommunautairesPage() {
               style={{ borderColor: "rgba(145,70,255,0.35)", backgroundColor: "rgba(145,70,255,0.08)" }}
             >
               <p className="text-xs mb-1" style={{ color: "var(--color-text-secondary)" }}>
-                Prochain Événements
+                Prochain événement
               </p>
               <p className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
                 {featuredUpcoming[spotlightIndex]?.title}
@@ -658,7 +730,7 @@ export default function EvenementsCommunautairesPage() {
                     className="px-3 py-2 rounded-lg text-sm font-semibold border"
                     style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
                   >
-                    Voir l'evenement
+                    Voir l’événement
                   </a>
                   <a
                     href={eventCard.addToCalendarUrl}
@@ -667,7 +739,7 @@ export default function EvenementsCommunautairesPage() {
                     className="px-3 py-2 rounded-lg text-sm font-semibold text-white"
                     style={{ backgroundColor: "var(--color-primary)" }}
                   >
-                    Ajouter au calendrier
+                    Ajouter à mon calendrier
                   </a>
                 </div>
               </article>
@@ -675,36 +747,37 @@ export default function EvenementsCommunautairesPage() {
           </div>
           {loadingEvents && (
             <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Chargement des prochains evenements...
+              Chargement des prochains événements...
             </p>
           )}
         </section>
 
         {/* FAQ D'ENTREE */}
         <section
+          id="idees-communaute"
           className="rounded-xl border p-6"
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
         >
           <h2 className="text-2xl font-semibold mb-4" style={{ color: "var(--color-text)" }}>
-            FAQ rapide
+            Questions fréquentes
           </h2>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-3">
             {[
               {
-                q: "Comment participer a un evenement ?",
-                a: "Va sur le calendrier complet puis inscris-toi en un clic sur l'evenement qui t'interesse.",
+                q: "Comment participer à un événement ?",
+                a: "Ouvre le calendrier, choisis une date, puis inscris-toi en un clic.",
               },
               {
-                q: "C'est gratuit ?",
-                a: "Oui, les formats communautaires sont accessibles aux membres TENF selon les conditions de la communaute.",
+                q: "C’est gratuit ?",
+                a: "Oui, les animations communautaires sont accessibles aux membres TENF.",
               },
               {
                 q: "Puis-je annuler mon inscription ?",
-                a: "Oui, tu peux te desinscrire depuis la page events2 a tout moment avant le debut.",
+                a: "Oui, tu peux te désinscrire avant le début de l’événement.",
               },
               {
-                q: "Ou se deroulent les evenements ?",
-                a: "Principalement sur Discord TENF, avec les informations de lieu directement sur chaque fiche.",
+                q: "Où se déroulent les événements ?",
+                a: "Principalement sur Discord TENF, avec toutes les infos sur chaque fiche.",
               },
             ].map((item) => (
               <article
@@ -724,27 +797,27 @@ export default function EvenementsCommunautairesPage() {
         </section>
 
         {/* TYPES D'EVENEMENTS */}
-        <section className="space-y-4">
+        <section id="types-evenements" className="space-y-4">
           <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
-            Types d&apos;evenements
+            Les formats que tu retrouves le plus
           </h2>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[
               {
                 icon: "🎮",
-                title: "Soirees jeux",
+                title: "Soirées jeux",
                 description:
                   "Des sessions conviviales pour jouer ensemble : Fortnite, Gartic Phone, Among Us et bien plus.",
               },
               {
                 icon: "🎤",
-                title: "Evenements speciaux",
+                title: "Événements spéciaux",
                 description:
                   "Karaoke, soirees a theme et moments originaux pour marquer la vie de la communaute.",
               },
               {
                 icon: "⭐",
-                title: "Decouverte de createurs",
+                title: "Découverte de créateurs",
                 description:
                   "Mise en avant des talents de la New Family et soutien actif des chaines membres.",
               },
@@ -769,7 +842,7 @@ export default function EvenementsCommunautairesPage() {
         {/* GALERIE MOMENTS PASSES */}
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
-            Moments de la communaute
+            Moments de la communauté
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
@@ -799,30 +872,30 @@ export default function EvenementsCommunautairesPage() {
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
         >
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--color-primary)" }}>
-            Une idee d'evenement ?
+            Une idée d’événement ?
           </p>
           <h2 className="text-2xl font-semibold mb-2" style={{ color: "var(--color-text)" }}>
-            Proposer un evenement
+            Proposer un événement
           </h2>
           <p className="text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>
-            Chez TENF, la communaute peut proposer ses propres evenements.
+            Chez TENF, les membres peuvent proposer leurs propres événements.
           </p>
           <p className="text-sm mb-5" style={{ color: "var(--color-text-secondary)" }}>
-            Certains des evenements les plus apprecies viennent directement des idees des membres.
+            Certains formats les plus appréciés viennent directement des idées de la communauté.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>
-                  Titre de l&apos;evenement *
+                  Titre de l&apos;événement *
                 </label>
                 <input
                   value={form.title}
                   onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                   style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
-                  placeholder="Ex: Soiree mini-jeux du vendredi"
+                  placeholder="Ex : Soirée mini-jeux du vendredi"
                 />
               </div>
             </div>
@@ -830,7 +903,7 @@ export default function EvenementsCommunautairesPage() {
             <div className="grid grid-cols-2 gap-3 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>
-                  Type d&apos;evenement *
+                  Type d&apos;événement *
                 </label>
                 <select
                   value={form.eventType}
@@ -847,7 +920,7 @@ export default function EvenementsCommunautairesPage() {
               </div>
               <div>
                 <label className="block text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>
-                  Date suggeree (optionnel)
+                  Date suggérée (optionnel)
                 </label>
                 <input
                   type="date"
@@ -868,7 +941,7 @@ export default function EvenementsCommunautairesPage() {
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                 className="w-full min-h-[110px] rounded-lg border px-3 py-2 text-sm"
                 style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
-                placeholder="Decris ton idee d'evenement..."
+                placeholder="Décris ton idée d’événement..."
               />
             </div>
 
@@ -879,7 +952,7 @@ export default function EvenementsCommunautairesPage() {
                 className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
                 style={{ backgroundColor: "var(--color-primary)" }}
               >
-                Proposer l&apos;evenement
+                Proposer l&apos;événement
               </button>
 
               {notice ? (
@@ -897,7 +970,7 @@ export default function EvenementsCommunautairesPage() {
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
         >
           <h2 className="text-2xl font-semibold mb-4" style={{ color: "var(--color-text)" }}>
-            Idees proposees par la communaute
+            Idées proposées par les membres
           </h2>
           {ideasWithVotes.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -924,10 +997,10 @@ export default function EvenementsCommunautairesPage() {
                     </p>
                   ) : null}
                   <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                    👍 {idea.votesCount} interesses
+                    👍 {idea.votesCount} intéressé(s)
                   </p>
                   <p className="text-xs mb-3" style={{ color: "var(--color-text-secondary)" }}>
-                    🔥 {idea.potentialParticipants} participants potentiels
+                    🔥 {idea.potentialParticipants} participant(s) potentiels
                   </p>
                   {"hasVoted" in idea ? (
                     <button
@@ -936,7 +1009,7 @@ export default function EvenementsCommunautairesPage() {
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
                       style={{ backgroundColor: "var(--color-primary)" }}
                     >
-                      {idea.hasVoted ? "Retirer mon vote" : "Ca m'interesse"}
+                      {idea.hasVoted ? "Retirer mon vote" : "Ça m’intéresse"}
                     </button>
                   ) : null}
                 </div>
@@ -947,12 +1020,12 @@ export default function EvenementsCommunautairesPage() {
               className="rounded-lg border p-4 text-sm"
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text-secondary)" }}
             >
-              Aucune proposition publique disponible pour le moment.
+              Aucune proposition visible pour le moment.
             </div>
           )}
           {loadingProposals && (
             <p className="text-xs mt-3" style={{ color: "var(--color-text-secondary)" }}>
-              Chargement des idees en cours...
+              Chargement des idées en cours...
             </p>
           )}
         </section>
@@ -963,7 +1036,7 @@ export default function EvenementsCommunautairesPage() {
           style={{ borderColor: "rgba(145,70,255,0.35)", backgroundColor: "var(--color-card)" }}
         >
           <h2 className="text-2xl font-semibold mb-4" style={{ color: "var(--color-text)" }}>
-            La communaute en action
+            La communauté en action
           </h2>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 gap-4">
             <div
@@ -974,7 +1047,7 @@ export default function EvenementsCommunautairesPage() {
                 🎮 {animatedEvents}
               </p>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                evenements organises
+                événements organisés
               </p>
             </div>
             <div
@@ -996,7 +1069,7 @@ export default function EvenementsCommunautairesPage() {
                 💬 +{animatedMoments}
               </p>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                moments partages
+                moments partagés
               </p>
             </div>
           </div>
@@ -1004,14 +1077,15 @@ export default function EvenementsCommunautairesPage() {
 
         {/* BLOC DISCORD */}
         <section
+          id="rejoindre-evenements"
           className="rounded-xl border p-6"
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
         >
           <h2 className="text-2xl font-semibold mb-2" style={{ color: "var(--color-text)" }}>
-            Rejoindre les evenements
+            Rejoindre les événements
           </h2>
           <p className="text-sm mb-4" style={{ color: "var(--color-text-secondary)" }}>
-            Les evenements sont organises directement sur le serveur Discord TENF.
+            Les événements se vivent surtout sur le Discord TENF : annonces, rappels, infos pratiques.
           </p>
           <a
             href={discordLink}
@@ -1030,10 +1104,10 @@ export default function EvenementsCommunautairesPage() {
           style={{ borderColor: "rgba(145,70,255,0.35)", backgroundColor: "var(--color-card)" }}
         >
           <h2 className="text-2xl font-semibold mb-2" style={{ color: "var(--color-text)" }}>
-            Et si le prochain evenement venait de toi ?
+            Et si le prochain événement venait de toi ?
           </h2>
           <p className="text-sm mb-4" style={{ color: "var(--color-text-secondary)" }}>
-            La communaute TENF grandit grace aux idees de ses membres.
+            La communauté TENF grandit grâce aux idées de ses membres.
           </p>
           <div className="flex flex-wrap gap-2">
             <a
@@ -1048,11 +1122,11 @@ export default function EvenementsCommunautairesPage() {
               className="inline-flex px-4 py-2 rounded-lg text-sm font-semibold border"
               style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
             >
-              💡 Proposer un evenement
+              💡 Proposer un événement
             </a>
           </div>
           <div className="mt-4 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-            Source stats interne: recap admin events + donnees publiques evenements.
+            Merci à toutes les personnes qui participent, proposent, et font vivre ces moments ensemble.
           </div>
         </section>
       </div>

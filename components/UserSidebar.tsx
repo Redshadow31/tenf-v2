@@ -10,6 +10,7 @@ import {
   Link2,
   Loader2,
   LogOut,
+  Search,
   Sparkles,
   X,
   type LucideIcon,
@@ -99,12 +100,14 @@ function QuickPill({
   label,
   icon: Icon,
   active,
+  showUnreadDot = false,
   onNavigate,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
+  showUnreadDot?: boolean;
   onNavigate?: () => void;
 }) {
   return (
@@ -120,6 +123,13 @@ function QuickPill({
     >
       <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" />
       <span className="min-w-0 break-words text-pretty leading-tight">{label}</span>
+      {showUnreadDot ? (
+        <span
+          className="ml-0.5 h-2 w-2 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.75)]"
+          title="Nouvelle notification"
+          aria-label="Nouvelle notification"
+        />
+      ) : null}
     </Link>
   );
 }
@@ -143,6 +153,15 @@ export default function UserSidebar({
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [twitchLinked, setTwitchLinked] = useState<boolean | null>(null);
+  const [navSearch, setNavSearch] = useState("");
+
+  const normalizeText = useCallback((value: string) => {
+    return value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }, []);
 
   const loadUnreadNotificationsCount = useCallback(async () => {
     try {
@@ -397,8 +416,8 @@ export default function UserSidebar({
               <p className="mt-0.5 break-words text-pretty font-semibold leading-snug text-white">{discordUser.username}</p>
               <p className="mt-0.5 break-words text-xs leading-snug text-slate-400">@{discordUser.username}</p>
               <p className="mt-2 text-[11px] leading-relaxed break-words text-pretty text-slate-400/95">
-                Bienvenue : les menus ci-dessous s&apos;ouvrent par groupe — les textes longs vont à la ligne sans couper
-                les mots au milieu.
+                Bienvenue dans ton espace membre. Utilise les menus pour retrouver rapidement tes événements, ton
+                profil, ta progression et tes formations.
               </p>
             </div>
           </div>
@@ -418,7 +437,33 @@ export default function UserSidebar({
               active={pathname.startsWith("/member/parametres")}
               onNavigate={onNavigate}
             />
+            <QuickPill
+              href="/member/notifications"
+              label="Mes nouvelles"
+              icon={Sparkles}
+              active={pathname.startsWith("/member/notifications")}
+              showUnreadDot={unreadNotifications > 0}
+              onNavigate={onNavigate}
+            />
           </div>
+        </div>
+
+        <div className="rounded-xl border p-2.5" style={{ borderColor: "rgba(139, 92, 246, 0.28)", backgroundColor: "rgba(0,0,0,0.18)" }}>
+          <label className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-200/90">
+            <Search className="h-3.5 w-3.5" aria-hidden />
+            Recherche rapide
+          </label>
+          <input
+            value={navSearch}
+            onChange={(e) => setNavSearch(e.target.value)}
+            placeholder="Ex : événements, profil, formations…"
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{
+              borderColor: "rgba(139, 92, 246, 0.3)",
+              backgroundColor: "rgba(8,8,12,0.55)",
+              color: "var(--color-text)",
+            }}
+          />
         </div>
 
         <nav className="space-y-4 pb-2">
@@ -452,9 +497,19 @@ export default function UserSidebar({
                           },
                         ]
                       : visibleItems;
-                    if (groupItems.length === 0) return null;
+                    const search = normalizeText(navSearch);
+                    const groupItemsFiltered =
+                      search.length === 0
+                        ? groupItems
+                        : groupItems.filter((item) => {
+                            const labelMatch = normalizeText(item.label).includes(search);
+                            const groupMatch = normalizeText(group.title).includes(search);
+                            const sectionMatch = normalizeText(section.title).includes(search);
+                            return labelMatch || groupMatch || sectionMatch;
+                          });
+                    if (groupItemsFiltered.length === 0) return null;
 
-                    const hasActiveItem = groupItems.some(
+                    const hasActiveItem = groupItemsFiltered.some(
                       (item) =>
                         pathname === item.href || (pathname != null && item.href !== "/" && pathname.startsWith(`${item.href}/`)),
                     );
@@ -469,7 +524,7 @@ export default function UserSidebar({
                         defaultOpen={hasActiveItem}
                         showTitleUnreadDot={navUnreadDot}
                       >
-                        {groupItems.map((item) => (
+                        {groupItemsFiltered.map((item) => (
                           <SidebarLink
                             key={`${group.title}-${item.href}`}
                             href={item.href}

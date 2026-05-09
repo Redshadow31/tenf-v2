@@ -10,7 +10,8 @@ export const revalidate = 0;
 
 const MAX_MONTHS_SCAN = 48;
 const BATCH_MONTHS = 4;
-const MAX_SUGGESTIONS = 24;
+/** Affichage membre : petit tirage aléatoire parmi les personnes sans raid retour enregistré */
+const MAX_SUGGESTIONS_DISPLAYED = 4;
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
@@ -92,6 +93,15 @@ async function loadMergedMonth(monthKey: string) {
   return { raidsFaits: merged.raidsFaits, raidsRecus: merged.raidsRecus };
 }
 
+function shuffleArray<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 async function mapInBatches<T, R>(items: T[], batchSize: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = [];
   for (let i = 0; i < items.length; i += batchSize) {
@@ -110,7 +120,7 @@ export async function GET() {
       return NextResponse.json({ error: "Connexion requise" }, { status: 401 });
     }
 
-    const me = await memberRepository.findByDiscordId(discordId);
+    const me = await memberRepository.findByDiscordIdFresh(discordId);
     const myLogin = normalize(me?.twitchLogin || "");
     if (!myLogin) {
       return NextResponse.json({ error: "Pseudo Twitch introuvable sur ton profil." }, { status: 400 });
@@ -156,19 +166,15 @@ export async function GET() {
       }
     }
 
+    // Uniquement celles et ceux vers qui aucun raid « sortant » toi → eux n’apparaît pas dans nos données sur la période
     const pendingEntries = [...receivedFrom.entries()].filter(([login]) => !sentTo.has(login));
-    const suggestions = pendingEntries
-      .map(([login, data]) => ({
-        login,
-        label: data.label,
-        receivedCount: data.count,
-        lastReceivedAt: data.lastReceivedAt,
-      }))
-      .sort((a, b) => {
-        if (b.receivedCount !== a.receivedCount) return b.receivedCount - a.receivedCount;
-        return new Date(b.lastReceivedAt).getTime() - new Date(a.lastReceivedAt).getTime();
-      })
-      .slice(0, MAX_SUGGESTIONS);
+    const pendingMapped = pendingEntries.map(([login, data]) => ({
+      login,
+      label: data.label,
+      receivedCount: data.count,
+      lastReceivedAt: data.lastReceivedAt,
+    }));
+    const suggestions = shuffleArray(pendingMapped).slice(0, MAX_SUGGESTIONS_DISPLAYED);
 
     return NextResponse.json({
       suggestions,
@@ -176,9 +182,12 @@ export async function GET() {
         monthsScanned: monthKeys.length,
         uniqueRaidersReceived: receivedFrom.size,
         pendingReturnTotal: pendingEntries.length,
+        displayedCount: suggestions.length,
+        sampleRandomized: true,
+        sampleMax: MAX_SUGGESTIONS_DISPLAYED,
         truncated: pendingEntries.length > suggestions.length,
         explanation:
-          "Basé sur les données hub raids (hors source Discord), fusion EventSub incluse — même périmètre que les stats globales. Personnes qui t’ont raidé au moins une fois sans aucun raid retour enregistré de ta part sur la période analysée.",
+          "Basé sur le hub raids TENF (hors source Discord), avec la fusion EventSub. Ne figurent ici que des personnes qui t’ont envoyé au moins un raid sans qu’un raid de toi vers elles soit enregistré sur la même période. Jusqu’à 4 noms tirés au hasard pour garder la liste légère — actualise pour en voir d’autres s’il y en a plus.",
       },
     });
   } catch (error) {

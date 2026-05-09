@@ -23,13 +23,13 @@ type EventItem = {
 
 const statusFilters = [
   { id: "all", label: "Tous" },
-  { id: "upcoming", label: "A venir" },
-  { id: "past", label: "Termines" },
+  { id: "upcoming", label: "À venir" },
+  { id: "past", label: "Terminés" },
 ] as const;
 
 const viewModes = [
-  { id: "calendar", label: "Calendrier" },
-  { id: "list", label: "Liste" },
+  { id: "calendar", label: "Vue calendrier" },
+  { id: "list", label: "Vue cartes" },
 ] as const;
 
 function calendarUrlForEvent(event: EventItem): string {
@@ -169,7 +169,7 @@ export default function Events2Page() {
         setError(null);
         const response = await fetch("/api/events", { cache: "no-store" });
         if (!response.ok) {
-          throw new Error("Impossible de charger les evenements");
+          throw new Error("Impossible de charger les événements");
         }
         const data = await response.json();
         setEvents((data.events || []) as EventItem[]);
@@ -343,12 +343,12 @@ export default function Events2Page() {
 
       if (response.ok || response.status === 409) {
         setRegisteredEventIds((prev) => new Set(prev).add(eventId));
-        setMessage(response.status === 409 ? "Tu es deja inscrit a cet evenement." : data.message || "Inscription enregistree.");
+        setMessage(response.status === 409 ? "Tu es déjà inscrit à cet événement." : data.message || "Inscription enregistrée.");
         return;
       }
-      setMessage(data?.error || "Erreur lors de l'inscription.");
+      setMessage(data?.error || "Impossible de finaliser ton inscription.");
     } catch {
-      setMessage("Erreur reseau lors de l'inscription.");
+      setMessage("Petit souci de connexion. Réessaie dans quelques instants.");
     } finally {
       setActionLoading(false);
     }
@@ -369,12 +369,12 @@ export default function Events2Page() {
           next.delete(eventId);
           return next;
         });
-        setMessage(data.message || "Desinscription enregistree.");
+        setMessage(data.message || "Désinscription enregistrée.");
         return;
       }
-      setMessage(data?.error || "Erreur lors de la desinscription.");
+      setMessage(data?.error || "Impossible de finaliser ta désinscription.");
     } catch {
-      setMessage("Erreur reseau lors de la desinscription.");
+      setMessage("Petit souci de connexion. Réessaie dans quelques instants.");
     } finally {
       setActionLoading(false);
     }
@@ -405,7 +405,7 @@ export default function Events2Page() {
     return (
       <div
         key={event.id}
-        className="rounded-2xl border border-gray-700/80 bg-[#17171b] overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.25)] hover:border-[#9146ff] transition-all"
+        className="rounded-2xl border border-gray-700/80 bg-[#17171b] overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.25)] transition-all hover:-translate-y-[2px] hover:border-[#9146ff] hover:shadow-[0_14px_34px_rgba(0,0,0,0.35)]"
       >
         {event.image ? (
           <div className="w-full h-36 bg-[#0e0e10] flex items-center justify-center">
@@ -425,14 +425,16 @@ export default function Events2Page() {
           <EventDateTime startUtc={event.date} className="text-sm text-gray-400" />
           {urgency && <p className="text-xs text-amber-300">{urgency}</p>}
           {!isPast && <p className="text-xs text-emerald-300">{seatsLabel}</p>}
-          <p className="text-sm text-gray-300 line-clamp-3 whitespace-pre-wrap">{event.description || "Aucune description."}</p>
+          <p className="text-sm text-gray-300 line-clamp-3 whitespace-pre-wrap">
+            {event.description || "L’équipe TENF prépare cette rencontre. Le programme arrive très bientôt."}
+          </p>
 
           <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">
             <button
               onClick={() => openEventModal(event)}
               className="w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff]"
             >
-              Voir details
+              Voir le détail
             </button>
             <a
               href={calendarUrlForEvent(event)}
@@ -447,7 +449,7 @@ export default function Events2Page() {
                 href={event.ctaUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white text-center"
+                  className="w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold bg-[#2a2a2d] border border-gray-600 hover:border-[#9146ff] text-white text-center"
               >
                 {event.ctaLabel || "En savoir plus"}
               </a>
@@ -460,7 +462,7 @@ export default function Events2Page() {
                   isRegistered ? "bg-red-600/80 hover:bg-red-600 text-white" : "bg-[#9146ff] hover:bg-[#7c3aed] text-white"
                 }`}
               >
-                {isRegistered ? "Se desinscrire" : "S'inscrire"}
+                {isRegistered ? "Je me désinscris" : "Je m’inscris"}
               </button>
             )}
           </div>
@@ -474,28 +476,54 @@ export default function Events2Page() {
       <div className="rounded-3xl border border-violet-400/30 bg-[radial-gradient(circle_at_top_right,rgba(145,70,255,0.25),transparent_45%),linear-gradient(145deg,#181821_0%,#121218_100%)] p-6 md:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-2">Calendrier des evenements TENF</h1>
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-2">Calendrier des événements TENF</h1>
             <p className="text-gray-200/90 mb-3">
-              Page action: filtre, trouve un event, inscris-toi et gere tes participations en quelques clics.
+              Retrouve tous les temps forts TENF en un seul endroit : choisis un événement, découvre le programme et
+              inscris-toi en quelques secondes.
             </p>
             {nextEvent ? (
               <div className="inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-sm text-gray-100">
                 <span className="h-2 w-2 rounded-full bg-violet-300" />
-                Prochain evenement:{" "}
+                Prochain événement :{" "}
                 <span className="font-semibold text-white">{nextEvent.title}</span>
                 {" - "}
                 {formatEventDateTimeInTimezone(nextEvent.date, browserTimezone, "fr-FR").fullLabel}
               </div>
             ) : (
-              <div className="text-sm text-gray-400">Aucun evenement a venir pour le moment.</div>
+              <div className="text-sm text-gray-400">Aucun événement à venir pour le moment.</div>
             )}
           </div>
           <a
             href="/evenements-communautaires"
             className="text-sm px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-violet-400/40"
           >
-            Decouvrir l'univers communautaire
+            Découvrir l’univers communautaire
           </a>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedStatus("upcoming");
+              setSelectedCategory("all");
+              setViewMode("calendar");
+            }}
+            className="rounded-lg border border-violet-400/35 bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-100 hover:bg-violet-500/25"
+          >
+            Voir les prochains événements
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedStatus("all");
+              setSelectedCategory("all");
+              setQuery("");
+              setViewMode("list");
+            }}
+            className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-200 hover:bg-white/10"
+          >
+            Explorer toutes les animations
+          </button>
         </div>
       </div>
 
@@ -529,7 +557,7 @@ export default function Events2Page() {
               selectedCategory === "all" ? "bg-[#2f1f52] border-[#9146ff] text-white" : "bg-[#0e0e10] border-gray-700 text-gray-300"
             }`}
           >
-            Toutes les categories
+            Toutes les catégories
           </button>
           {categories.map((category) => (
             <button
@@ -548,7 +576,7 @@ export default function Events2Page() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher un evenement..."
+            placeholder="Rechercher un événement..."
             className="w-full md:w-[420px] bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-sm text-white"
           />
           <div className="flex gap-2">
@@ -570,8 +598,19 @@ export default function Events2Page() {
             href="/evenements-communautaires#proposer-evenement"
             className="md:ml-auto text-sm px-3 py-2 rounded-lg border border-gray-700 text-gray-300 hover:border-[#9146ff] hover:text-white"
           >
-            Proposer un evenement
+            Proposer un événement
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedStatus("all");
+              setSelectedCategory("all");
+              setQuery("");
+            }}
+            className="text-sm px-3 py-2 rounded-lg border border-gray-700 text-gray-300 hover:border-violet-400/50 hover:text-white"
+          >
+            Réinitialiser les filtres
+          </button>
         </div>
       </div>
 
@@ -579,15 +618,15 @@ export default function Events2Page() {
         <div className="rounded-3xl border border-white/10 bg-[linear-gradient(160deg,rgba(145,70,255,0.08),rgba(15,15,18,0.95)_28%)] p-4 md:p-6 space-y-5 shadow-[0_14px_40px_rgba(0,0,0,0.35)]">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <h2 className="text-2xl font-semibold capitalize tracking-tight">Calendrier - {monthTitle}</h2>
-              <p className="text-xs text-gray-400 mt-1">Vue mensuelle premium pour suivre les temps forts de la communaute.</p>
+              <h2 className="text-2xl font-semibold capitalize tracking-tight">Calendrier · {monthTitle}</h2>
+              <p className="text-xs text-gray-400 mt-1">Une vue simple pour repérer rapidement les dates qui comptent.</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
                 className="px-3 py-2 rounded-lg text-sm bg-[#0e0e10] border border-gray-700 hover:border-[#9146ff] transition-colors"
               >
-                ← Mois precedent
+                ← Mois précédent
               </button>
               <button
                 onClick={() => setCurrentMonth(new Date())}
@@ -654,7 +693,7 @@ export default function Events2Page() {
                 </button>
               ))
             ) : (
-              <p className="text-sm text-gray-400">Aucun événement sur ce mois.</p>
+              <p className="text-sm text-gray-400">Aucun événement prévu ce mois-ci.</p>
             )}
           </div>
 
@@ -738,24 +777,24 @@ export default function Events2Page() {
         </div>
       ) : error ? (
         <div className="rounded-xl border border-red-500/40 bg-red-900/20 text-red-200 px-4 py-4 text-sm">
-          Impossible d'afficher les evenements pour le moment: {error}
+          Impossible d'afficher les événements pour le moment : {error}
         </div>
       ) : filteredEvents.length === 0 ? (
         <div className="rounded-xl border border-gray-700 bg-[#17171b] px-4 py-6 text-sm text-gray-300">
-          Aucun evenement ne correspond a tes filtres. Essaie de supprimer un filtre ou de changer de vue.
+          Aucun événement ne correspond à tes filtres. Essaie de les assouplir ou de changer de vue.
         </div>
       ) : (
         <div className="space-y-8">
           {(selectedStatus === "all" || selectedStatus === "upcoming") && groupedUpcoming.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold">A venir</h2>
+              <h2 className="text-2xl font-semibold">À venir</h2>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-5">{groupedUpcoming.map(renderCard)}</div>
             </section>
           )}
 
           {(selectedStatus === "all" || selectedStatus === "past") && sampledPast.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold">Termines</h2>
+              <h2 className="text-2xl font-semibold">Terminés</h2>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 gap-5">{sampledPast.map(renderCard)}</div>
             </section>
           )}
