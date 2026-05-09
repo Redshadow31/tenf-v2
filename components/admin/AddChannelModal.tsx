@@ -35,6 +35,9 @@ interface AddChannelModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (member: AddChannelMemberPayload) => void;
+  /** Préremplissage (lien depuis activité Discord admin, etc.) */
+  initialTwitch?: string;
+  initialDiscord?: string;
 }
 
 const INITIAL_FORM = {
@@ -103,17 +106,34 @@ function onboardingLabel(v: AddChannelMemberPayload["onboardingStatus"]): string
   }
 }
 
-export default function AddChannelModal({ isOpen, onClose, onAdd }: AddChannelModalProps) {
+export default function AddChannelModal({
+  isOpen,
+  onClose,
+  onAdd,
+  initialTwitch,
+  initialDiscord,
+}: AddChannelModalProps) {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   useEffect(() => {
     if (!isOpen) return;
-    setFormData(INITIAL_FORM);
+    let base = { ...INITIAL_FORM };
+    if (initialTwitch?.trim()) {
+      const tw = normalizeTwitchLogin(initialTwitch);
+      base = { ...base, twitch: tw };
+      if (!base.nom.trim()) base.nom = tw;
+    }
+    if (initialDiscord?.trim()) {
+      const disc = initialDiscord.trim();
+      base = { ...base, discord: disc };
+      if (!base.nom.trim()) base.nom = disc;
+    }
+    setFormData(base);
     setSubmitError(null);
     setStep(1);
-  }, [isOpen]);
+  }, [isOpen, initialTwitch, initialDiscord]);
 
   useEffect(() => {
     if (!isOpen) return;

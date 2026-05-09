@@ -33,6 +33,7 @@ const dropdownGroups: DropdownGroup[] = [
       { href: "/a-propos", label: "À propos de TENF" },
       { href: "/fonctionnement-tenf/decouvrir", label: "Fonctionnement TENF" },
       { href: "/avis-tenf", label: "Témoignages" },
+      { href: "/changelog", label: "Nouveautés du site" },
       { href: "/guides/partie-publique", label: "Guide — partie publique du site" },
       { href: "/guides/espace-membre", label: "Guide — espace membre (carte)" },
       { href: "/guides/tenf", label: "Guide TENF — nouveau membre" },

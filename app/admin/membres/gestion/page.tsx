@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, Fragment } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -198,6 +198,7 @@ function getPresetFilterDisplayLabel(preset: string): string {
 }
 
 export default function GestionMembresPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -286,6 +287,8 @@ export default function GestionMembresPage() {
     type: "success" | "error" | "info";
     message: string;
   } | null>(null);
+  /** Ouverture « Ajouter une chaîne » avec pseudo prérempli (ex. lien depuis activité Discord). */
+  const [addChannelInitial, setAddChannelInitial] = useState<{ twitch?: string; discord?: string } | null>(null);
 
   const SAVED_VIEWS_KEY = "tenf-admin-members-saved-views";
 
@@ -306,13 +309,29 @@ export default function GestionMembresPage() {
     }
   }
 
-  // Lire le paramètre search de l'URL au chargement
+  // Lire search / addTwitch / addDiscord depuis l'URL (deep links)
   useEffect(() => {
     const searchParam = searchParams?.get("search");
     if (searchParam) {
       setSearchQuery(decodeURIComponent(searchParam));
     }
+    const addTwitch = searchParams?.get("addTwitch");
+    const addDiscord = searchParams?.get("addDiscord");
+    if (addTwitch || addDiscord) {
+      setAddChannelInitial({
+        twitch: addTwitch ? decodeURIComponent(addTwitch) : undefined,
+        discord: addDiscord ? decodeURIComponent(addDiscord) : undefined,
+      });
+    } else {
+      setAddChannelInitial(null);
+    }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!addChannelInitial) return;
+    if (!currentAdmin?.isFounder) return;
+    setIsAddModalOpen(true);
+  }, [addChannelInitial, currentAdmin?.isFounder]);
 
   useEffect(() => {
     async function loadAdmin() {
@@ -4154,7 +4173,13 @@ export default function GestionMembresPage() {
           <>
             <AddChannelModal
               isOpen={isAddModalOpen}
-              onClose={() => setIsAddModalOpen(false)}
+              onClose={() => {
+                setIsAddModalOpen(false);
+                setAddChannelInitial(null);
+                router.replace("/admin/membres/gestion", { scroll: false });
+              }}
+              initialTwitch={addChannelInitial?.twitch}
+              initialDiscord={addChannelInitial?.discord}
               onAdd={handleAdd}
             />
             <BulkImportModal

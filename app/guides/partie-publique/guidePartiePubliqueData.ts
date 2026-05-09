@@ -8,6 +8,7 @@ import {
   HeartHandshake,
   LayoutGrid,
   Megaphone,
+  Sparkles,
   Store,
   UserPlus,
   Users,
@@ -45,11 +46,12 @@ export const menuZones: MenuZone[] = [
     href: "/a-propos",
     court: "ADN du collectif, preuves sociales et grands guides.",
     detail:
-      "À propos, fonctionnement, témoignages, puis les trois guides interactifs (partie publique, espace membre, nouveau membre).",
+      "À propos, fonctionnement, témoignages, journal des nouveautés du site, puis les trois guides interactifs (partie publique, espace membre, nouveau membre).",
     sousPages: [
       { href: "/a-propos", label: "À propos de TENF" },
       { href: "/fonctionnement-tenf/decouvrir", label: "Fonctionnement TENF" },
       { href: "/avis-tenf", label: "Témoignages" },
+      { href: "/changelog", label: "Nouveautés du site" },
       { href: "/guides/partie-publique", label: "Guide — partie publique du site" },
       { href: "/guides/espace-membre", label: "Guide — espace membre (carte)" },
       { href: "/guides/tenf", label: "Guide TENF — nouveau membre" },
@@ -148,6 +150,7 @@ export const personas: Persona[] = [
       { href: "/fonctionnement-tenf/decouvrir", label: "Fonctionnement (découvrir)" },
       { href: "/fonctionnement-tenf/faq", label: "FAQ fonctionnement" },
       { href: "/avis-tenf", label: "Témoignages membres" },
+      { href: "/changelog", label: "Nouveautés du site (changelog)" },
     ],
     cardGradient: "linear-gradient(135deg, rgba(6,182,212,0.28) 0%, rgba(14,165,233,0.1) 42%, transparent 72%)",
     selectedRing: "0 0 0 2px rgba(34, 211, 238, 0.55), 0 16px 40px rgba(6, 182, 212, 0.18)",
@@ -262,6 +265,7 @@ export type ChecklistItem = { id: string; label: string; href?: string };
 export const checklistItems: ChecklistItem[] = [
   { id: "apropos", label: "Lire la page À propos", href: "/a-propos" },
   { id: "fonctionnement", label: "Parcourir le fonctionnement TENF", href: "/fonctionnement-tenf/decouvrir" },
+  { id: "changelog", label: "Voir les nouveautés du site mois par mois", href: "/changelog" },
   { id: "membres", label: "Ouvrir l’annuaire des membres", href: "/membres" },
   { id: "lives", label: "Consulter le calendrier des lives", href: "/lives/calendrier" },
   { id: "events", label: "Voir le calendrier des événements", href: "/events2" },
@@ -269,6 +273,13 @@ export const checklistItems: ChecklistItem[] = [
 ];
 
 export const extraRessources = [
+  {
+    titre: "Nouveautés du site",
+    href: "/changelog",
+    description: "Ce qui a changé récemment pour les membres et le staff, sans jargon technique.",
+    icon: Sparkles,
+    color: "#e879f9",
+  },
   {
     titre: "Guide public (parcours)",
     href: "/rejoindre/guide-public",

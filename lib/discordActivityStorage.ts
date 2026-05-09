@@ -8,6 +8,14 @@ export interface DiscordActivityData {
   messagesByUser: Record<string, number>; // { login: count }
   vocalsByUser: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }>; // { login: { hoursDecimal, totalMinutes, display } }
   vocalsByUnmatched?: Record<string, { hoursDecimal: number; totalMinutes: number; display: string }>; // { discordUsername: { hoursDecimal, totalMinutes, display } } - pour les stats globales
+  /** Messages par salon (clé = nom tel qu’importé ; fusion affichage par nom normalisé côté UI). */
+  messagesByChannel?: Record<string, number>;
+  /** Temps vocal par salon, en minutes totales (clé = nom salon importé). */
+  vocalsMinutesByChannel?: Record<string, number>;
+  /** Salons (noms normalisés) marqués « staff » pour l’agrégat messages — complète les motifs globaux. */
+  salonStaffNormalizedKeysMessages?: string[];
+  /** Idem pour les stats vocales par salon. */
+  salonStaffNormalizedKeysVocals?: string[];
 }
 
 export interface DiscordActivityStorage {
@@ -108,12 +116,101 @@ export async function updateDiscordActivityForMonth(
   updates: Partial<DiscordActivityData>
 ): Promise<void> {
   const storage = await loadDiscordActivity();
-  const currentData = storage[month] || { messagesByUser: {}, vocalsByUser: {} };
-  
+  const currentData: DiscordActivityData = storage[month] || {
+    messagesByUser: {},
+    vocalsByUser: {},
+  };
+
   storage[month] = {
+    ...currentData,
     messagesByUser: { ...currentData.messagesByUser, ...(updates.messagesByUser || {}) },
     vocalsByUser: { ...currentData.vocalsByUser, ...(updates.vocalsByUser || {}) },
+    ...(updates.messagesByChannel !== undefined && {
+      messagesByChannel: { ...(currentData.messagesByChannel || {}), ...updates.messagesByChannel },
+    }),
+    ...(updates.vocalsMinutesByChannel !== undefined && {
+      vocalsMinutesByChannel: {
+        ...(currentData.vocalsMinutesByChannel || {}),
+        ...updates.vocalsMinutesByChannel,
+      },
+    }),
+    ...(updates.salonStaffNormalizedKeysMessages !== undefined && {
+      salonStaffNormalizedKeysMessages: [...updates.salonStaffNormalizedKeysMessages],
+    }),
+    ...(updates.salonStaffNormalizedKeysVocals !== undefined && {
+      salonStaffNormalizedKeysVocals: [...updates.salonStaffNormalizedKeysVocals],
+    }),
   };
+
+  await saveDiscordActivity(storage);
+}
+
+/**
+ * Remplace entièrement les cartes salons (messages et/ou vocaux) pour un mois.
+ */
+export async function replaceDiscordActivitySalonsForMonth(
+  month: string,
+  patch: {
+    messagesByChannel?: Record<string, number>;
+    vocalsMinutesByChannel?: Record<string, number>;
+    salonStaffNormalizedKeysMessages?: string[];
+    salonStaffNormalizedKeysVocals?: string[];
+  }
+): Promise<void> {
+  const storage = await loadDiscordActivity();
+  const currentData: DiscordActivityData = storage[month] || {
+    messagesByUser: {},
+    vocalsByUser: {},
+  };
+
+  storage[month] = {
+    ...currentData,
+    ...(patch.messagesByChannel !== undefined && { messagesByChannel: { ...patch.messagesByChannel } }),
+    ...(patch.vocalsMinutesByChannel !== undefined && {
+      vocalsMinutesByChannel: { ...patch.vocalsMinutesByChannel },
+    }),
+    ...(patch.salonStaffNormalizedKeysMessages !== undefined && {
+      salonStaffNormalizedKeysMessages: [...patch.salonStaffNormalizedKeysMessages],
+    }),
+    ...(patch.salonStaffNormalizedKeysVocals !== undefined && {
+      salonStaffNormalizedKeysVocals: [...patch.salonStaffNormalizedKeysVocals],
+    }),
+  };
+
+  await saveDiscordActivity(storage);
+}
+
+export type DiscordActivityClearScope = "all" | "messages" | "vocals";
+
+/**
+ * Efface les données d'activité Discord pour un mois (tout le mois, ou seulement messages / vocaux).
+ */
+export async function clearDiscordActivityMonth(
+  month: string,
+  scope: DiscordActivityClearScope
+): Promise<void> {
+  const storage = await loadDiscordActivity();
+  const current = storage[month];
+  if (!current) return;
+
+  if (scope === "all") {
+    delete storage[month];
+  } else if (scope === "messages") {
+    storage[month] = {
+      ...current,
+      messagesByUser: {},
+      messagesByChannel: {},
+      salonStaffNormalizedKeysMessages: [],
+    };
+  } else {
+    storage[month] = {
+      ...current,
+      vocalsByUser: {},
+      vocalsByUnmatched: {},
+      vocalsMinutesByChannel: {},
+      salonStaffNormalizedKeysVocals: [],
+    };
+  }
 
   await saveDiscordActivity(storage);
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DISCORD_ACTIVITY_COMMUNITY_LOGIN, DISCORD_ACTIVITY_COMMUNITY_LABEL } from '@/lib/discordActivityCommunityAggregate';
 import { getDiscordActivityForMonth } from '@/lib/discordActivityStorage';
 import { memberRepository } from '@/lib/repositories';
 import { requireAdmin } from '@/lib/requireAdmin';
@@ -63,21 +64,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(emptyPayload);
     }
 
-    // Charger les membres depuis Supabase (source de vérité V2)
+    // Charger les membres depuis Supabase (actifs + inactifs + nouveaux : libellés pour les imports CSV)
     const allMembers = await memberRepository.findAll(1000, 0);
     const membersMap = new Map(
       allMembers
-        .filter(m => m.isActive !== false)
-        .map(m => [m.twitchLogin.toLowerCase(), m])
+        .filter((m) => m.twitchLogin && String(m.twitchLogin).trim().length > 0)
+        .map((m) => [m.twitchLogin.toLowerCase(), m])
     );
 
     // Calculer le top 5 des messages
     const messagesArray = Object.entries(activityData.messagesByUser || {})
       .map(([login, count]) => {
         const member = membersMap.get(login);
+        const twitchLogin = member?.twitchLogin?.trim() || login;
         return {
           login,
-          displayName: member?.displayName || login,
+          displayName: twitchLogin,
           messages: count,
         };
       })
@@ -92,9 +94,11 @@ export async function GET(request: NextRequest) {
     const vocalsArray = Object.entries(activityData.vocalsByUser || {})
       .map(([login, data]) => {
         const member = membersMap.get(login);
+        const twitchLogin = member?.twitchLogin?.trim() || login;
         return {
           login,
-          displayName: member?.displayName || login,
+          displayName:
+            login === DISCORD_ACTIVITY_COMMUNITY_LOGIN ? DISCORD_ACTIVITY_COMMUNITY_LABEL : twitchLogin,
           hoursDecimal: data.hoursDecimal,
           totalMinutes: data.totalMinutes,
           display: data.display,

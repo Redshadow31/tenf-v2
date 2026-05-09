@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useEffect, type ChangeEvent } from "react";
+import {
+  DISCORD_ACTIVITY_COMMUNITY_LOGIN,
+  DISCORD_ACTIVITY_COMMUNITY_LABEL,
+} from "@/lib/discordActivityCommunityAggregate";
 
 interface DiscordMessagesImportModalProps {
   isOpen: boolean;
@@ -34,7 +38,6 @@ export default function DiscordMessagesImportModal({
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [activeMembers, setActiveMembers] = useState<Array<{ twitchLogin: string; displayName: string; discordId?: string; discordUsername?: string }>>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
-  const [selectedUnmatched, setSelectedUnmatched] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen) {
@@ -45,20 +48,20 @@ export default function DiscordMessagesImportModal({
   async function loadActiveMembers() {
     try {
       setLoadingMembers(true);
-      const response = await fetch("/api/members/public", {
-        cache: 'no-store',
+      const response = await fetch("/api/admin/members?discordImportLookup=1", {
+        cache: "no-store",
         headers: {
-          'Cache-Control': 'no-cache',
+          "Cache-Control": "no-cache",
         },
       });
 
       if (response.ok) {
         const data = await response.json();
         const members = (data.members || [])
-          .filter((m: any) => m.isActive !== false && m.twitchLogin)
+          .filter((m: any) => m.twitchLogin)
           .map((m: any) => ({
-            twitchLogin: (m.twitchLogin || '').toLowerCase(),
-            displayName: m.displayName || m.twitchLogin || '',
+            twitchLogin: (m.twitchLogin || "").toLowerCase(),
+            displayName: m.displayName || m.twitchLogin || "",
             discordId: m.discordId,
             discordUsername: m.discordUsername,
           }));
@@ -261,13 +264,11 @@ export default function DiscordMessagesImportModal({
         },
         error: "Le texte est vide",
       });
-      setSelectedUnmatched(new Set());
       return;
     }
 
     const result = parseTSV(text);
     setParseResult(result);
-    setSelectedUnmatched(new Set());
   };
 
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -279,7 +280,6 @@ export default function DiscordMessagesImportModal({
       setText(content);
       setUploadedFileName(file.name);
       setParseResult(null);
-      setSelectedUnmatched(new Set());
     } catch (error) {
       console.error("Erreur lors de la lecture du fichier:", error);
       alert("Impossible de lire le fichier.");
@@ -291,12 +291,16 @@ export default function DiscordMessagesImportModal({
       return;
     }
 
-    // Combiner les données reconnues avec les pseudos non reconnus sélectionnés
     const finalData = { ...parseResult.data };
-    for (const username of selectedUnmatched) {
-      if (parseResult.unmatchedData[username] !== undefined) {
-        finalData[username] = parseResult.unmatchedData[username];
+    let communityMessages = 0;
+    for (const count of Object.values(parseResult.unmatchedData)) {
+      if (typeof count === "number" && !Number.isNaN(count)) {
+        communityMessages += count;
       }
+    }
+    if (communityMessages > 0) {
+      finalData[DISCORD_ACTIVITY_COMMUNITY_LOGIN] =
+        (finalData[DISCORD_ACTIVITY_COMMUNITY_LOGIN] || 0) + communityMessages;
     }
 
     if (Object.keys(finalData).length === 0) {
@@ -309,7 +313,6 @@ export default function DiscordMessagesImportModal({
       await onImport(finalData);
       setText("");
       setParseResult(null);
-      setSelectedUnmatched(new Set());
       onClose();
     } catch (error) {
       console.error("Erreur lors de l'import:", error);
@@ -317,25 +320,6 @@ export default function DiscordMessagesImportModal({
     } finally {
       setImporting(false);
     }
-  };
-
-  const toggleUnmatched = (username: string) => {
-    const newSelected = new Set(selectedUnmatched);
-    if (newSelected.has(username)) {
-      newSelected.delete(username);
-    } else {
-      newSelected.add(username);
-    }
-    setSelectedUnmatched(newSelected);
-  };
-
-  const selectAllUnmatched = () => {
-    if (!parseResult) return;
-    setSelectedUnmatched(new Set(parseResult.summary.unmatchedUsernames));
-  };
-
-  const deselectAllUnmatched = () => {
-    setSelectedUnmatched(new Set());
   };
 
   const handleClose = () => {
@@ -407,7 +391,7 @@ export default function DiscordMessagesImportModal({
               disabled={loadingMembers}
             />
             {loadingMembers && (
-              <p className="text-xs text-gray-400 mt-1">Chargement des membres actifs...</p>
+              <p className="text-xs text-gray-400 mt-1">Chargement des membres...</p>
             )}
           </div>
 
@@ -419,7 +403,10 @@ export default function DiscordMessagesImportModal({
               <li>• Compatible CSV (ex: rang, nom d'utilisateur, id, compter)</li>
               <li>• Colonnes : rank (optionnel), username, userId (optionnel), messageCount</li>
               <li>• Séparateur : tabulation ou espaces multiples</li>
-              <li>• Seuls les membres actifs du site seront importés</li>
+              <li>• Correspondance avec tous les membres du site (actifs, inactifs et nouveaux)</li>
+              <li>
+                • Pseudos non reconnus : total agrégé sous « {DISCORD_ACTIVITY_COMMUNITY_LABEL} » (données complètes)
+              </li>
               <li>• Format mois : {month}</li>
             </ul>
           </div>
@@ -459,13 +446,18 @@ export default function DiscordMessagesImportModal({
                       {parseResult.summary.linesRead}
                     </div>
                     <div>
-                      <span className="font-medium">Membres actifs trouvés :</span>{" "}
+                      <span className="font-medium">Membres reconnus sur le site :</span>{" "}
                       {parseResult.summary.matchedMembers}
                     </div>
                     {parseResult.summary.unmatchedUsernames.length > 0 && (
-                      <div>
-                        <span className="font-medium">Pseudos non reconnus :</span>{" "}
-                        {parseResult.summary.unmatchedUsernames.join(", ")}
+                      <div className="rounded border border-amber-700/50 bg-amber-900/15 p-2 text-amber-100/95">
+                        <span className="font-medium">
+                          {parseResult.summary.unmatchedUsernames.length} pseudo(s) Discord non rattaché(s) au site
+                        </span>
+                        <p className="mt-1 text-xs text-amber-200/80">
+                          Leur activité sera additionnée sous « {DISCORD_ACTIVITY_COMMUNITY_LABEL} » à
+                          l&apos;enregistrement (total réel conservé).
+                        </p>
                       </div>
                     )}
                   </div>

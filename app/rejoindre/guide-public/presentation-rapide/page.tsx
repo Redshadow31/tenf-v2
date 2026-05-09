@@ -72,6 +72,7 @@ const publicCategories = [
     links: [
       { href: "/a-propos", label: "A propos de TENF" },
       { href: "/fonctionnement-tenf/decouvrir", label: "Fonctionnement TENF" },
+      { href: "/changelog", label: "Nouveautés du site" },
     ],
   },
   {

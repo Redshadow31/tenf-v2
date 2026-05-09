@@ -10,6 +10,7 @@ import {
   History,
   LayoutDashboard,
   ListChecks,
+  MessageSquare,
   Rocket,
   Shield,
   Smartphone,
@@ -94,6 +95,7 @@ export const memberSidebarSections: SidebarNavSection[] = [
         items: [
           { href: "/member/engagement/score", label: "Mon niveau de participation", icon: Activity },
           { href: "/member/engagement/a-decouvrir", label: "À découvrir", icon: Flag },
+          { href: "/member/engagement/discord-activite", label: "Mon activité Discord", icon: MessageSquare },
           { href: "/member/engagement/amis", label: "Mes amis", icon: Users },
         ],
       },

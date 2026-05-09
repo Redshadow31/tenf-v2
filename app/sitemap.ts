@@ -34,6 +34,7 @@ const routes: Array<{
   { path: "/academy", changeFrequency: "weekly", priority: 0.7 },
   { path: "/boutique", changeFrequency: "weekly", priority: 0.8 },
   { path: "/avis-tenf", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/changelog", changeFrequency: "weekly", priority: 0.55 },
   { path: "/rejoindre", changeFrequency: "weekly", priority: 0.8 },
   { path: "/postuler", changeFrequency: "weekly", priority: 0.8 },
   { path: "/postuler/merci", changeFrequency: "monthly", priority: 0.3 },

@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useEffect, type ChangeEvent } from "react";
+import {
+  DISCORD_ACTIVITY_COMMUNITY_LOGIN,
+  DISCORD_ACTIVITY_COMMUNITY_LABEL,
+} from "@/lib/discordActivityCommunityAggregate";
 
 interface DiscordVocalsImportModalProps {
   isOpen: boolean;
@@ -42,7 +46,6 @@ export default function DiscordVocalsImportModal({
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [activeMembers, setActiveMembers] = useState<Array<{ twitchLogin: string; displayName: string; discordId?: string; discordUsername?: string }>>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
-  const [selectedUnmatched, setSelectedUnmatched] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen) {
@@ -53,20 +56,20 @@ export default function DiscordVocalsImportModal({
   async function loadActiveMembers() {
     try {
       setLoadingMembers(true);
-      const response = await fetch("/api/members/public", {
-        cache: 'no-store',
+      const response = await fetch("/api/admin/members?discordImportLookup=1", {
+        cache: "no-store",
         headers: {
-          'Cache-Control': 'no-cache',
+          "Cache-Control": "no-cache",
         },
       });
 
       if (response.ok) {
         const data = await response.json();
         const members = (data.members || [])
-          .filter((m: any) => m.isActive !== false && m.twitchLogin)
+          .filter((m: any) => m.twitchLogin)
           .map((m: any) => ({
-            twitchLogin: (m.twitchLogin || '').toLowerCase(),
-            displayName: m.displayName || m.twitchLogin || '',
+            twitchLogin: (m.twitchLogin || "").toLowerCase(),
+            displayName: m.displayName || m.twitchLogin || "",
             discordId: m.discordId,
             discordUsername: m.discordUsername,
           }));
@@ -281,13 +284,11 @@ export default function DiscordVocalsImportModal({
         },
         error: "Le texte est vide",
       });
-      setSelectedUnmatched(new Set());
       return;
     }
 
     const result = parseTSV(text);
     setParseResult(result);
-    setSelectedUnmatched(new Set());
   };
 
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -299,7 +300,6 @@ export default function DiscordVocalsImportModal({
       setText(content);
       setUploadedFileName(file.name);
       setParseResult(null);
-      setSelectedUnmatched(new Set());
     } catch (error) {
       console.error("Erreur lors de la lecture du fichier:", error);
       alert("Impossible de lire le fichier.");
@@ -311,12 +311,24 @@ export default function DiscordVocalsImportModal({
       return;
     }
 
-    // Combiner les données reconnues avec les pseudos non reconnus sélectionnés
     const finalData = { ...parseResult.data };
-    for (const username of selectedUnmatched) {
-      if (parseResult.unmatchedData[username] !== undefined) {
-        finalData[username] = parseResult.unmatchedData[username];
+    let communityMinutes = 0;
+    for (const v of Object.values(parseResult.unmatchedData)) {
+      if (v && typeof v.totalMinutes === "number" && !Number.isNaN(v.totalMinutes)) {
+        communityMinutes += v.totalMinutes;
       }
+    }
+    if (communityMinutes > 0) {
+      const prev = finalData[DISCORD_ACTIVITY_COMMUNITY_LOGIN];
+      const totalMinutes = communityMinutes + (prev?.totalMinutes || 0);
+      const hoursDecimal = totalMinutes / 60;
+      const hh = Math.floor(totalMinutes / 60);
+      const mm = totalMinutes % 60;
+      finalData[DISCORD_ACTIVITY_COMMUNITY_LOGIN] = {
+        hoursDecimal,
+        totalMinutes,
+        display: `${hh}h${mm.toString().padStart(2, "0")}`,
+      };
     }
 
     if (Object.keys(finalData).length === 0) {
@@ -329,7 +341,6 @@ export default function DiscordVocalsImportModal({
       await onImport(finalData);
       setText("");
       setParseResult(null);
-      setSelectedUnmatched(new Set());
       onClose();
     } catch (error) {
       console.error("Erreur lors de l'import:", error);
@@ -337,25 +348,6 @@ export default function DiscordVocalsImportModal({
     } finally {
       setImporting(false);
     }
-  };
-
-  const toggleUnmatched = (username: string) => {
-    const newSelected = new Set(selectedUnmatched);
-    if (newSelected.has(username)) {
-      newSelected.delete(username);
-    } else {
-      newSelected.add(username);
-    }
-    setSelectedUnmatched(newSelected);
-  };
-
-  const selectAllUnmatched = () => {
-    if (!parseResult) return;
-    setSelectedUnmatched(new Set(parseResult.summary.unmatchedUsernames));
-  };
-
-  const deselectAllUnmatched = () => {
-    setSelectedUnmatched(new Set());
   };
 
   const handleClose = () => {
@@ -427,7 +419,7 @@ export default function DiscordVocalsImportModal({
               disabled={loadingMembers}
             />
             {loadingMembers && (
-              <p className="text-xs text-gray-400 mt-1">Chargement des membres actifs...</p>
+              <p className="text-xs text-gray-400 mt-1">Chargement des membres...</p>
             )}
           </div>
 
@@ -440,7 +432,11 @@ export default function DiscordVocalsImportModal({
               <li>• Colonnes : rank (optionnel), username, userId (optionnel), heures (décimales)</li>
               <li>• Séparateur : tabulation ou espaces multiples</li>
               <li>• Le dernier champ est une durée en heures décimales (ex: 157.25h)</li>
-              <li>• Seuls les membres actifs du site seront importés</li>
+              <li>• Correspondance avec tous les membres du site (actifs, inactifs et nouveaux)</li>
+              <li>
+                • Pseudos non reconnus : temps vocal agrégé sous « {DISCORD_ACTIVITY_COMMUNITY_LABEL} » (données
+                complètes)
+              </li>
               <li>• Format mois : {month}</li>
             </ul>
           </div>
@@ -480,13 +476,18 @@ export default function DiscordVocalsImportModal({
                       {parseResult.summary.linesRead}
                     </div>
                     <div>
-                      <span className="font-medium">Membres actifs trouvés :</span>{" "}
+                      <span className="font-medium">Membres reconnus sur le site :</span>{" "}
                       {parseResult.summary.matchedMembers}
                     </div>
                     {parseResult.summary.unmatchedUsernames.length > 0 && (
-                      <div>
-                        <span className="font-medium">Pseudos non reconnus :</span>{" "}
-                        {parseResult.summary.unmatchedUsernames.join(", ")}
+                      <div className="rounded border border-amber-700/50 bg-amber-900/15 p-2 text-amber-100/95">
+                        <span className="font-medium">
+                          {parseResult.summary.unmatchedUsernames.length} pseudo(s) Discord non rattaché(s) au site
+                        </span>
+                        <p className="mt-1 text-xs text-amber-200/80">
+                          Leur temps vocal sera additionné sous « {DISCORD_ACTIVITY_COMMUNITY_LABEL} » à
+                          l&apos;enregistrement (total réel conservé).
+                        </p>
                       </div>
                     )}
                   </div>

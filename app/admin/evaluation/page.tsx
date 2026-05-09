@@ -473,6 +473,12 @@ export default function EvaluationDashboardPage() {
           <Link href="/admin/evaluation/v2/pilotage" className={subtleButtonClass}>
             Ouvrir pilotage v2
           </Link>
+          <Link href={`/admin/evaluation/v3?month=${selectedMonth}`} className={subtleButtonClass}>
+            Évaluation v3
+          </Link>
+          <Link href={`/admin/evaluation/v3/pilotage?month=${selectedMonth}`} className={subtleButtonClass}>
+            Pilotage Discord v3
+          </Link>
         </div>
       </div>
 
@@ -767,6 +773,12 @@ export default function EvaluationDashboardPage() {
             <Link href="/admin/evaluation/v2/pilotage" className={quickLinkClass}>
               Pilotage manuel v2
             </Link>
+            <Link href={`/admin/evaluation/v3?month=${selectedMonth}`} className={quickLinkClass}>
+              Évaluation v3
+            </Link>
+            <Link href={`/admin/evaluation/v3/pilotage?month=${selectedMonth}`} className={quickLinkClass}>
+              Pilotage Discord v3
+            </Link>
           </div>
         </section>
       </div>
@@ -860,6 +872,18 @@ export default function EvaluationDashboardPage() {
             </Link>
             <Link href="/admin/evaluation/v2/pilotage" className="rounded-lg border border-indigo-300/25 px-3 py-2 text-indigo-100 hover:border-indigo-200/45 transition-colors">
               Pilotage manuel v2
+            </Link>
+            <Link
+              href={`/admin/evaluation/v3?month=${selectedMonth}`}
+              className="rounded-lg border border-indigo-300/25 px-3 py-2 text-indigo-100 hover:border-indigo-200/45 transition-colors"
+            >
+              Évaluation v3
+            </Link>
+            <Link
+              href={`/admin/evaluation/v3/pilotage?month=${selectedMonth}`}
+              className="rounded-lg border border-indigo-300/25 px-3 py-2 text-indigo-100 hover:border-indigo-200/45 transition-colors"
+            >
+              Pilotage Discord v3
             </Link>
           </div>
         </div>

@@ -124,8 +124,49 @@ export function isValidDiscordId(id: string | undefined | null): boolean {
 }
 
 /**
- * Nettoie une valeur numérique (supprime virgules, espaces, convertit notation scientifique)
+ * Première colonne = rang d’export (petit entier), pas un snowflake Discord
+ * (évite parseInt sur 17–20 chiffres qui tronque en JS).
  */
+function isLikelyRankColumn(value: string): boolean {
+  const t = String(value || "").trim();
+  if (!/^\d+$/.test(t)) return false;
+  if (t.length > 6) return false;
+  const n = parseInt(t, 10);
+  return Number.isFinite(n) && n >= 0 && n <= 500_000;
+}
+
+/**
+ * Ligne d’en-tête type export Statbot / Discord (FR ou EN), ex. :
+ * rang,nom d'utilisateur,id,compter
+ */
+export function isEngagementImportHeaderRow(parts: string[]): boolean {
+  if (parts.length < 2) return false;
+  const deaccent = (s: string) =>
+    String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  const c0 = parts[0]?.trim().toLowerCase() ?? "";
+  const d0 = deaccent(parts[0] || "");
+  const d1 = deaccent(parts[1] || "");
+  if (d0 === "rang" || d0 === "rank" || d0 === "#" || d0 === "position" || d0 === "pos") return true;
+  if (d1.includes("username") || d1.includes("pseudo")) return true;
+  if (d1.includes("nom") && d1.includes("utilisateur")) return true;
+  if (parts.length >= 3) {
+    const c2 = parts[2]?.trim().toLowerCase() ?? "";
+    if (c2 === "id" && (d0 === "rang" || d0 === "rank")) return true;
+  }
+  if (parts.length >= 4) {
+    const d3 = deaccent(parts[3] || "");
+    const c3 = parts[3]?.trim().toLowerCase() ?? "";
+    if (d3 === "compter" || d3 === "count" || c3.includes("message") || c3.includes("vocaux")) return true;
+  }
+  // Rang absent mais en-têtes typiques colonnes 1–2
+  if (c0 === "id" && (d1.includes("message") || d1.includes("count"))) return true;
+  return false;
+}
+
+/** Nettoie une valeur numérique (virgules décimales, espaces). */
 export function cleanNumericValue(value: string): number | null {
   if (!value) return null;
   
@@ -155,11 +196,13 @@ export function parseDiscordEngagementTSV(
   text: string,
   membersMap: Map<string, { discordId: string; displayName: string; twitchLogin: string }>
 ): EngagementParseResult {
-  const lines = text.split('\n');
+  const normalizedText = String(text || "").replace(/^\uFEFF/, "");
+  const lines = normalizedText.split(/\r?\n/);
   const rows: EngagementRow[] = [];
   const ignoredRows: EngagementRow[] = [];
   const errors: Array<{ line: number; reason: string }> = [];
   let matched = 0;
+  let totalLines = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -167,43 +210,67 @@ export function parseDiscordEngagementTSV(
 
     // Supporte TSV, CSV (virgule/point-virgule) et fallback espaces multiples
     const parts = splitEngagementLine(line);
-    
+
     if (parts.length < 2) {
       errors.push({ line: i + 1, reason: "Format invalide (moins de 2 colonnes)" });
+      totalLines++;
       continue;
     }
 
-    const rank = parseInt(parts[0]);
-    if (isNaN(rank)) {
-      errors.push({ line: i + 1, reason: "Rang invalide" });
+    if (isEngagementImportHeaderRow(parts)) {
       continue;
     }
 
-    const pseudo = parts[1].trim();
-    if (!pseudo) {
-      errors.push({ line: i + 1, reason: "Pseudo manquant" });
-      continue;
-    }
+    totalLines++;
 
-    // Discord ID (optionnel, peut être en 3e ou 4e position)
+    let rank: number;
+    let pseudo: string;
     let discordId: string | undefined;
     let valueStr: string | undefined;
 
-    if (parts.length >= 3) {
-      // Si la 3e colonne ressemble à un ID (17-20 chiffres), c'est l'ID
-      if (isValidDiscordId(parts[2])) {
-        discordId = parts[2].trim();
-        valueStr = parts[3] || "0";
+    /** Format 3 colonnes : pseudo, id Discord, valeur (sans rang) */
+    const threeColPseudoIdValue =
+      parts.length >= 3 &&
+      !isLikelyRankColumn(parts[0]) &&
+      isValidDiscordId(parts[1]) &&
+      cleanNumericValue(parts[2] || "") !== null;
+
+    if (threeColPseudoIdValue) {
+      rank = totalLines;
+      pseudo = parts[0].trim();
+      if (!pseudo) {
+        errors.push({ line: i + 1, reason: "Pseudo manquant" });
+        continue;
+      }
+      discordId = parts[1].trim();
+      valueStr = parts[2];
+    } else if (isLikelyRankColumn(parts[0])) {
+      rank = parseInt(parts[0], 10);
+      pseudo = parts[1].trim();
+      if (!pseudo) {
+        errors.push({ line: i + 1, reason: "Pseudo manquant" });
+        continue;
+      }
+      if (parts.length >= 3) {
+        if (isValidDiscordId(parts[2])) {
+          discordId = parts[2].trim();
+          valueStr = parts[3] || "0";
+        } else {
+          valueStr = parts[2];
+        }
       } else {
-        // Sinon la 3e colonne est probablement la valeur
-        valueStr = parts[2];
+        valueStr = "0";
+      }
+      if (parts.length >= 4 && !discordId) {
+        valueStr = parts[3];
       }
     } else {
-      valueStr = parts[2] || "0";
-    }
-
-    if (parts.length >= 4 && !discordId) {
-      valueStr = parts[3];
+      errors.push({
+        line: i + 1,
+        reason:
+          "Rang ou format non reconnu (attendu : rang,pseudo,id,valeur ou pseudo,id,valeur — ex. export CSV Discord)",
+      });
+      continue;
     }
 
     const value = cleanNumericValue(valueStr || "0");
@@ -223,12 +290,13 @@ export function parseDiscordEngagementTSV(
       }
     }
 
-    // Priorité 2: matching par pseudo normalisé
+    // Priorité 2: matching par pseudo normalisé (displayName ou Twitch)
     if (!matchedMemberId) {
       const normalizedPseudo = normalizeDiscordUsername(pseudo);
       for (const [id, member] of membersMap.entries()) {
-        const normalizedMember = normalizeDiscordUsername(member.displayName);
-        if (normalizedMember === normalizedPseudo) {
+        const nDisplay = normalizeDiscordUsername(member.displayName);
+        const nTwitch = normalizeDiscordUsername(member.twitchLogin || "");
+        if (nDisplay === normalizedPseudo || nTwitch === normalizedPseudo) {
           matchedMemberId = id;
           break;
         }
@@ -262,7 +330,7 @@ export function parseDiscordEngagementTSV(
     errors,
     ignoredNotMember: ignoredRows.map((r) => r.pseudo),
     matched,
-    totalLines: lines.length,
+    totalLines,
   };
 }
 

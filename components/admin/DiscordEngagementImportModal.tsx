@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
-import { X, Search } from "lucide-react";
+import { useState, useMemo, useRef, useEffect, type ChangeEvent } from "react";
+import { X, Search, Upload } from "lucide-react";
 import {
   parseDiscordEngagementTSV,
   type EngagementParseResult,
@@ -41,6 +41,18 @@ export default function DiscordEngagementImportModal({
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const comboRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const runAnalyzeFromText = (raw: string) => {
+    const trimmed = String(raw || "").trim();
+    if (!trimmed) {
+      alert("Aucun contenu à analyser");
+      return;
+    }
+    const result = parseDiscordEngagementTSV(raw, membersMap);
+    setParseResult(result);
+    setManualMappings({});
+  };
 
   /** Filtrer les membres par recherche (displayName, twitchLogin) */
   const filteredMembers = useMemo(() => {
@@ -77,13 +89,29 @@ export default function DiscordEngagementImportModal({
 
   const handleAnalyze = () => {
     if (!text.trim()) {
-      alert("Veuillez coller des données dans le champ texte");
+      alert("Veuillez coller des données ou importer un fichier CSV");
       return;
     }
+    runAnalyzeFromText(text);
+  };
 
-    const result = parseDiscordEngagementTSV(text, membersMap);
-    setParseResult(result);
-    setManualMappings({});
+  const handleFileSelected = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const name = file.name.toLowerCase();
+    if (!name.endsWith(".csv") && !name.endsWith(".txt") && file.type !== "text/csv" && !file.type.startsWith("text/")) {
+      alert("Choisissez un fichier .csv ou .txt (export Discord / Statbot).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = String(reader.result ?? "");
+      setText(content);
+      runAnalyzeFromText(content);
+    };
+    reader.onerror = () => alert("Impossible de lire le fichier.");
+    reader.readAsText(file, "UTF-8");
   };
 
   const setMapping = (ignoredIndex: number, discordId: string) => {
@@ -158,27 +186,47 @@ export default function DiscordEngagementImportModal({
               Les lignes non matchées peuvent être <strong>associées à un membre</strong> ou <strong>ignorées</strong> avant validation.
             </p>
             <p className="text-blue-300 text-xs mt-2">
-              Format attendu : RANG, PSEUDO, DISCORD_ID (optionnel), VALEUR - séparateur TAB / "," / ";"
-              {title.includes("vocaux") && " (en heures décimales)"}
+              Formats reconnus : TSV/CSV avec séparateur TAB, virgule ou point-virgule — dont export Discord / Statbot (
+              <code className="text-blue-100">rang, nom d&apos;utilisateur, id, compter</code>
+              ). L&apos;en-tête est ignoré automatiquement. Sans rang :{" "}
+              <code className="text-blue-100">pseudo,id,valeur</code>.
+              {title.includes("vocaux") && " Vocaux : minutes ou heures décimales selon votre export."}
             </p>
           </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.txt,text/csv,text/plain"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
 
           {/* Textarea */}
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-2">
-              Coller les données :
+              Coller les données ou importer un fichier :
             </label>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="w-full h-48 bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-[#9146ff] font-mono text-sm"
-              placeholder='1,frostyquinn94,477791879866351623,1683&#10;2;facebcd;1297107200623513645;1477'
+              placeholder={`rang,nom d'utilisateur,id,compter\n1,"frostyquinn94",477791879866351623,1209`}
             />
           </div>
 
           {/* Bouton Analyser */}
-          <div>
+          <div className="flex flex-wrap gap-3 items-center">
             <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              Importer un fichier .csv
+            </button>
+            <button
+              type="button"
               onClick={handleAnalyze}
               className="bg-[#9146ff] hover:bg-[#7c3aed] text-white font-semibold py-2 px-6 rounded-lg transition-colors"
             >

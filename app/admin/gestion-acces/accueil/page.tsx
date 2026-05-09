@@ -55,6 +55,19 @@ const dataCards: QuickCard[] = [
     description: "Contrôler les synchronisations legacy vers Supabase.",
     badge: "Fiabilité",
   },
+  {
+    href: "/admin/gestion-acces/discord-activite-personnelle",
+    title: "Activité Discord personnelle",
+    description: "Configurer et suivre l'activité Discord par membre (écrit et vocal).",
+    badge: "Discord",
+  },
+  {
+    href: "/admin/gestion-acces/discord-activite",
+    title: "Activité Discord (mois & salons)",
+    description:
+      "Vue mensuelle des totaux, classements par salon, regroupement staff anonyme et fusion des noms identiques.",
+    badge: "Discord",
+  },
 ];
 
 const structureCards: QuickCard[] = [

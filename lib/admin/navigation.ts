@@ -233,6 +233,8 @@ export const adminNavigation: NavItem[] = [
           { href: "/admin/evaluation/v2", label: "Évaluation v2" },
           { href: "/admin/evaluation/v2/sources", label: "Pilotage données manquantes v2" },
           { href: "/admin/evaluation/v2/pilotage", label: "Pilotage manuel v2" },
+          { href: "/admin/evaluation/v3", label: "Évaluation v3 (barème /100)" },
+          { href: "/admin/evaluation/v3/pilotage", label: "Pilotage manuel v3 (Discord)" },
         ],
       },
     ],
@@ -317,6 +319,14 @@ export const adminNavigation: NavItem[] = [
         children: [
           { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
           { href: "/admin/gestion-acces/images", label: "Gestion des images profils Twitch" },
+          {
+            href: "/admin/gestion-acces/discord-activite-personnelle",
+            label: "Activité Discord personnelle",
+          },
+          {
+            href: "/admin/gestion-acces/discord-activite",
+            label: "Activité Discord (mois & salons)",
+          },
           { href: "/admin/migration", label: "Migration des données" },
         ],
       },
@@ -578,6 +588,11 @@ export const adminNavigationSimple: NavItem[] = [
           { href: "/admin/evaluation/result", label: "Résultats validés" },
           { href: "/admin/evaluation/progression", label: "Progression" },
           { href: "/admin/evaluation/v2", label: "Évaluation v2" },
+          { href: "/admin/evaluation/v2/guide", label: "Guide évaluation v2" },
+          { href: "/admin/evaluation/v2/sources", label: "Pilotage données manquantes v2" },
+          { href: "/admin/evaluation/v2/pilotage", label: "Pilotage manuel v2" },
+          { href: "/admin/evaluation/v3", label: "Évaluation v3 (barème /100)" },
+          { href: "/admin/evaluation/v3/pilotage", label: "Pilotage manuel v3 (Discord)" },
         ],
       },
     ],
@@ -676,6 +691,14 @@ export const adminNavigationSimple: NavItem[] = [
         children: [
           { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
           { href: "/admin/gestion-acces/images", label: "Images profils Twitch" },
+          {
+            href: "/admin/gestion-acces/discord-activite-personnelle",
+            label: "Activité Discord personnelle",
+          },
+          {
+            href: "/admin/gestion-acces/discord-activite",
+            label: "Activité Discord (mois & salons)",
+          },
           { href: "/admin/migration", label: "Migration des données" },
         ],
       },

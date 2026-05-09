@@ -213,6 +213,53 @@ export async function GET(request: NextRequest) {
       skipAvatarBatchParam === "true" ||
       skipAvatarBatchParam === "yes";
 
+    const discordImportLookupRaw = (searchParams.get("discordImportLookup") || "").toLowerCase();
+    if (
+      discordImportLookupRaw === "1" ||
+      discordImportLookupRaw === "true" ||
+      discordImportLookupRaw === "yes"
+    ) {
+      const supabaseMembersPromise = fetchAllSupabaseMembers();
+      const legacyMembersPromise = withTimeout(
+        (async () => {
+          const { loadMemberDataFromStorage, getAllMemberData } = await import("@/lib/memberData");
+          await loadMemberDataFromStorage();
+          return (getAllMemberData() as any[]) || [];
+        })(),
+        LEGACY_FETCH_TIMEOUT_MS,
+        [],
+        "fallback legacy (discord import lookup)"
+      );
+      const [supabaseMembers, legacyMembers] = await Promise.all([
+        supabaseMembersPromise,
+        legacyMembersPromise,
+      ]);
+      const sanitizedLegacyMembers = legacyMembers.filter(
+        (member) => !isDiscordPlaceholderLogin(member?.twitchLogin)
+      );
+      const mergedResult = mergeMembersWithoutDuplicates(sanitizedLegacyMembers, supabaseMembers);
+      const members = mergedResult.members
+        .filter((m: any) => m.twitchLogin && String(m.twitchLogin).trim().length > 0)
+        .map((m: any) => ({
+          twitchLogin: String(m.twitchLogin).toLowerCase(),
+          displayName: m.displayName || m.twitchLogin || "",
+          discordId: m.discordId,
+          discordUsername: m.discordUsername,
+          isActive: m.isActive !== false,
+        }));
+
+      const response = NextResponse.json({ success: true, members });
+      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      response.headers.set("Pragma", "no-cache");
+      response.headers.set("Expires", "0");
+      const duration = Date.now() - startTime;
+      logApi.route("GET", "/api/admin/members", 200, duration, admin.id, {
+        discordImportLookup: true,
+        count: members.length,
+      });
+      return response;
+    }
+
     if (twitchLogin) {
       // Récupérer un membre spécifique par login Twitch
       let member = await memberRepository.findByTwitchLogin(twitchLogin);

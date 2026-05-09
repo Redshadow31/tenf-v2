@@ -5,6 +5,7 @@ import { memberRepository } from "@/lib/repositories";
 import { evaluationRepository } from "@/lib/repositories";
 import { loadRaidsFaits } from "@/lib/raidStorage";
 import { getDiscordActivityForMonth } from "@/lib/discordActivityStorage";
+import { formatVocalDurationFr, vocalEntryToMinutes } from "@/lib/discordActivityVocal";
 import { eventRepository } from "@/lib/repositories";
 
 export const dynamic = "force-dynamic";
@@ -131,15 +132,6 @@ function getRank(
     );
   });
   return idx >= 0 ? idx + 1 : 0;
-}
-
-function formatMinutesToHHMM(totalMinutes: number): string {
-  const safeMinutes = Number.isFinite(totalMinutes) ? Math.max(0, Math.round(totalMinutes)) : 0;
-  const hh = Math.floor(safeMinutes / 60)
-    .toString()
-    .padStart(2, "0");
-  const mm = (safeMinutes % 60).toString().padStart(2, "0");
-  return `${hh}:${mm}`;
 }
 
 /**
@@ -313,10 +305,7 @@ export async function GET(_request: NextRequest) {
         const rawVocalsEntries = Object.entries(vocalsByUser)
           .map(([k, v]) => ({
             key: k,
-            value:
-              typeof v === "object" && v !== null && "totalMinutes" in v
-                ? (v as any).totalMinutes ?? 0
-                : 0,
+            value: vocalEntryToMinutes(v),
           }))
           .filter((entry) => entry.key && Number.isFinite(entry.value));
 
@@ -335,7 +324,7 @@ export async function GET(_request: NextRequest) {
         vocalRanking = {
           rank: vocalsRank,
           totalMinutes: vocalsMinutes,
-          display: formatMinutesToHHMM(vocalsMinutes),
+          display: formatVocalDurationFr(vocalsMinutes),
           lastUpdate: new Date().toLocaleDateString("fr-FR"),
         };
       }

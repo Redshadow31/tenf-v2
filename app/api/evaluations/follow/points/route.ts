@@ -96,10 +96,11 @@ async function fetchAllMembersForEvaluation() {
 }
 
 /**
- * GET - Points Follow pour la synthèse évaluation :
+ * GET - Points Follow pour la synthèse évaluation (/admin/evaluation/d) :
  * - Feuilles staff (follow_validations) = même logique que /admin/communaute/engagement/feuilles-follow
  * - Dernier snapshot engagement Twitch = même source que /admin/communaute/engagement/follow
- * Si les deux sont disponibles : moyenne des deux notes (/5). Sinon la source disponible.
+ * Priorité : si le membre a une ligne « ok » dans le snapshot engagement, on utilise ce score (/5) ;
+ * sinon on retombe sur la note dérivée des feuilles staff pour ce mois (si présentes).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -172,12 +173,10 @@ export async function GET(request: NextRequest) {
       const sheetPts = sheetScoreByLogin.get(login) ?? 0;
       const snapPts = snapshotScoreByLogin.get(login);
       let finalPts: number;
-      if (hasSheets && snapPts !== undefined) {
-        finalPts = Math.round(((sheetPts + snapPts) / 2) * 100) / 100;
+      if (snapPts !== undefined) {
+        finalPts = snapPts;
       } else if (hasSheets) {
         finalPts = sheetPts;
-      } else if (snapPts !== undefined) {
-        finalPts = snapPts;
       } else {
         finalPts = 0;
       }
@@ -186,7 +185,8 @@ export async function GET(request: NextRequest) {
 
     let blendHint = "";
     if (hasSheets && hasAnySnapshot) {
-      blendHint = "Moyenne feuilles staff + dernier snapshot engagement Twitch.";
+      blendHint =
+        "Priorité au dernier snapshot engagement Twitch par membre ; feuilles staff si pas de ligne snapshot « ok ».";
     } else if (hasSheets) {
       blendHint = "Feuilles staff uniquement (snapshot engagement indisponible ou vide).";
     } else if (hasAnySnapshot) {
@@ -201,6 +201,7 @@ export async function GET(request: NextRequest) {
       followBlend: {
         sheetsCount: totalSheets,
         usedSnapshot: hasAnySnapshot,
+        /** Les deux sources existent ; le snapshot prime pour chaque membre qui y figure en état ok. */
         blended: hasSheets && hasAnySnapshot,
       },
       message: [

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/requireAdmin';
-import {
-  loadDiscordActivity,
-  updateDiscordActivityForMonth,
-} from '@/lib/discordActivityStorage';
+import { updateDiscordActivityForMonth } from '@/lib/discordActivityStorage';
 import { cacheDelete, cacheKey } from '@/lib/cache';
 
 export const runtime = 'nodejs';

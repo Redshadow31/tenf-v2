@@ -100,10 +100,18 @@ export default function DiscordDailyActivityImportModal({
 
       if (columns.length < 2) continue;
 
-      const dateStr = columns[0]?.trim();
-      const valueStr = columns[1]?.trim();
+      const dateStr = columns[0]?.trim().replace(/^\ufeff/, "");
+      if (!dateStr) continue;
 
-      if (!dateStr || !valueStr) continue;
+      const lower0 = dateStr.toLowerCase();
+      if (
+        lower0 === "horodatage" ||
+        lower0 === "date" ||
+        lower0.startsWith("timestamp") ||
+        lower0 === "time"
+      ) {
+        continue;
+      }
 
       // Parser la date (ISO timestamp)
       let date: Date;
@@ -117,9 +125,19 @@ export default function DiscordDailyActivityImportModal({
       // Formater la date en YYYY-MM-DD
       const dateFormatted = date.toISOString().split("T")[0];
 
-      // Parser la valeur (nombre ou décimal)
-      const value = parseNumericValue(valueStr);
-      if (isNaN(value)) continue;
+      // Export « graphique messages » Discord : horodatage, moyenne 21j, messages — la métrique utile est la dernière colonne numérique
+      let value: number | undefined;
+      for (let i = columns.length - 1; i >= 1; i--) {
+        const raw = columns[i]?.trim();
+        if (raw === undefined || raw === "") continue;
+        const n = parseNumericValue(raw);
+        if (Number.isFinite(n)) {
+          value = n;
+          break;
+        }
+      }
+
+      if (value === undefined || !Number.isFinite(value)) continue;
 
       // Déduplication : garder la dernière occurrence par date
       dateMap.set(dateFormatted, value);
@@ -272,7 +290,7 @@ export default function DiscordDailyActivityImportModal({
               onChange={(e) => setText(e.target.value)}
               className="w-full h-64 p-3 bg-[#0e0e10] border border-gray-600 rounded-lg text-white font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#5865F2]"
               placeholder={type === 'messages' 
-                ? "2024-09-01T00:00:00.000Z\t146\n2024-09-02T00:00:00.000Z\t766"
+                ? "2025-12-01T00:00:00.000Z,,852\n2025-12-02T00:00:00.000Z,,616\n(graphique Discord : horodatage, moyenne optionnelle, messages)"
                 : "2024-09-02T00:00:00.000Z\t16.57\n2024-09-03T00:00:00.000Z\t22.07"
               }
             />
@@ -283,10 +301,15 @@ export default function DiscordDailyActivityImportModal({
               Format attendu
             </h3>
             <ul className="text-xs text-gray-400 space-y-1">
-              <li>• Colonnes : Date ISO (timestamp), {type === 'messages' ? 'Nombre de messages' : 'Heures décimales'}</li>
+              <li>
+                • Date en première colonne (ISO, ex. 2025-12-01T00:00:00.000Z). Valeur lue dans la{' '}
+                <strong className="text-gray-300">dernière colonne numérique</strong>
+                {type === "messages"
+                  ? " (compatible export « graphique messages » : horodatage, moyenne 21 j., messages)."
+                  : " (heures décimales)."}
+              </li>
               <li>• Séparateur : virgule (CSV), tabulation, ou espaces multiples</li>
-              <li>• Format date : ISO timestamp (ex: 2024-09-01T00:00:00.000Z)</li>
-              <li>• Format valeur : {type === 'messages' ? 'Nombre entier' : 'Nombre décimal (ex: 16.57)'}</li>
+              <li>• Ligne d&apos;en-tête type horodatage / date est ignorée automatiquement</li>
             </ul>
           </div>
 
