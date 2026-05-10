@@ -6,6 +6,14 @@ import { evaluationRepository } from "@/lib/repositories";
 import { loadRaidsFaits } from "@/lib/raidStorage";
 import { getDiscordActivityForMonth } from "@/lib/discordActivityStorage";
 import { formatVocalDurationFr, vocalEntryToMinutes } from "@/lib/discordActivityVocal";
+import {
+  addIdentityAliases,
+  buildDiscordStorageIdentityMap,
+  coerceMessageCount,
+  compactKey,
+  normalizeKey,
+  remapAndAggregateEntries,
+} from "@/lib/discordActivityIdentityMap";
 import { eventRepository } from "@/lib/repositories";
 
 export const dynamic = "force-dynamic";
@@ -14,60 +22,6 @@ export const revalidate = 0;
 function getCurrentMonthKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function normalizeKey(value?: string | null): string {
-  return (value || "")
-    .toLowerCase()
-    .trim()
-    .replace(/^@+/, "");
-}
-
-function compactKey(value?: string | null): string {
-  return normalizeKey(value).replace(/[^a-z0-9]/g, "");
-}
-
-function addIdentityAliases(index: Map<string, string>, rawValue: string | null | undefined, login: string) {
-  const normalized = normalizeKey(rawValue);
-  if (!normalized) return;
-
-  index.set(normalized, login);
-  const compact = compactKey(normalized);
-  if (compact) index.set(compact, login);
-
-  // Alias Discord legacy: username#1234 -> username
-  const hashIdx = normalized.indexOf("#");
-  if (hashIdx > 0) {
-    index.set(normalized.slice(0, hashIdx), login);
-  }
-
-  // Alias mention Discord: <@123> or <@!123>
-  if (normalized.startsWith("<@") && normalized.endsWith(">")) {
-    const mentionId = normalized.replace(/[<@!>]/g, "");
-    if (mentionId) {
-      index.set(mentionId, login);
-      const mentionCompact = compactKey(mentionId);
-      if (mentionCompact) index.set(mentionCompact, login);
-    }
-  }
-}
-
-function remapAndAggregateEntries(
-  entries: Array<{ key: string; value: number }>,
-  identityToLogin: Map<string, string>
-): Array<{ key: string; value: number }> {
-  const aggregated = new Map<string, number>();
-  for (const entry of entries) {
-    const rawKey = normalizeKey(entry.key);
-    if (!rawKey) continue;
-    const canonicalKey = identityToLogin.get(rawKey) || identityToLogin.get(compactKey(rawKey)) || rawKey;
-    const current = aggregated.get(canonicalKey) || 0;
-    aggregated.set(canonicalKey, current + (Number.isFinite(entry.value) ? entry.value : 0));
-  }
-
-  return Array.from(aggregated.entries())
-    .map(([key, value]) => ({ key, value }))
-    .sort((a, b) => b.value - a.value);
 }
 
 function safeTimestamp(value?: string): number {
@@ -172,8 +126,8 @@ export async function GET(_request: NextRequest) {
         .map((v) => normalizeKey(v))
     );
 
-    // Préparer un index d'identité (discordId / usernames / displayName -> twitchLogin)
-    const allMembers = await memberRepository.findAll(2000, 0);
+    // Index large : raids / spotlights (displayName utile pour les présences).
+    const allMembers = await memberRepository.findAllBatched();
     const identityToLogin = new Map<string, string>();
     for (const m of allMembers) {
       const login = normalizeKey(m.twitchLogin);
@@ -184,6 +138,9 @@ export async function GET(_request: NextRequest) {
       addIdentityAliases(identityToLogin, m.displayName, login);
       addIdentityAliases(identityToLogin, m.siteUsername, login);
     }
+
+    // Stockage discord-activity : uniquement Twitch + identifiants Discord (évite collisions displayName / login).
+    const identityToLoginDiscord = buildDiscordStorageIdentityMap(allMembers);
 
     // 1. Raids TENF — depuis raidStorage (même source que /admin/raids)
     let raidsTENF = 0;
@@ -300,7 +257,7 @@ export async function GET(_request: NextRequest) {
         const vocalsByUser = activityData.vocalsByUser || {};
 
         const rawMessagesEntries = Object.entries(messagesByUser)
-          .map(([k, v]) => ({ key: k, value: typeof v === "number" ? v : 0 }))
+          .map(([k, v]) => ({ key: k, value: coerceMessageCount(v) }))
           .filter((entry) => entry.key && Number.isFinite(entry.value));
         const rawVocalsEntries = Object.entries(vocalsByUser)
           .map(([k, v]) => ({
@@ -309,8 +266,8 @@ export async function GET(_request: NextRequest) {
           }))
           .filter((entry) => entry.key && Number.isFinite(entry.value));
 
-        const messagesEntries = remapAndAggregateEntries(rawMessagesEntries, identityToLogin);
-        const vocalsEntries = remapAndAggregateEntries(rawVocalsEntries, identityToLogin);
+        const messagesEntries = remapAndAggregateEntries(rawMessagesEntries, identityToLoginDiscord);
+        const vocalsEntries = remapAndAggregateEntries(rawVocalsEntries, identityToLoginDiscord);
         const messagesRank = getRank(messagesEntries, member);
         const vocalsRank = getRank(vocalsEntries, member);
         const messagesValue = messagesRank > 0 ? messagesEntries[messagesRank - 1]?.value || 0 : 0;

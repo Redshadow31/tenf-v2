@@ -102,6 +102,21 @@ export class MemberRepository {
   }
 
   /**
+   * Charge la table `members` par lots (ordre stable `twitch_login`).
+   * Utile pour les agrégations Discord où une limite fixe (ex. 2000) fausserait le rattachement.
+   */
+  async findAllBatched(batchSize = 2000, maxTotal = 50000): Promise<MemberData[]> {
+    const out: MemberData[] = [];
+    for (let offset = 0; offset < maxTotal; offset += batchSize) {
+      const chunk = await this.findAll(batchSize, offset);
+      if (!chunk.length) break;
+      out.push(...chunk);
+      if (chunk.length < batchSize) break;
+    }
+    return out;
+  }
+
+  /**
    * Récupère un membre par son id (UUID Supabase)
    */
   async findById(id: string): Promise<MemberData | null> {

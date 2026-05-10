@@ -1,8 +1,41 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { getDiscordUser } from "@/lib/discord";
+import {
+  ArrowLeft,
+  Award,
+  BarChart3,
+  CalendarDays,
+  ChevronDown,
+  Database,
+  Download,
+  Gift,
+  HeartHandshake,
+  HelpCircle,
+  History,
+  Layers,
+  LayoutDashboard,
+  Mic2,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  Star,
+  Table2,
+  Users,
+  Zap,
+} from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   calculateTotalHorsBonus,
   calculateTotalAvecBonus,
@@ -127,20 +160,46 @@ function synthesisSaveErrorMessage(
 // COMPOSANTS
 // ============================================
 
-function StatCard({ title, value, subtitle, color = "#9146ff" }: { title: string; value: string | number; subtitle?: string; color?: string }) {
+function StatCard({
+  title,
+  value,
+  subtitle,
+  color = "#9146ff",
+  icon,
+}: {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  color?: string;
+  icon?: ReactNode;
+}) {
   return (
-    <div className="rounded-lg border p-4" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-      <p className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-        {title}
-      </p>
-      <p className="text-2xl font-bold mb-1" style={{ color }}>
+    <div
+      className="group rounded-xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      style={{
+        backgroundColor: "var(--color-card)",
+        borderColor: "var(--color-border)",
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04)`,
+      }}
+    >
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--color-text-secondary)" }}>
+          {title}
+        </p>
+        {icon ? (
+          <span className="rounded-lg bg-white/[0.04] p-1.5" style={{ color }}>
+            {icon}
+          </span>
+        ) : null}
+      </div>
+      <p className="mb-1 text-2xl font-black tabular-nums tracking-tight" style={{ color }}>
         {value}
       </p>
-      {subtitle && (
-        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+      {subtitle ? (
+        <p className="text-xs leading-snug" style={{ color: "var(--color-text-secondary)" }}>
           {subtitle}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -1013,6 +1072,17 @@ export default function EvaluationDPage() {
     };
   }, [membersData]);
 
+  const pilotageBarData = useMemo(() => {
+    if (!generalStats) return [];
+    return [
+      { key: "spotlight", label: "Spotlight", moy: generalStats.avgSpotlight, max: 5, fill: "#c084fc" },
+      { key: "raids", label: "Raids", moy: generalStats.avgRaids, max: 5, fill: "#818cf8" },
+      { key: "discord", label: "Discord", moy: generalStats.avgDiscord, max: 5, fill: "#5865F2" },
+      { key: "events", label: "Events", moy: generalStats.avgEvents, max: 2, fill: "#34d399" },
+      { key: "follow", label: "Follow", moy: generalStats.avgFollow, max: 5, fill: "#f472b6" },
+    ];
+  }, [generalStats]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
@@ -1033,210 +1103,448 @@ export default function EvaluationDPage() {
   }
 
   return (
-    <div className="min-h-screen p-8" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-          <Link
-            href="/admin/evaluation"
-            className="transition-colors"
-            style={{ color: 'var(--color-text-secondary)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-text)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
-          >
-            ← Retour au Dashboard Évaluation
-          </Link>
-          <Link
-            href="/admin/migration/evaluations"
-            className="px-4 py-2 rounded-lg font-medium text-sm transition-colors"
-            style={{
-              backgroundColor: '#9146ff',
-              color: 'white',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#7c3aed'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#9146ff'; }}
-          >
-            🔄 Migration des Évaluations
-          </Link>
+    <div className="min-h-screen pb-16" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
+      <div className="mx-auto max-w-[1680px] px-4 py-8 sm:px-6 lg:px-8">
+        {/* Hero */}
+        <header className="relative mb-8 overflow-hidden rounded-2xl border-2 border-[#9146ff]/35 bg-gradient-to-br from-[var(--color-card)] via-[var(--color-card)] to-purple-950/20 p-6 shadow-xl shadow-purple-900/10 sm:p-8">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#9146ff]/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-cyan-500/10 blur-3xl" />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href="/admin/evaluation"
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-black/10 px-3 py-1.5 text-sm font-medium backdrop-blur-sm transition hover:border-[#9146ff]/50 hover:bg-[#9146ff]/10"
+                  style={{ color: "var(--color-text)" }}
+                >
+                  <ArrowLeft className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  Dashboard évaluation
+                </Link>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/35 bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-200">
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                  Staff &amp; pilotage TENF
+                </span>
+              </div>
+              <div>
+                <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-black leading-tight tracking-tight">
+                  <span className="bg-gradient-to-r from-white via-white to-[#c4b5fd] bg-clip-text text-transparent">
+                    Synthèse &amp; bonus
+                  </span>
+                </h1>
+                <p className="mt-2 max-w-3xl text-base leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                  Vue consolidée du barème mensuel pour la communauté TENF : les mêmes chiffres servent à{" "}
+                  <strong style={{ color: "var(--color-text)" }}>reconnaître l&apos;engagement</strong> des membres
+                  (Spotlight, Raids, Discord, Événements, Follow) et à ajuster décalage horaire &amp; modération. Les
+                  notes manuelles restent traçables dans l&apos;historique.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs font-medium" style={{ color: "var(--color-text-secondary)" }}>
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/15 px-2.5 py-1">
+                  <Layers className="h-3.5 w-3.5 text-violet-300" aria-hidden />
+                  Barème /32 (25 + 7 bonus)
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/15 px-2.5 py-1">
+                  <Users className="h-3.5 w-3.5 text-emerald-300" aria-hidden />
+                  {membersData.length} membres chargés
+                </span>
+                {loadingData ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/15 px-2.5 py-1 text-amber-200/90">
+                    <Zap className="h-3.5 w-3.5 animate-pulse" aria-hidden />
+                    Synchronisation des sources…
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col">
+              <Link
+                href="/admin/migration/evaluations"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#9146ff] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition hover:bg-[#7c3aed]"
+              >
+                <Database className="h-4 w-4" aria-hidden />
+                Migration des évaluations
+              </Link>
+              <Link
+                href="/admin/evaluation/a"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-5 py-3 text-sm font-semibold transition hover:border-[#9146ff]/40"
+                style={{ color: "var(--color-text)" }}
+              >
+                Sections A · B · C
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        {/* Barre d&apos;outils */}
+        <div
+          className="mb-8 rounded-2xl border p-4 shadow-sm sm:p-5"
+          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+        >
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-[#9146ff]" aria-hidden />
+            <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: "var(--color-text-secondary)" }}>
+              Filtres &amp; export
+            </h2>
+          </div>
+          <div className="flex flex-col gap-4 xl:flex-row xl:flex-wrap xl:items-end">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--color-text-secondary)" }}>
+                Mois
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="rounded-xl border px-4 py-2.5 text-sm font-medium outline-none ring-[#9146ff]/0 transition focus:ring-2 focus:ring-[#9146ff]/40"
+                style={{
+                  backgroundColor: "var(--color-bg)",
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-text)",
+                }}
+              >
+                {getMonthOptions().map((option) => (
+                  <option key={option} value={option}>
+                    {formatMonthKey(option)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--color-text-secondary)" }}>
+                Vue
+              </label>
+              <select
+                value={selectedPreset}
+                onChange={(e) => setSelectedPreset(e.target.value as "all" | "surveiller" | "vip" | "manual" | "bonus")}
+                className="rounded-xl border px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-[#9146ff]/40"
+                style={{
+                  backgroundColor: "var(--color-bg)",
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-text)",
+                }}
+              >
+                <option value="all">Tous les profils</option>
+                <option value="surveiller">À surveiller</option>
+                <option value="vip">VIP</option>
+                <option value="manual">Overrides manuels</option>
+                <option value="bonus">Avec bonus</option>
+              </select>
+            </div>
+
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition hover:bg-white/[0.03]" style={{ borderColor: "var(--color-border)" }}>
+              <input
+                type="checkbox"
+                checked={showActiveOnly}
+                onChange={(e) => setShowActiveOnly(e.target.checked)}
+                className="rounded border-[var(--color-border)] text-[#9146ff] focus:ring-[#9146ff]/40"
+              />
+              Actifs seulement
+            </label>
+
+            <div className="relative min-w-[200px] flex-1 xl:max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-45" aria-hidden />
+              <input
+                type="search"
+                placeholder="Pseudo, nom ou rôle…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-[#9146ff]/35"
+                style={{
+                  backgroundColor: "var(--color-bg)",
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-text)",
+                }}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2 xl:ml-auto">
+              <button
+                type="button"
+                onClick={() => setCompactMode((prev) => !prev)}
+                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${compactMode ? "border-cyan-500/50 bg-cyan-500/15 text-cyan-100" : ""}`}
+                style={
+                  compactMode
+                    ? undefined
+                    : {
+                        backgroundColor: "var(--color-bg)",
+                        borderColor: "var(--color-border)",
+                        color: "var(--color-text)",
+                      }
+                }
+              >
+                Compact {compactMode ? "· on" : ""}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedColumns((prev) => !prev)}
+                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${showAdvancedColumns ? "border-violet-500/50 bg-violet-500/15 text-violet-100" : ""}`}
+                style={
+                  showAdvancedColumns
+                    ? undefined
+                    : {
+                        backgroundColor: "var(--color-bg)",
+                        borderColor: "var(--color-border)",
+                        color: "var(--color-text)",
+                      }
+                }
+              >
+                Colonnes + {showAdvancedColumns ? "· on" : ""}
+              </button>
+              <button
+                type="button"
+                onClick={exportFilteredCsv}
+                className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-sky-500"
+              >
+                <Download className="h-4 w-4" aria-hidden />
+                CSV
+              </button>
+            </div>
+          </div>
         </div>
-        <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>Synthèse & Bonus</h1>
-        <p style={{ color: 'var(--color-text-secondary)' }}>Synthèse globale et bonus</p>
-      </div>
 
-      {/* Sélecteur de mois et filtres */}
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <label className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Mois :</label>
-        <select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="rounded-lg px-4 py-2 text-sm border"
-          style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+        {/* Onglets */}
+        <div
+          className="mb-8 flex flex-wrap gap-2 rounded-2xl border p-1.5"
+          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+          role="tablist"
+          aria-label="Sections synthèse"
         >
-          {getMonthOptions().map(option => (
-            <option key={option} value={option}>
-              {formatMonthKey(option)}
-            </option>
-          ))}
-        </select>
-        
-        <label className="text-sm font-semibold ml-4" style={{ color: 'var(--color-text-secondary)' }}>
-          <input
-            type="checkbox"
-            checked={showActiveOnly}
-            onChange={(e) => setShowActiveOnly(e.target.checked)}
-            className="mr-2"
-          />
-          Limiter aux profils actifs
-        </label>
-
-        <select
-          value={selectedPreset}
-          onChange={(e) => setSelectedPreset(e.target.value as "all" | "surveiller" | "vip" | "manual" | "bonus")}
-          className="rounded-lg px-4 py-2 text-sm border"
-          style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-        >
-          <option value="all">Filtre: Tous</option>
-          <option value="surveiller">A surveiller</option>
-          <option value="vip">VIP</option>
-          <option value="manual">Overrides manuels</option>
-          <option value="bonus">Avec bonus</option>
-        </select>
-        
-        <input
-          type="text"
-          placeholder="Rechercher un membre..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 max-w-xs rounded-lg px-4 py-2 text-sm border"
-          style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-        />
-
-        <button
-          onClick={() => setCompactMode((prev) => !prev)}
-          className="px-4 py-2 rounded-lg text-sm border"
-          style={{ backgroundColor: compactMode ? "#155e75" : "var(--color-card)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
-        >
-          {compactMode ? "Mode compact: ON" : "Mode compact: OFF"}
-        </button>
-        <button
-          onClick={() => setShowAdvancedColumns((prev) => !prev)}
-          className="px-4 py-2 rounded-lg text-sm border"
-          style={{ backgroundColor: showAdvancedColumns ? "#4c1d95" : "var(--color-card)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
-        >
-          {showAdvancedColumns ? "Colonnes avancees: ON" : "Colonnes avancees: OFF"}
-        </button>
-        <button
-          onClick={exportFilteredCsv}
-          className="px-4 py-2 rounded-lg text-sm font-medium"
-          style={{ backgroundColor: "#0ea5e9", color: "white" }}
-        >
-          Export CSV
-        </button>
-      </div>
-
-      <div className="mb-6 flex flex-wrap gap-2">
-        {[
-          { id: "pilotage", label: "Pilotage" },
-          { id: "tableau", label: "Tableau edition" },
-          { id: "historique", label: "Historique overrides" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as "pilotage" | "tableau" | "historique")}
-            className="px-4 py-2 rounded-lg text-sm font-medium border transition-colors"
-            style={{
-              backgroundColor: activeTab === tab.id ? "#9146ff" : "var(--color-card)",
-              color: activeTab === tab.id ? "white" : "var(--color-text)",
-              borderColor: activeTab === tab.id ? "#9146ff" : "var(--color-border)",
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+          {(
+            [
+              { id: "pilotage" as const, label: "Pilotage", icon: LayoutDashboard },
+              { id: "tableau" as const, label: "Tableau d’édition", icon: Table2 },
+              { id: "historique" as const, label: "Historique overrides", icon: History },
+            ] as const
+          ).map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActiveTab(tab.id)}
+                className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition sm:flex-none sm:min-w-[160px] ${
+                  active
+                    ? "bg-gradient-to-br from-[#9146ff] to-[#6d28d9] text-white shadow-lg shadow-purple-900/25"
+                    : "text-[var(--color-text-secondary)] hover:bg-white/[0.04]"
+                }`}
+                style={active ? undefined : { color: "var(--color-text-secondary)" }}
+              >
+                <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
       {/* Statistiques générales */}
       {activeTab === "pilotage" && generalStats && (
         <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
-            Statistiques générales — {formatMonthKey(selectedMonth)}
-          </h2>
-          
-          {/* Moyennes par domaine */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>Moyennes par domaine (hors bonus)</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <StatCard title="Moyenne Spotlight (/5)" value={generalStats.avgSpotlight.toFixed(2)} />
-              <StatCard title="Moyenne Raids (/5)" value={generalStats.avgRaids.toFixed(2)} />
-              <StatCard title="Moyenne Discord (/5)" value={generalStats.avgDiscord.toFixed(2)} />
-              <StatCard title="Moyenne Events (/2)" value={generalStats.avgEvents.toFixed(2)} />
-              <StatCard title="Moyenne Follow (/5)" value={generalStats.avgFollow.toFixed(2)} />
-              <StatCard title="Moyenne générale (/25)" value={generalStats.avgGeneral.toFixed(2)} />
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight" style={{ color: "var(--color-text)" }}>
+                Statistiques — {formatMonthKey(selectedMonth)}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                Moyennes communautaires sur le mois sélectionné ; utile pour calibrer le staff et expliquer le barème aux
+                membres.
+              </p>
             </div>
           </div>
+
+          {/* Moyennes par domaine */}
+          <div className="mb-6">
+            <h3 className="mb-3 flex items-center gap-2 text-lg font-bold" style={{ color: "var(--color-text)" }}>
+              <BarChart3 className="h-5 w-5 text-[#9146ff]" aria-hidden />
+              Moyennes par domaine (hors bonus)
+            </h3>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+              <StatCard
+                title="Spotlight (/5)"
+                value={generalStats.avgSpotlight.toFixed(2)}
+                color="#c084fc"
+                icon={<Star className="h-4 w-4" aria-hidden />}
+              />
+              <StatCard
+                title="Raids (/5)"
+                value={generalStats.avgRaids.toFixed(2)}
+                color="#818cf8"
+                icon={<HeartHandshake className="h-4 w-4" aria-hidden />}
+              />
+              <StatCard
+                title="Discord (/5)"
+                value={generalStats.avgDiscord.toFixed(2)}
+                color="#5865F2"
+                icon={<Mic2 className="h-4 w-4" aria-hidden />}
+              />
+              <StatCard
+                title="Events (/2)"
+                value={generalStats.avgEvents.toFixed(2)}
+                color="#34d399"
+                icon={<CalendarDays className="h-4 w-4" aria-hidden />}
+              />
+              <StatCard
+                title="Follow (/5)"
+                value={generalStats.avgFollow.toFixed(2)}
+                color="#f472b6"
+                icon={<Users className="h-4 w-4" aria-hidden />}
+              />
+              <StatCard
+                title="Générale (/25)"
+                value={generalStats.avgGeneral.toFixed(2)}
+                color="#9146ff"
+                icon={<Award className="h-4 w-4" aria-hidden />}
+              />
+            </div>
+          </div>
+
+          {pilotageBarData.length > 0 && (
+            <div
+              className="mb-8 rounded-2xl border p-5 shadow-inner sm:p-6"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+            >
+              <h3 className="mb-4 text-base font-bold" style={{ color: "var(--color-text)" }}>
+                Lecture graphique des moyennes (échelle par pilier)
+              </h3>
+              <div className="h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={pilotageBarData} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.12)" horizontal={false} />
+                    <XAxis type="number" domain={[0, 5]} stroke="#64748b" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="label"
+                      width={72}
+                      stroke="#64748b"
+                      tick={{ fill: "#cbd5e1", fontSize: 12 }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.[0]) return null;
+                        const row = payload[0].payload as (typeof pilotageBarData)[0];
+                        const pct = row.max > 0 ? Math.round((row.moy / row.max) * 100) : 0;
+                        return (
+                          <div className="rounded-lg border border-white/10 bg-[#1e293b] px-3 py-2 text-xs shadow-xl">
+                            <p className="font-semibold text-white">{row.label}</p>
+                            <p className="text-gray-300">
+                              Moyenne : <span className="tabular-nums font-bold text-white">{row.moy.toFixed(2)}</span> /{" "}
+                              {row.max}
+                            </p>
+                            <p className="text-gray-500">~{pct}% du plafond pilier</p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar dataKey="moy" radius={[0, 8, 8, 0]} maxBarSize={28}>
+                      {pilotageBarData.map((entry) => (
+                        <Cell key={entry.key} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                L&apos;axe Events est plafonné à 2 pts sur le graphique ; les barres restent comparables visuellement aux
+                autres piliers à l&apos;échelle du mois.
+              </p>
+            </div>
+          )}
           
           {/* Score global */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>Score global</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="mb-3 text-lg font-bold" style={{ color: "var(--color-text)" }}>
+              Score global communauté
+            </h3>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <StatCard
-                title="Score global hors bonus"
+                title="Somme hors bonus"
                 value={`${generalStats.scoreGlobalHorsBonus.toFixed(2)} / ${membersData.length * 25}`}
+                subtitle="Total des points sur tous les membres (plafond théorique)"
                 color="#9146ff"
+                icon={<Layers className="h-4 w-4" aria-hidden />}
               />
               <StatCard
-                title="Score global avec bonus"
+                title="Somme avec bonus"
                 value={`${generalStats.scoreGlobalAvecBonus.toFixed(2)} / ${membersData.length * 32}`}
+                subtitle="Inclut décalage horaire &amp; modération"
                 color="#10b981"
+                icon={<Gift className="h-4 w-4" aria-hidden />}
               />
             </div>
           </div>
-          
+
           {/* Présences */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>Présences</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="mb-3 text-lg font-bold" style={{ color: "var(--color-text)" }}>
+              Présences
+            </h3>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <StatCard
-                title="Taux de présence Events"
+                title="Taux présence Events"
                 value={`${generalStats.eventsPresenceRate.toFixed(1)}%`}
-                subtitle={`${generalStats.eventsParticipants} participants`}
+                subtitle={`${generalStats.eventsParticipants} membres ont au moins une présence`}
                 color="#5865F2"
+                icon={<CalendarDays className="h-4 w-4" aria-hidden />}
               />
               <StatCard
-                title="Taux moyen présence Spotlights"
+                title="Taux présence Spotlights"
                 value={`${generalStats.spotlightPresenceRate.toFixed(1)}%`}
-                subtitle={`${generalStats.spotlightParticipants} participants`}
-                color="#9146ff"
+                subtitle={`${generalStats.spotlightParticipants} membres présents sur les spotlights`}
+                color="#c084fc"
+                icon={<Star className="h-4 w-4" aria-hidden />}
               />
             </div>
           </div>
-          
+
           {/* VIP / Alertes */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-text)' }}>VIP / Alertes</h3>
-            <div className="flex flex-wrap gap-4">
-              <div className="px-4 py-2 rounded-lg border" style={{ backgroundColor: '#10b98120', borderColor: '#10b981', color: '#10b981' }}>
-                <span className="font-semibold">VIP: {generalStats.vipCount}</span>
+            <h3 className="mb-3 text-lg font-bold" style={{ color: "var(--color-text)" }}>
+              Signaux automatiques
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              <div
+                className="flex items-center gap-3 rounded-xl border px-5 py-4 shadow-sm"
+                style={{ backgroundColor: "#10b98118", borderColor: "#10b98155", color: "#34d399" }}
+              >
+                <Star className="h-8 w-8 shrink-0 opacity-90" aria-hidden />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide opacity-80">VIP (note ≥ 16)</p>
+                  <p className="text-2xl font-black tabular-nums">{generalStats.vipCount}</p>
+                </div>
               </div>
-              <div className="px-4 py-2 rounded-lg border" style={{ backgroundColor: '#f59e0b20', borderColor: '#f59e0b', color: '#f59e0b' }}>
-                <span className="font-semibold">À surveiller: {generalStats.surveillerCount}</span>
+              <div
+                className="flex items-center gap-3 rounded-xl border px-5 py-4 shadow-sm"
+                style={{ backgroundColor: "#f59e0b18", borderColor: "#f59e0b55", color: "#fbbf24" }}
+              >
+                <ShieldAlert className="h-8 w-8 shrink-0 opacity-90" aria-hidden />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide opacity-80">À surveiller (&lt; 5)</p>
+                  <p className="text-2xl font-black tabular-nums">{generalStats.surveillerCount}</p>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3" style={{ color: "var(--color-text)" }}>Entraide pure</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="mb-3 text-lg font-bold" style={{ color: "var(--color-text)" }}>
+              Entraide &amp; brouillon
+            </h3>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <StatCard
                 title="Moyenne entraide pure"
                 value={`${entraideGlobal.avg.toFixed(2)} / ${entraideGlobal.max}`}
                 subtitle="Raids + Discord + Events + Follow"
                 color="#22c55e"
+                icon={<HeartHandshake className="h-4 w-4" aria-hidden />}
               />
               <StatCard
-                title="Modifications en attente"
+                title="Modifs non enregistrées"
                 value={getTotalPendingChanges()}
-                subtitle={`Notes ${pendingChanges.notes} · Bonus ${pendingChanges.bonuses} · Statuts ${pendingChanges.statuts} · Roles ${pendingChanges.roles} · VIP ${pendingChanges.vip}`}
+                subtitle={`Notes ${pendingChanges.notes} · Bonus ${pendingChanges.bonuses} · Statuts ${pendingChanges.statuts} · Rôles ${pendingChanges.roles} · VIP ${pendingChanges.vip}`}
                 color="#f59e0b"
+                icon={<Zap className="h-4 w-4" aria-hidden />}
               />
             </div>
           </div>
@@ -1245,74 +1553,112 @@ export default function EvaluationDPage() {
 
       {/* Encadré explicatif des critères de notation */}
       {activeTab === "pilotage" && (
-      <div className="mb-8 rounded-lg border p-6" style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-        <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
-          📋 Critères de notation
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-              Spotlight (/5 points)
-            </h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-              Points calculés sur la base de la présence aux spotlights et des évaluations des streamers. 
-              Note finale basée sur la présence active et la qualité du spotlight.
-            </p>
+        <div
+          className="mb-10 rounded-2xl border p-6 sm:p-8"
+          style={{
+            backgroundColor: "var(--color-card)",
+            borderColor: "var(--color-border)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          }}
+        >
+          <div className="mb-6 flex flex-wrap items-start gap-3">
+            <div className="rounded-xl bg-[#9146ff]/15 p-3 text-[#c4b5fd]">
+              <HelpCircle className="h-7 w-7" aria-hidden />
+            </div>
+            <div>
+              <h2 className="text-xl font-black tracking-tight" style={{ color: "var(--color-text)" }}>
+                Barème expliqué — pour le staff &amp; la communauté
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                Chaque pilier est calculé à partir des mêmes sources que les pages d&apos;évaluation A / B / C. Tu peux t&apos;en
+                servir pour contextualiser une note auprès d&apos;un membre TENF de façon transparente.
+              </p>
+            </div>
           </div>
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-              Raids (/5 points)
-            </h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-              Points basés sur les raids effectués et reçus pendant le mois. 
-              Équilibre entre l'aide apportée (raids faits) et la reconnaissance reçue (raids reçus).
-            </p>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {[
+              {
+                title: "Spotlight — /5",
+                icon: Star,
+                accent: "#c084fc",
+                body: "Présence aux spotlights du mois et qualité perçue dans les évaluations streamer ; agrégé depuis les événements catégorie Spotlight.",
+              },
+              {
+                title: "Raids — /5",
+                icon: HeartHandshake,
+                accent: "#818cf8",
+                body: "Équilibre raids donnés / reçus sur la période ; reflète l&apos;entraide réseau Twitch au sein de TENF.",
+              },
+              {
+                title: "Discord — /5",
+                icon: Mic2,
+                accent: "#5865F2",
+                body: "Synthèse activité serveur (écrit + vocal) issue des imports et règles définies dans la section B Discord.",
+              },
+              {
+                title: "Événements — /2",
+                icon: CalendarDays,
+                accent: "#34d399",
+                body: "Présence validée à au moins un événement TENF hors spotlight sur le mois (oui/non → 2 pts ou 0).",
+              },
+              {
+                title: "Follow — /5",
+                icon: Users,
+                accent: "#f472b6",
+                body: "Suivi des autres membres sur Twitch selon les validations follow ; mis à jour lors des passages en revue.",
+              },
+              {
+                title: "Bonus — /7",
+                icon: Gift,
+                accent: "#f59e0b",
+                body: "+2 décalage horaire lorsque activé, +0 à +5 modération selon la grille staff.",
+              },
+            ].map((card) => {
+              const IconCard = card.icon;
+              return (
+              <div
+                key={card.title}
+                className="group rounded-xl border p-4 transition hover:border-[var(--color-primary)]/35 hover:shadow-md"
+                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}
+              >
+                <div className="mb-3 flex items-center gap-3">
+                  <span
+                    className="rounded-lg p-2 transition group-hover:scale-105"
+                    style={{ backgroundColor: `${card.accent}22`, color: card.accent }}
+                  >
+                    <IconCard className="h-5 w-5" aria-hidden />
+                  </span>
+                  <h3 className="font-bold" style={{ color: "var(--color-text)" }}>
+                    {card.title}
+                  </h3>
+                </div>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                  {card.body}
+                </p>
+              </div>
+            );
+            })}
           </div>
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-              Discord (/5 points)
-            </h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-              Note calculée sur l'activité Discord : messages envoyés et temps passé en vocal. 
-              Reflète l'implication dans la communauté sur le serveur Discord.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-              Events (/2 points)
-            </h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-              Points basés sur la présence effective aux événements TENF (hors spotlight). 
-              Calcul proportionnel au taux de présence sur le mois.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-              Follow (/5 points)
-            </h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-              Points attribués sur la base du suivi des autres membres TENF sur Twitch. 
-              Évalué périodiquement lors des validations de suivi.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
-              Bonus
-            </h3>
-            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-              <strong>Décalage horaire:</strong> +2 points pour les membres avec un décalage horaire significatif.
-              <br />
-              <strong>Modération:</strong> +0 à +5 points selon l'implication en tant que modérateur.
-            </p>
-          </div>
+
+          <details className="group mt-6 rounded-xl border border-dashed" style={{ borderColor: "var(--color-border)" }}>
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--color-text)" }}>
+              <ChevronDown className="h-4 w-4 shrink-0 transition group-open:rotate-180" aria-hidden />
+              Règle de la note finale (/32) et statuts auto
+            </summary>
+            <div className="border-t px-4 py-3 text-xs leading-relaxed" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
+              <p>
+                <strong style={{ color: "var(--color-text)" }}>Note finale</strong> = total hors bonus (/25) + bonus (/7),
+                plafonné à /32. Une note <strong>≥ 16</strong> correspond au signal « VIP » dans cette vue ; une note{" "}
+                <strong>&lt; 5</strong> déclenche « À surveiller » pour relais humain côté staff.
+              </p>
+              <p className="mt-2">
+                Les overrides manuels et leur motif restent visibles dans l&apos;onglet <strong>Historique</strong> pour la
+                conformité et la confiance des membres.
+              </p>
+            </div>
+          </details>
         </div>
-        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
-          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            <strong>Note finale:</strong> Total hors bonus (/25) + Bonus (/7) = Note finale (/32). 
-            Une note finale &gt;= 16 indique un statut VIP potentiel, une note &lt; 5 nécessite une attention particulière.
-          </p>
-        </div>
-      </div>
       )}
 
       {/* Tableau récapitulatif */}
@@ -1702,6 +2048,7 @@ export default function EvaluationDPage() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
