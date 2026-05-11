@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Menu, Search } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
 import { findActiveHub, getNavigationByMode, type AdminMode } from "@/lib/admin/navigation";
+import { useFilteredAdminNav, useAdminNavHrefAllowed } from "@/components/admin/AdminNavAccessContext";
 
 const ADMIN_MODE_COOKIE = "admin_mode";
 
@@ -89,7 +90,8 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
     };
   }, []);
 
-  const navItems = useMemo(() => getNavigationByMode(adminMode), [adminMode]);
+  const baseNavItems = useMemo(() => getNavigationByMode(adminMode), [adminMode]);
+  const navItems = useFilteredAdminNav(baseNavItems);
   const activeHub = useMemo(() => findActiveHub(navItems, pathname), [navItems, pathname]);
   const orderedNavItems = useMemo(() => {
     return navItems.slice().sort((a, b) => {
@@ -99,6 +101,13 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
       return a.label.localeCompare(b.label, "fr-FR");
     });
   }, [navItems]);
+
+  const logoHomeHref = useMemo(() => {
+    if (orderedNavItems.length > 0) return orderedNavItems[0].href;
+    return "/admin/mon-compte";
+  }, [orderedNavItems]);
+
+  const canShowSearchShortcut = useAdminNavHrefAllowed("/admin/search");
 
   return (
     <header
@@ -123,7 +132,7 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
             </button>
 
             <Link
-              href="/admin/pilotage"
+              href={logoHomeHref}
               className={`flex min-w-0 flex-1 items-center gap-[clamp(0.4rem,1vw,0.75rem)] rounded-xl py-1.5 pl-1 pr-2 ring-1 ring-violet-500/10 transition hover:bg-violet-950/15 hover:ring-violet-400/20 sm:min-w-0 sm:flex-initial sm:pr-3 ${focusRing}`}
             >
               <span className="flex shrink-0 rounded-lg bg-zinc-900/90 p-0.5 ring-1 ring-violet-900/40 shadow-inner shadow-black/40">
@@ -148,13 +157,15 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
           </div>
 
           <div className="flex min-h-[2.75rem] w-full min-w-0 shrink-0 flex-wrap items-center justify-end gap-[clamp(0.35rem,1vw,0.5rem)] border-t border-zinc-800/50 bg-gradient-to-l from-sky-950/20 via-zinc-950/50 to-[#09090b] py-2 pl-3 pr-[clamp(0.75rem,2.5vw,1.5rem)] sm:w-auto sm:min-h-0 sm:border-l sm:border-t-0 sm:border-zinc-700/40 sm:py-0 sm:pl-[clamp(0.75rem,2vw,1.25rem)] lg:min-h-[3.25rem]">
-            <Link
-              href="/admin/search"
-              title="Rechercher un membre"
-              className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-700/40 bg-zinc-900/40 text-zinc-400 transition hover:border-sky-700/50 hover:bg-sky-950/25 hover:text-zinc-100 sm:h-10 sm:w-10 ${focusRing}`}
-            >
-              <Search className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} aria-hidden />
-            </Link>
+            {canShowSearchShortcut && (
+              <Link
+                href="/admin/search"
+                title="Rechercher un membre"
+                className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-700/40 bg-zinc-900/40 text-zinc-400 transition hover:border-sky-700/50 hover:bg-sky-950/25 hover:text-zinc-100 sm:h-10 sm:w-10 ${focusRing}`}
+              >
+                <Search className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} aria-hidden />
+              </Link>
+            )}
 
             {canAccessAdvanced &&
               (adminMode === "advanced" ? (

@@ -10,6 +10,7 @@ import {
   type AdminMode,
   type NavItem,
 } from "@/lib/admin/navigation";
+import { useFilteredAdminNav } from "@/components/admin/AdminNavAccessContext";
 
 const ADMIN_MODE_COOKIE = "admin_mode";
 const EVALUATION_V2_ITEM_HREF = "/admin/evaluation/v2";
@@ -42,7 +43,8 @@ export default function AdminSidebar({
   const [navReady, setNavReady] = useState(false);
   const [evaluationV2Validated, setEvaluationV2Validated] = useState<boolean | null>(null);
 
-  const navItems = useMemo(() => getNavigationByMode(adminMode), [adminMode]);
+  const baseNavItems = useMemo(() => getNavigationByMode(adminMode), [adminMode]);
+  const navItems = useFilteredAdminNav(baseNavItems);
   const activeHub = useMemo(
     () => findActiveHub(navItems, pathname || "/admin"),
     [navItems, pathname]

@@ -772,3 +772,24 @@ export function findActiveHub(navItems: NavItem[], pathname: string): NavItem | 
   const matched = navItems.find((item) => isItemActiveInTree(item, pathname));
   return matched || navItems[0];
 }
+
+/** Tous les href présents dans un arbre de navigation (feuilles et nœuds). */
+export function collectNavHrefs(items: NavItem[]): string[] {
+  const out = new Set<string>();
+  function walk(nodes: NavItem[]) {
+    for (const n of nodes) {
+      out.add(n.href);
+      if (n.children?.length) walk(n.children);
+    }
+  }
+  walk(items);
+  return [...out];
+}
+
+/** Union des href du menu simple et du menu avancé (pour l’API filtrage accès). */
+export function allAdminNavHrefsUnion(): string[] {
+  const s = new Set<string>();
+  for (const h of collectNavHrefs(adminNavigationSimple)) s.add(h);
+  for (const h of collectNavHrefs(adminNavigationAvance)) s.add(h);
+  return [...s];
+}
