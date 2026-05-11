@@ -7,22 +7,30 @@ import { getDiscordUser } from "@/lib/discord";
 import { discordAvatarUrl } from "@/lib/discordAvatarUrl";
 import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
 import AdminTableShell from "@/components/admin/ui/AdminTableShell";
+import CandidateAnswersFiche from "@/components/admin/postulations/CandidateAnswersFiche";
 import { isFounder } from "@/lib/adminRoles";
+import type { StaffApplicationAnswers } from "@/lib/staffApplicationsStorage";
 import {
   Activity,
   ArrowRight,
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  Clock3,
+  Copy,
   Flag,
   Gauge,
   HeartHandshake,
+  MapPin,
   MessageSquare,
   RefreshCw,
+  Shield,
   ShieldCheck,
   Sparkles,
   Star,
+  UserCog,
   Users,
+  X,
 } from "lucide-react";
 
 type StaffApplication = {
@@ -174,6 +182,32 @@ function pipelineDecisionTone(
   return "progress";
 }
 
+function formatRelativeReceived(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const diff = Date.now() - t;
+  const days = Math.floor(diff / 86400000);
+  if (days <= 0) return "Reçu aujourd’hui";
+  if (days === 1) return "Reçu hier";
+  if (days < 7) return `Reçu il y a ${days} j.`;
+  if (days < 30) return `Reçu il y a ${Math.floor(days / 7)} sem.`;
+  return `Reçu le ${new Date(iso).toLocaleDateString("fr-FR")}`;
+}
+
+function pipelineDotsClass(status: StaffApplication["admin_status"], index: number): string {
+  const pi = pipelineStepIndex(status);
+  const tone = pipelineDecisionTone(status);
+  const base = "h-1.5 w-7 shrink-0 rounded-full transition";
+  if (index < pi) return `${base} bg-emerald-500/70`;
+  if (index > pi) return `${base} bg-slate-700/90`;
+  if (index === 3 && pi === 3) {
+    if (tone === "ok") return `${base} bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.45)]`;
+    if (tone === "ko") return `${base} bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,0.4)]`;
+    if (tone === "archived") return `${base} bg-slate-400`;
+  }
+  return `${base} bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.35)]`;
+}
+
 export default function PostulationsStaffPage() {
   const [applications, setApplications] = useState<StaffApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,6 +243,7 @@ export default function PostulationsStaffPage() {
   const [finalDecisionOutcome, setFinalDecisionOutcome] = useState<FounderFinalDecision["outcome"]>("soutien_tenf");
   const [finalDecisionMemberMessage, setFinalDecisionMemberMessage] = useState("");
   const [workspaceTab, setWorkspaceTab] = useState<"candidat" | "equipe">("candidat");
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   const SAVED_VIEWS_KEY = "tenf-admin-postulations-saved-views";
 
@@ -223,6 +258,13 @@ export default function PostulationsStaffPage() {
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((item) => item.id !== toast.id));
     }, 3500);
+  }
+
+  function copyTextWithToast(label: string, text: string) {
+    const t = text.trim();
+    if (!t) return;
+    void navigator.clipboard.writeText(t);
+    pushToast("success", "Copié", label);
   }
 
   function parseStructuredAdminNotes(notes: string[] | undefined): {
@@ -337,10 +379,13 @@ export default function PostulationsStaffPage() {
         throw new Error("Erreur chargement");
       }
       const data = await response.json();
-      setApplications(data.applications || []);
-      if (!selectedId && (data.applications || []).length > 0) {
-        setSelectedId(data.applications[0].id);
-      }
+      const list = (data.applications || []) as StaffApplication[];
+      setApplications(list);
+      setSelectedId((prev) => {
+        if (list.length === 0) return null;
+        if (prev && list.some((a) => a.id === prev)) return prev;
+        return list[0].id;
+      });
     } catch (error) {
       console.error("Erreur chargement postulations:", error);
     } finally {
@@ -471,9 +516,11 @@ export default function PostulationsStaffPage() {
     if (dateFilter && item.created_at.slice(0, 10) !== dateFilter) return false;
     if (search.trim()) {
       const q = search.trim().toLowerCase();
+      const twitch = (item.answers.pseudo_twitch || "").toLowerCase();
       if (
         !item.answers.pseudo_discord.toLowerCase().includes(q) &&
-        !item.applicant_username.toLowerCase().includes(q)
+        !item.applicant_username.toLowerCase().includes(q) &&
+        !twitch.includes(q)
       ) {
         return false;
       }
@@ -486,7 +533,43 @@ export default function PostulationsStaffPage() {
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
 
-  const selected = filtered.find((item) => item.id === selectedId) || filtered[0] || null;
+  const listPipelineStats = useMemo(() => {
+    const out = {
+      total: filtered.length,
+      nouveau: 0,
+      a_contacter: 0,
+      entretien_prevu: 0,
+      accepte: 0,
+      refuse: 0,
+      archive: 0,
+      flagged: 0,
+    };
+    for (const a of filtered) {
+      out[a.admin_status]++;
+      if (a.has_red_flag) out.flagged++;
+    }
+    return out;
+  }, [filtered]);
+
+  const selected = useMemo(() => {
+    if (!selectedId) return null;
+    return applications.find((item) => item.id === selectedId) ?? null;
+  }, [applications, selectedId]);
+
+  const selectedHiddenByFilters = useMemo(() => {
+    if (!selected) return false;
+    return !filtered.some((item) => item.id === selected.id);
+  }, [selected, filtered]);
+
+  function resetListFilters() {
+    setSearch("");
+    setRoleFilter("all");
+    setStatusFilter("all");
+    setDateFilter("");
+    setFlagsOnly(false);
+    setOpenPipelineOnly(false);
+    setCurrentPage(1);
+  }
   const selectedAvatarSrc = selected
     ? discordAvatarUrl(selected.applicant_discord_id, selected.applicant_avatar)
     : null;
@@ -518,6 +601,42 @@ export default function PostulationsStaffPage() {
   useEffect(() => {
     setWorkspaceTab("candidat");
   }, [selected?.id]);
+
+  useEffect(() => {
+    if (!selected) setDetailModalOpen(false);
+  }, [selected]);
+
+  useEffect(() => {
+    if (!detailModalOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setDetailModalOpen(false);
+        return;
+      }
+      const el = e.target as HTMLElement | null;
+      if (el?.closest("input, textarea, select, [contenteditable=true]")) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "1") {
+        e.preventDefault();
+        setWorkspaceTab("candidat");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        setWorkspaceTab("equipe");
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [detailModalOpen]);
+
+  useEffect(() => {
+    if (!detailModalOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [detailModalOpen]);
 
   useEffect(() => {
     if (!selected) return;
@@ -992,14 +1111,32 @@ export default function PostulationsStaffPage() {
       </div>
       </section>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className={`${sectionCardClass} overflow-hidden`}>
+      <div className={`${sectionCardClass} overflow-hidden p-0`}>
           {filtered.length === 0 ? (
-            <div className="p-6 text-gray-400">Aucune postulation pour ces filtres.</div>
+            <div className="flex flex-col items-center justify-center gap-5 px-6 py-20 text-center">
+              <div className="flex h-24 w-24 items-center justify-center rounded-3xl border border-violet-400/30 bg-gradient-to-br from-violet-600/25 to-indigo-900/20 shadow-[0_0_40px_rgba(139,92,246,0.2)]">
+                <Users className="h-11 w-11 text-violet-200/90" aria-hidden />
+              </div>
+              <div className="max-w-md">
+                <p className="text-lg font-semibold text-white">Aucun dossier ne correspond aux filtres</p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                  Élargis la recherche (Discord, Twitch ou nom affiché), change le rôle ou le statut, ou repars sur une
+                  vue complète.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={resetListFilters}
+                className={`rounded-xl border border-violet-400/40 bg-violet-500/15 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/25 ${focusRingClass}`}
+              >
+                Réinitialiser recherche et filtres liste
+              </button>
+            </div>
           ) : (
             <AdminTableShell
+              variant="elevated"
               title="Dossiers candidats"
-              subtitle="Clique pour ouvrir la fiche — vue lecteur ou outils équipe"
+              subtitle="Chaque ligne résume l’identité, le rôle visé et l’avancement. Ouvre une fiche pour lire l’intégralité des réponses, les scénarios et les outils d’équipe (statuts, notes, décision)."
               searchValue={search}
               onSearchChange={setSearch}
               page={currentPage}
@@ -1007,161 +1144,400 @@ export default function PostulationsStaffPage() {
               total={filtered.length}
               onPageChange={setCurrentPage}
               onPageSizeChange={(size) => setPageSize(size)}
-              searchPlaceholder="Pseudo Discord, nom…"
+              searchPlaceholder="Discord, Twitch, nom affiché…"
+              statsSlot={
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/35 px-3 py-1.5 text-xs text-slate-300">
+                    <Users className="h-3.5 w-3.5 shrink-0 text-violet-300" aria-hidden />
+                    <span>
+                      <strong className="font-semibold text-white">{listPipelineStats.total}</strong>{" "}
+                      {listPipelineStats.total > 1 ? "dossiers affichés" : "dossier affiché"}
+                      {applications.length !== listPipelineStats.total ? (
+                        <span className="text-slate-500"> sur {applications.length} au total</span>
+                      ) : null}
+                    </span>
+                  </span>
+                  {listPipelineStats.flagged > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-400/40 bg-rose-500/12 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-rose-100">
+                      <Flag className="h-3 w-3" aria-hidden />
+                      {listPipelineStats.flagged} signalé{listPipelineStats.flagged > 1 ? "s" : ""}
+                    </span>
+                  ) : null}
+                  {listPipelineStats.nouveau > 0 ? (
+                    <span className="rounded-full border border-sky-400/35 bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-100">
+                      Nouveau · {listPipelineStats.nouveau}
+                    </span>
+                  ) : null}
+                  {listPipelineStats.a_contacter > 0 ? (
+                    <span className="rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-100">
+                      À contacter · {listPipelineStats.a_contacter}
+                    </span>
+                  ) : null}
+                  {listPipelineStats.entretien_prevu > 0 ? (
+                    <span className="rounded-full border border-violet-400/35 bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-100">
+                      Entretien · {listPipelineStats.entretien_prevu}
+                    </span>
+                  ) : null}
+                  {listPipelineStats.accepte > 0 ? (
+                    <span className="rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-100">
+                      Accepté · {listPipelineStats.accepte}
+                    </span>
+                  ) : null}
+                  {listPipelineStats.refuse > 0 ? (
+                    <span className="rounded-full border border-rose-400/35 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-100">
+                      Refusé · {listPipelineStats.refuse}
+                    </span>
+                  ) : null}
+                  {listPipelineStats.archive > 0 ? (
+                    <span className="rounded-full border border-slate-500/35 bg-slate-600/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
+                      Archivé · {listPipelineStats.archive}
+                    </span>
+                  ) : null}
+                </div>
+              }
             >
               <div className="divide-y divide-white/[0.06]">
-              {paginated.map((application) => {
-                const rowAvatarSrc = discordAvatarUrl(
-                  application.applicant_discord_id,
-                  application.applicant_avatar
-                );
-                return (
-                <button
-                  key={application.id}
-                  type="button"
-                  onClick={() => setSelectedId(application.id)}
-                  className={`w-full text-left p-4 transition-all ${
+                {paginated.map((application) => {
+                  const rowAvatarSrc = discordAvatarUrl(
+                    application.applicant_discord_id,
+                    application.applicant_avatar
+                  );
+                  const RoleIcon =
+                    application.answers.role_postule === "moderateur"
+                      ? Shield
+                      : application.answers.role_postule === "soutien"
+                        ? HeartHandshake
+                        : Users;
+                  const pays = application.answers.pays_fuseau?.trim();
+                  const engagement = application.answers.engagement_hebdo;
+                  const twitch = application.answers.pseudo_twitch?.trim();
+                  const assignee = application.assigned_to?.trim();
+                  return (
+                    <button
+                      key={application.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(application.id);
+                        setDetailModalOpen(true);
+                      }}
+                      className={`group relative w-full text-left transition-all ${
                         selected?.id === application.id
-                          ? "bg-gradient-to-r from-violet-950/50 to-indigo-950/30 ring-1 ring-inset ring-violet-500/35"
-                          : "hover:bg-white/[0.04]"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {rowAvatarSrc ? (
-                      <Image
-                        src={rowAvatarSrc}
-                        alt=""
-                        width={48}
-                        height={48}
-                        className="h-12 w-12 shrink-0 rounded-2xl border border-white/10 object-cover"
-                        sizes="48px"
-                      />
-                    ) : (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-violet-400/25 bg-violet-500/15 text-sm font-bold text-violet-100">
-                        {application.answers.pseudo_discord.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-white">{application.answers.pseudo_discord}</p>
-                        {application.has_red_flag ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/35 bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-200">
-                            <Flag className="h-3 w-3" aria-hidden />
-                            Signalé
-                          </span>
-                        ) : null}
-                        {typeof application.score === "number" ? (
-                          <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
-                            Score {application.score}/5
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {formatRole(application.answers.role_postule)} ·{" "}
-                        {new Date(application.created_at).toLocaleDateString("fr-FR")}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeStyles(application.admin_status)}`}
+                          ? "bg-gradient-to-r from-violet-950/60 via-violet-900/20 to-transparent ring-1 ring-inset ring-violet-500/45"
+                          : "hover:bg-white/[0.045]"
+                      }`}
                     >
-                      {formatStatus(application.admin_status)}
-                    </span>
-                  </div>
-                </button>
-                );
-              })}
+                      <div className="flex items-stretch gap-4 px-4 py-4 md:gap-5 md:px-6 md:py-5">
+                        <div className="relative shrink-0">
+                          <div
+                            className="pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-br from-violet-500/50 to-cyan-400/25 opacity-0 blur-md transition duration-300 group-hover:opacity-80"
+                            aria-hidden
+                          />
+                          {rowAvatarSrc ? (
+                            <Image
+                              src={rowAvatarSrc}
+                              alt=""
+                              width={56}
+                              height={56}
+                              className="relative h-14 w-14 rounded-2xl border-2 border-white/15 object-cover shadow-lg shadow-black/40 ring-1 ring-white/10"
+                              sizes="56px"
+                            />
+                          ) : (
+                            <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-violet-400/35 bg-gradient-to-br from-violet-600/40 to-indigo-900/50 text-base font-bold text-violet-50 shadow-lg">
+                              {application.answers.pseudo_discord.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 pr-2 md:pr-4">
+                          <div className="flex flex-wrap items-center gap-2 gap-y-1.5">
+                            <p className="text-base font-bold tracking-tight text-white md:text-lg">
+                              {application.answers.pseudo_discord}
+                            </p>
+                            {application.applicant_username &&
+                            application.applicant_username !== application.answers.pseudo_discord ? (
+                              <span className="max-w-[10rem] truncate rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-slate-400 md:max-w-xs">
+                                @{application.applicant_username}
+                              </span>
+                            ) : null}
+                            {application.has_red_flag ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/40 bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-100">
+                                <Flag className="h-3 w-3" aria-hidden />
+                                Signalé
+                              </span>
+                            ) : null}
+                            {typeof application.score === "number" ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/35 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-semibold text-emerald-100">
+                                <Gauge className="h-3 w-3 opacity-80" aria-hidden />
+                                Score auto {application.score}/5
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
+                            <span className="inline-flex items-center gap-1.5 font-medium text-violet-200/95">
+                              <RoleIcon className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                              {formatRole(application.answers.role_postule)}
+                            </span>
+                            <span className="text-slate-600" aria-hidden>
+                              ·
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-slate-500">
+                              <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                              {formatRelativeReceived(application.created_at)}
+                            </span>
+                            <span className="text-slate-600" aria-hidden>
+                              ·
+                            </span>
+                            <span className="text-slate-500">
+                              {new Date(application.created_at).toLocaleDateString("fr-FR", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {twitch ? (
+                              <span className="inline-flex max-w-full items-center gap-1 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium text-cyan-100/95">
+                                <span className="text-cyan-300/80">Twitch</span>
+                                <span className="truncate">{twitch}</span>
+                              </span>
+                            ) : null}
+                            {pays ? (
+                              <span className="inline-flex max-w-full items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-slate-300">
+                                <MapPin className="h-3 w-3 shrink-0 text-slate-500" aria-hidden />
+                                <span className="truncate">{pays}</span>
+                              </span>
+                            ) : null}
+                            {engagement ? (
+                              <span className="inline-flex items-center gap-1 rounded-lg border border-indigo-400/25 bg-indigo-500/10 px-2 py-1 text-[11px] font-medium text-indigo-100/90">
+                                Engagement ~{engagement}
+                              </span>
+                            ) : null}
+                            {assignee ? (
+                              <span className="inline-flex max-w-full items-center gap-1 truncate rounded-lg border border-amber-400/25 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100/90">
+                                Suivi · {assignee}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 flex-col items-end justify-between gap-3 pl-1">
+                          <div className="flex flex-col items-end gap-2">
+                            <span
+                              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide shadow-sm ${statusBadgeStyles(application.admin_status)}`}
+                            >
+                              {formatStatus(application.admin_status)}
+                            </span>
+                            <div
+                              className="flex items-center gap-1"
+                              title={`Étape : ${PIPELINE_LABELS[pipelineStepIndex(application.admin_status)]}`}
+                            >
+                              {PIPELINE_LABELS.map((_, i) => (
+                                <span
+                                  key={`${application.id}-dot-${i}`}
+                                  className={pipelineDotsClass(application.admin_status, i)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <span className="flex items-center gap-1 text-[11px] font-semibold text-violet-400/60 transition group-hover:text-violet-200">
+                            Ouvrir la fiche
+                            <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden />
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </AdminTableShell>
           )}
-        </div>
-
-        <div className={`${sectionCardClass} p-5 md:p-6`}>
-          {!selected ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-violet-400/25 bg-violet-500/10">
-                <ClipboardList className="h-8 w-8 text-violet-200/80" aria-hidden />
-              </div>
-              <p className="max-w-sm text-sm text-slate-400">
-                Choisis un dossier dans la liste pour lire les réponses comme un candidat les a écrites, puis passe à
-                l&apos;onglet <span className="text-indigo-200">Outils équipe</span> pour statuts, notes et décision.
+          {filtered.length > 0 ? (
+            <div className="border-t border-violet-500/20 bg-gradient-to-r from-violet-950/25 via-transparent to-cyan-950/10 px-4 py-4 md:px-6">
+              <p className="flex flex-wrap items-start gap-2 text-sm leading-relaxed text-slate-300 md:items-center">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-violet-300 md:mt-0" aria-hidden />
+                <span>
+                  <span className="font-medium text-slate-200">Navigation fiche</span> — toutes les réponses du
+                  formulaire, les scénarios et la zone staff sont dans la modale. Fermeture :{" "}
+                  <kbd className="rounded border border-white/15 bg-black/40 px-1.5 py-0.5 font-mono text-[11px] text-slate-200">
+                    Échap
+                  </kbd>
+                  , bouton fermer ou clic sur le fond assombri.
+                </span>
               </p>
             </div>
-          ) : (
-            <div className="space-y-5">
-              <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-white/10 bg-black/25 p-4">
-                <div className="flex items-start gap-3">
+          ) : null}
+        </div>
+
+      {detailModalOpen && selected ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-stretch justify-center p-0 sm:p-4 md:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="postulation-modal-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity"
+            aria-label="Fermer la fiche"
+            onClick={() => setDetailModalOpen(false)}
+          />
+          <div className="relative z-10 flex h-[100dvh] max-h-[100dvh] w-full max-w-[min(100%,96rem)] flex-col overflow-hidden rounded-none border border-violet-500/30 bg-[#06060c] shadow-[0_32px_120px_rgba(0,0,0,0.75),0_0_0_1px_rgba(139,92,246,0.12)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-2xl">
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-violet-600/30 via-indigo-900/10 to-transparent"
+              aria-hidden
+            />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" aria-hidden />
+
+            <header className="relative shrink-0 border-b border-white/[0.09] bg-[#080a11]/90 px-4 py-4 backdrop-blur-xl md:px-6 md:py-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex min-w-0 flex-1 gap-4">
                   {selectedAvatarSrc ? (
                     <Image
                       src={selectedAvatarSrc}
                       alt=""
-                      width={64}
-                      height={64}
-                      className="h-16 w-16 shrink-0 rounded-2xl border border-white/10 object-cover"
-                      sizes="64px"
+                      width={56}
+                      height={56}
+                      className="h-14 w-14 shrink-0 rounded-2xl border-2 border-white/15 object-cover shadow-lg shadow-violet-950/40 ring-1 ring-violet-500/20"
+                      sizes="56px"
                     />
                   ) : (
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-violet-400/30 bg-violet-500/15 text-xl font-bold text-violet-100">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-violet-400/40 bg-gradient-to-br from-violet-600/50 to-indigo-950/60 text-lg font-bold text-violet-50 shadow-lg">
                       {selected.answers.pseudo_discord.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div>
-                    <h2 className="text-xl font-bold text-white">{selected.answers.pseudo_discord}</h2>
-                    <p className="mt-1 text-xs text-slate-400">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-300/85">
+                      Fiche postulation
+                    </p>
+                    <h2
+                      id="postulation-modal-title"
+                      className="mt-1 truncate text-xl font-bold tracking-tight text-white md:text-2xl"
+                    >
+                      {selected.answers.pseudo_discord}
+                    </h2>
+                    <p className="mt-1 truncate text-sm text-slate-400">
                       {formatRole(selected.answers.role_postule)} · reçu le{" "}
                       {new Date(selected.created_at).toLocaleString("fr-FR")}
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span
-                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeStyles(selected.admin_status)}`}
+                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusBadgeStyles(selected.admin_status)}`}
                       >
                         {formatStatus(selected.admin_status)}
                       </span>
                       {typeof selected.score === "number" ? (
-                        <span className="rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-200">
-                          Score auto {selected.score}/5
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/35 bg-emerald-500/12 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-100">
+                          <Gauge className="h-3 w-3 opacity-80" aria-hidden />
+                          Score {selected.score}/5
+                        </span>
+                      ) : null}
+                      {selected.answers.pseudo_twitch?.trim() ? (
+                        <span className="rounded-md border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-100/90">
+                          Twitch {selected.answers.pseudo_twitch.trim()}
+                        </span>
+                      ) : null}
+                      {selected.answers.pays_fuseau?.trim() ? (
+                        <span className="inline-flex max-w-[12rem] items-center gap-1 truncate rounded-md border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] text-slate-300">
+                          <MapPin className="h-3 w-3 shrink-0 text-slate-500" aria-hidden />
+                          {selected.answers.pays_fuseau.trim()}
+                        </span>
+                      ) : null}
+                      {selected.answers.engagement_hebdo ? (
+                        <span className="rounded-md border border-indigo-400/25 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-100/90">
+                          ~{selected.answers.engagement_hebdo}
                         </span>
                       ) : null}
                     </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => exportFullApplication(selected)}
-                  className={`rounded-xl border border-indigo-400/35 bg-indigo-500/15 px-4 py-2 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/25 ${focusRingClass}`}
-                >
-                  Exporter JSON complet
-                </button>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => copyTextWithToast("Identifiant dossier", selected.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10 ${focusRingClass}`}
+                    title={selected.id}
+                  >
+                    <Copy className="h-3.5 w-3.5 opacity-80" aria-hidden />
+                    ID dossier
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyTextWithToast("ID Discord", selected.applicant_discord_id)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10 ${focusRingClass}`}
+                  >
+                    <Copy className="h-3.5 w-3.5 opacity-80" aria-hidden />
+                    ID Discord
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => exportFullApplication(selected)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border border-indigo-400/40 bg-indigo-500/20 px-3 py-2 text-xs font-semibold text-indigo-50 transition hover:bg-indigo-500/30 ${focusRingClass}`}
+                  >
+                    Exporter JSON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDetailModalOpen(false)}
+                    className={`inline-flex items-center justify-center rounded-xl border border-rose-400/30 bg-rose-500/15 p-2.5 text-rose-100 transition hover:bg-rose-500/25 ${focusRingClass}`}
+                    aria-label="Fermer"
+                  >
+                    <X className="h-5 w-5" aria-hidden />
+                  </button>
+                </div>
               </div>
 
-              <div className="flex gap-2 rounded-2xl border border-white/10 bg-black/30 p-1">
-                <button
-                  type="button"
-                  onClick={() => setWorkspaceTab("candidat")}
-                  className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${focusRingClass} ${
-                    workspaceTab === "candidat"
-                      ? "bg-violet-600/35 text-white shadow-inner shadow-violet-900/40"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  Lecture candidat
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWorkspaceTab("equipe")}
-                  className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${focusRingClass} ${
-                    workspaceTab === "equipe"
-                      ? "bg-indigo-600/35 text-white shadow-inner shadow-indigo-900/40"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  Outils équipe
-                </button>
+              <div className="mt-5 flex flex-col gap-3 border-t border-white/[0.06] pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-1 gap-1 rounded-2xl border border-white/10 bg-black/45 p-1 shadow-inner shadow-black/40">
+                  <button
+                    type="button"
+                    onClick={() => setWorkspaceTab("candidat")}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${focusRingClass} ${
+                      workspaceTab === "candidat"
+                        ? "bg-gradient-to-r from-violet-600/50 to-violet-800/40 text-white shadow-md shadow-violet-950/50"
+                        : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
+                    }`}
+                  >
+                    <ClipboardList className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                    Lecture candidat
+                    <kbd className="hidden rounded border border-white/15 bg-black/30 px-1.5 py-0.5 font-mono text-[10px] text-slate-400 sm:inline">1</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWorkspaceTab("equipe")}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${focusRingClass} ${
+                      workspaceTab === "equipe"
+                        ? "bg-gradient-to-r from-indigo-600/50 to-indigo-900/40 text-white shadow-md shadow-indigo-950/50"
+                        : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
+                    }`}
+                  >
+                    <UserCog className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                    Outils équipe
+                    <kbd className="hidden rounded border border-white/15 bg-black/30 px-1.5 py-0.5 font-mono text-[10px] text-slate-400 sm:inline">2</kbd>
+                  </button>
+                </div>
+                <p className="text-center text-[11px] leading-relaxed text-slate-500 sm:max-w-[14rem] sm:text-right">
+                  <kbd className="rounded border border-white/12 bg-black/40 px-1 font-mono text-slate-300">1</kbd>{" "}
+                  fiche ·{" "}
+                  <kbd className="rounded border border-white/12 bg-black/40 px-1 font-mono text-slate-300">2</kbd>{" "}
+                  staff · <kbd className="rounded border border-white/12 bg-black/40 px-1 font-mono text-slate-300">Échap</kbd>{" "}
+                  fermer
+                </p>
               </div>
+            </header>
+
+            <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[radial-gradient(ellipse_90%_40%_at_50%_-10%,rgba(99,102,241,0.14),transparent_55%),linear-gradient(180deg,#0a0b12,#06060a)] px-4 py-5 md:px-8 md:py-6">
+            <div className="mx-auto max-w-5xl space-y-5">
 
               {workspaceTab === "candidat" && (
               <>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Progression dossier</p>
+              <div className="rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/30 via-black/40 to-black/60 p-4 shadow-lg shadow-violet-950/20 md:p-5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300/80">
+                  Progression dossier
+                </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {PIPELINE_LABELS.map((label, i) => {
                     const pi = pipelineStepIndex(selected.admin_status);
@@ -1191,57 +1567,54 @@ export default function PostulationsStaffPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <article className="rounded-lg border border-gray-700 bg-[#101116] p-3">
-                  <p className="text-xs uppercase tracking-wide text-purple-300 mb-2">{roleTrackTitle(selected.answers.role_postule)}</p>
-                  <p className="text-sm text-gray-300"><strong>Pourquoi TENF:</strong> {formatText(selected.answers.pourquoi_tenf)}</p>
-                  <p className="text-sm text-gray-300 mt-2"><strong>Pourquoi ce poste:</strong> {formatText(selected.answers.pourquoi_role)}</p>
-                  <p className="text-sm text-gray-300 mt-2"><strong>Motivation:</strong> {formatText(selected.answers.motivation_560)}</p>
-                </article>
-                <article className="rounded-lg border border-gray-700 bg-[#101116] p-3">
-                  <p className="text-xs uppercase tracking-wide text-blue-300 mb-2">Profil candidat</p>
-                  <div className="space-y-1 text-sm text-gray-300">
-                    <p><strong>Pseudo Twitch:</strong> {formatText(selected.answers.pseudo_twitch)}</p>
-                    <p><strong>Age:</strong> {selected.answers.age ?? "-"}</p>
-                    <p><strong>Pays/fuseau:</strong> {formatText(selected.answers.pays_fuseau)}</p>
-                    <p><strong>Disponibilites:</strong> {formatText(selected.answers.disponibilites)}</p>
-                    <p><strong>Engagement hebdo:</strong> {selected.answers.engagement_hebdo || "-"}</p>
-                  </div>
-                </article>
-              </div>
+              {selectedHiddenByFilters ? (
+                <div className="flex flex-col gap-3 rounded-2xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-amber-50/95">
+                    <span className="font-semibold text-amber-100">Hors liste filtrée.</span>{" "}
+                    La fiche affichée correspond bien à ce candidat, mais il n’apparaît pas dans le tableau avec les
+                    filtres actuels.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={resetListFilters}
+                    className={`shrink-0 rounded-xl border border-amber-300/40 bg-amber-400/15 px-4 py-2 text-xs font-semibold text-amber-50 transition hover:bg-amber-400/25 ${focusRingClass}`}
+                  >
+                    Réinitialiser les filtres
+                  </button>
+                </div>
+              ) : null}
 
-              {(selected.answers.role_postule === "moderateur" || selected.answers.role_postule === "les_deux") ? (
-                <article className="rounded-lg border border-indigo-700/50 bg-[#0f1020] p-3">
-                  <p className="text-xs uppercase tracking-wide text-indigo-300 mb-2">Lecture ciblee moderation</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-300">
-                    <p><strong>Niveau Discord:</strong> {selected.answers.niveau_discord ?? "-"}/5</p>
-                    <p><strong>Proportionnalite:</strong> {formatBool(selected.answers.principes_proportionnalite)}</p>
-                    <p><strong>Difference sanctions:</strong> {formatBool(selected.answers.difference_sanctions)}</p>
-                    <p><strong>Redaction CR:</strong> {formatBool(selected.answers.redaction_cr)}</p>
-                    <p className="md:col-span-2"><strong>Scenario clash vocal:</strong> {formatText(selected.answers.scenario_clash_vocal)}</p>
-                    <p className="md:col-span-2"><strong>Scenario DM grave:</strong> {formatText(selected.answers.scenario_dm_grave)}</p>
-                    <p className="md:col-span-2"><strong>Scenario manipulation:</strong> {formatText(selected.answers.scenario_manipulation)}</p>
+              <div className="rounded-2xl border border-white/[0.1] bg-[#080910]/95 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:p-5">
+                <div className="mb-4 flex flex-col gap-2 border-b border-white/[0.07] pb-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300/90">
+                      Réponses formulaire — {roleTrackTitle(selected.answers.role_postule)}
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-400">
+                      Sommaire cliquable, replis par bloc, recherche globale et copie champ par champ. Fais défiler ou
+                      saute à une section depuis la barre violette en haut de la fiche.
+                    </p>
                   </div>
-                </article>
-              ) : (
-                <article className="rounded-lg border border-emerald-700/50 bg-[#0c1715] p-3">
-                  <p className="text-xs uppercase tracking-wide text-emerald-300 mb-2">Lecture ciblee soutien</p>
-                  <div className="space-y-1 text-sm text-gray-300">
-                    <p><strong>Pôles d'interet:</strong> {formatList(selected.answers.poles_interet)}</p>
-                    <p><strong>Objectif apprentissage:</strong> {formatText(selected.answers.objectif_apprentissage)}</p>
-                    <p><strong>Style communication:</strong> {selected.answers.style_communication || "-"}</p>
-                    <p><strong>Commentaire libre:</strong> {formatText(selected.answers.commentaire_libre)}</p>
-                  </div>
-                </article>
-              )}
+                </div>
+                <CandidateAnswersFiche variant="modal" answers={selected.answers as StaffApplicationAnswers} />
+              </div>
               </>
               )}
 
               {workspaceTab === "equipe" && (
-              <div className="border-t border-white/10 pt-4 space-y-4">
-                <p className="text-xs font-medium text-indigo-200/90">
-                  Statut admin, assignation, relecture croisée et décision — réservé au staff TENF.
-                </p>
+              <div className="rounded-2xl border border-indigo-400/30 bg-gradient-to-b from-indigo-950/45 via-[#0a0c18] to-black/55 p-5 shadow-[inset_0_1px_0_rgba(129,140,248,0.15)] md:p-6">
+                <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-indigo-400/20 pb-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-indigo-400/35 bg-indigo-500/20 text-indigo-100">
+                    <UserCog className="h-5 w-5" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-indigo-100">Espace staff</p>
+                    <p className="mt-0.5 text-xs text-indigo-200/75">
+                      Statut, assignation, relecture croisée, avis et décision — réservé au staff TENF.
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4">
                 <label className="block text-sm text-gray-300">Statut</label>
                 <select
                   value={selected.admin_status}
@@ -1548,12 +1921,14 @@ export default function PostulationsStaffPage() {
                 >
                   Archiver
                 </button>
+                </div>
               </div>
               )}
             </div>
-          )}
+            </div>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

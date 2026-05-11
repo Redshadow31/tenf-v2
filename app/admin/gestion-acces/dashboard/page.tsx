@@ -328,6 +328,7 @@ export default function DashboardManagementPage() {
           label,
           roles,
           supportDiscordIds: sections[href]?.supportDiscordIds || [],
+          extraDiscordIds: sections[href]?.extraDiscordIds || [],
         };
       };
 

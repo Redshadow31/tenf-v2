@@ -1,6 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/requireAdmin";
+import { getAuthenticatedAdmin, requireRole, type AuthenticatedAdmin } from "@/lib/requireAdmin";
 import { normalizeAdminRole, type AdminRole } from "@/lib/adminRoles";
+import { resetSectionPermissionsCache } from "@/lib/sectionPermissions";
+
+/** Aligné sur /api/admin/access : en dev, bypass fondateur sauf ENABLE_DEV_AUTH="false" */
+const DEV_AUTH_RELAXED =
+  process.env.NODE_ENV !== "production" && process.env.ENABLE_DEV_AUTH !== "false";
+
+const DEV_MOCK_FOUNDER: AuthenticatedAdmin = {
+  id: process.env.DEV_BYPASS_DISCORD_ID || "333001130705420299",
+  discordId: process.env.DEV_BYPASS_DISCORD_ID || "333001130705420299",
+  username: process.env.DEV_BYPASS_USERNAME || "Dev Fondateur",
+  avatar: null,
+  role: "FONDATEUR",
+};
+
+async function requireFounderOrDevRelaxedBypass(): Promise<AuthenticatedAdmin | null> {
+  const founder = await requireRole("FONDATEUR");
+  if (founder) return founder;
+  if (!DEV_AUTH_RELAXED) return null;
+  return DEV_MOCK_FOUNDER;
+}
+
+/** Préfère l’ID Discord de la session réelle pour l’audit (ex. Clara en local). */
+async function resolveAuditDiscordId(fallbackDiscordId: string): Promise<string> {
+  try {
+    const actor = await getAuthenticatedAdmin();
+    const id = actor?.discordId?.trim();
+    if (id) return id;
+  } catch {
+    /* ignore */
+  }
+  return fallbackDiscordId;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +41,7 @@ interface SectionPermission {
   label: string;
   roles: AdminRole[];
   supportDiscordIds?: string[];
+  extraDiscordIds?: string[];
 }
 
 interface PermissionsData {
@@ -23,8 +56,7 @@ interface PermissionsData {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Vérifier que l'utilisateur est fondateur
-    const admin = await requireRole("FONDATEUR");
+    const admin = await requireFounderOrDevRelaxedBypass();
     if (!admin) {
       return NextResponse.json(
         { error: "Accès refusé. Seuls les fondateurs peuvent accéder à cette ressource." },
@@ -44,6 +76,12 @@ export async function GET(request: NextRequest) {
           section.roles = (section.roles || [])
             .map((role) => normalizeAdminRole(role as unknown as string))
             .filter((role): role is AdminRole => role !== null);
+          if (Array.isArray(section.supportDiscordIds)) {
+            section.supportDiscordIds = section.supportDiscordIds.map((id) => String(id).trim()).filter(Boolean);
+          }
+          if (Array.isArray(section.extraDiscordIds)) {
+            section.extraDiscordIds = section.extraDiscordIds.map((id) => String(id).trim()).filter(Boolean);
+          }
         });
         return NextResponse.json({
           success: true,
@@ -77,14 +115,17 @@ export async function GET(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    // Vérifier que l'utilisateur est fondateur
-    const admin = await requireRole("FONDATEUR");
+    const admin = await requireFounderOrDevRelaxedBypass();
     if (!admin) {
       return NextResponse.json(
         { error: "Accès refusé. Seuls les fondateurs peuvent modifier les permissions." },
         { status: 403 }
       );
     }
+
+    const auditDiscordId = await resolveAuditDiscordId(admin.discordId);
+    const auditActor = await getAuthenticatedAdmin();
+    const auditUsername = auditActor?.username?.trim() || admin.username;
 
     const body = await request.json();
     const { permissions } = body;
@@ -144,6 +185,29 @@ export async function PUT(request: NextRequest) {
           );
         }
       }
+
+      if (
+        sectionPerm.extraDiscordIds !== undefined &&
+        !Array.isArray(sectionPerm.extraDiscordIds)
+      ) {
+        return NextResponse.json(
+          { error: `extraDiscordIds invalide pour la section ${href}. Format attendu: string[]` },
+          { status: 400 }
+        );
+      }
+
+      if (Array.isArray(sectionPerm.extraDiscordIds)) {
+        const invalidExtra = sectionPerm.extraDiscordIds.filter(
+          (id) => typeof id !== "string" || !/^\d{15,22}$/.test(id.trim())
+        );
+        if (invalidExtra.length > 0) {
+          return NextResponse.json(
+            { error: `extraDiscordIds contient des IDs Discord invalides pour la section ${href}` },
+            { status: 400 }
+          );
+        }
+        sectionPerm.extraDiscordIds = sectionPerm.extraDiscordIds.map((id) => id.trim());
+      }
     }
 
     // Sauvegarder dans Blobs
@@ -154,10 +218,11 @@ export async function PUT(request: NextRequest) {
       const permissionsData: PermissionsData = {
         sections: sections,
         lastUpdated: new Date().toISOString(),
-        updatedBy: admin.discordId,
+        updatedBy: auditDiscordId,
       };
 
       await store.set("dashboard-permissions", JSON.stringify(permissionsData));
+      resetSectionPermissionsCache();
 
       // Logger l'action
       try {
@@ -170,8 +235,8 @@ export async function PUT(request: NextRequest) {
             action: "UPDATE_PERMISSIONS",
             target: "dashboard-permissions",
             metadata: {
-              updatedBy: admin.discordId,
-              updatedByUsername: admin.username,
+              updatedBy: auditDiscordId,
+              updatedByUsername: auditUsername,
               sectionsCount: Object.keys(sections).length,
             },
           }),

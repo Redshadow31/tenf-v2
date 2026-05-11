@@ -63,13 +63,24 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(charterUrl);
     }
 
-    // Vérification spécifique pour la page de gestion des accès (réservée aux fondateurs uniquement)
+    // Gestion des accès : en prod, réservé aux fondateurs (rôle JWT).
+    // En dev local, même règle assouplie que /api/admin/access : sauf si ENABLE_DEV_AUTH="false",
+    // on laisse passer tout utilisateur connecté (Discord) pour coller au bypass API.
     if (pathname.startsWith("/admin/gestion-acces")) {
-      // Vérifier que l'utilisateur est fondateur (depuis le token JWT)
-      const normalizedRole = normalizeAdminRole((token.role as string | null | undefined) || null);
-      if (normalizedRole !== "FONDATEUR") {
-        // Rediriger vers la page d'accès refusé
-        return NextResponse.redirect(new URL("/unauthorized", request.url));
+      const devGestionAccesRelaxed =
+        process.env.NODE_ENV !== "production" && process.env.ENABLE_DEV_AUTH !== "false";
+
+      if (devGestionAccesRelaxed) {
+        if (!token?.discordId) {
+          const loginUrl = new URL("/api/auth/signin", request.url);
+          loginUrl.searchParams.set("callbackUrl", pathname);
+          return NextResponse.redirect(loginUrl);
+        }
+      } else {
+        const normalizedRole = normalizeAdminRole((token.role as string | null | undefined) || null);
+        if (normalizedRole !== "FONDATEUR") {
+          return NextResponse.redirect(new URL("/unauthorized", request.url));
+        }
       }
     }
 

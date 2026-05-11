@@ -10,6 +10,8 @@ export interface SectionPermission {
   label: string;
   roles: AdminRole[];
   supportDiscordIds?: string[];
+  /** IDs Discord autorisés explicitement sur cette page, quel que soit leur rôle (dérogation). */
+  extraDiscordIds?: string[];
 }
 
 interface PermissionsData {
@@ -44,6 +46,12 @@ export async function loadSectionPermissionsCache(): Promise<void> {
         section.roles = (section.roles || [])
           .map((role) => normalizeAdminRole(role as unknown as string))
           .filter((role): role is AdminRole => role !== null);
+        if (Array.isArray(section.supportDiscordIds)) {
+          section.supportDiscordIds = section.supportDiscordIds.map((id) => String(id).trim()).filter(Boolean);
+        }
+        if (Array.isArray(section.extraDiscordIds)) {
+          section.extraDiscordIds = section.extraDiscordIds.map((id) => String(id).trim()).filter(Boolean);
+        }
       });
       sectionPermissionsCache = sections;
     } else {
@@ -70,6 +78,12 @@ export function hasSectionAccess(sectionHref: string, role: AdminRole, discordId
   
   // Si la section n'existe pas, tous les rôles ont accès par défaut.
   if (!section) {
+    return true;
+  }
+
+  const extras = (section.extraDiscordIds || []).map((id) => id.trim()).filter(Boolean);
+  const did = discordId?.trim();
+  if (did && extras.includes(did)) {
     return true;
   }
 
@@ -107,7 +121,11 @@ export function hasSectionAccess(sectionHref: string, role: AdminRole, discordId
 export function hasSectionRestrictions(sectionHref: string): boolean {
   const section = sectionPermissionsCache[sectionHref];
   if (!section) return false;
-  return (section.roles && section.roles.length > 0) || ((section.supportDiscordIds || []).length > 0);
+  return (
+    (section.roles && section.roles.length > 0) ||
+    (section.supportDiscordIds || []).length > 0 ||
+    (section.extraDiscordIds || []).length > 0
+  );
 }
 
 /**
