@@ -974,6 +974,7 @@ function PagePermissionBlock({
   const [extraInputError, setExtraInputError] = useState<string | null>(null);
   const founderOnlyLocked = restricted && sectionPerm.roles.length === 1 && sectionPerm.roles.includes("FONDATEUR");
   const extras = sectionPerm.extraDiscordIds || [];
+  const [extrasDetailsOpen, setExtrasDetailsOpen] = useState(() => extras.length > 0);
   const extrasSig = extras.join(",");
   const pickableAdmins = useMemo(() => {
     const inExtras = new Set(extrasSig ? extrasSig.split(",") : []);
@@ -1099,7 +1100,8 @@ function PagePermissionBlock({
 
         <details
           className="group mt-5 overflow-hidden rounded-2xl border border-violet-900/40 bg-gradient-to-br from-violet-950/30 to-zinc-950/40 open:shadow-[0_0_24px_rgba(91,33,182,0.15)]"
-          defaultOpen={extras.length > 0}
+          open={extrasDetailsOpen}
+          onToggle={(e) => setExtrasDetailsOpen(e.currentTarget.open)}
         >
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 marker:hidden transition hover:bg-violet-950/25 [&::-webkit-details-marker]:hidden">
             <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-violet-200/90">
