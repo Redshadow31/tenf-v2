@@ -62,7 +62,9 @@ import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
-import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import { getRoleBadgeLabel, STAFF_MEMBER_ROLE_KEYS } from "@/lib/roleBadgeSystem";
+import { MemberRoleSelectOptions } from "@/components/admin/members-gestion/MemberRoleSelectOptions";
+import { getMemberRoleFilterOptions } from "@/lib/admin/members-gestion/memberListHelpers";
 import { calendarDayKey, indexIntegrationsByCalendarDay, type SessionDayIndex } from "@/lib/integrationSessionCalendar";
 import type { Member, MemberRole, MemberStatus, DiscordVerifyResult, DiscordVerifyResponse, PresetFilter, SortableColumn } from "@/lib/admin/members-gestion/types";
 import {
@@ -1057,12 +1059,11 @@ export default function GestionClient() {
       ? "Nouveaux"
       : "Archivé";
   const availableRoles = useMemo(
-    () =>
-      Array.from(new Set(members.map((member) => member.role))).sort((a, b) =>
-        a.localeCompare(b, "fr", { sensitivity: "base" })
-      ),
-    [members]
+    () => getMemberRoleFilterOptions(members.map((member) => member.role)),
+    [members],
   );
+
+  const staffRoleFilterOptions = useMemo(() => [...STAFF_MEMBER_ROLE_KEYS], []);
 
   // Fonction pour gérer le clic sur un en-tête de colonne
   const handleSort = (column: SortableColumn) => {
@@ -2934,11 +2935,22 @@ export default function GestionClient() {
                   title="Filtrer par rôle"
                 >
                   <option value="all">Tous les rôles</option>
-                  {availableRoles.map((role) => (
-                    <option key={role} value={role}>
-                      {getRoleBadgeLabel(role)}
-                    </option>
-                  ))}
+                  <optgroup label="Staff TENF">
+                    {staffRoleFilterOptions.map((role) => (
+                      <option key={role} value={role}>
+                        {getRoleBadgeLabel(role)}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Autres rôles">
+                    {availableRoles
+                      .filter((role) => !(staffRoleFilterOptions as readonly string[]).includes(role))
+                      .map((role) => (
+                        <option key={role} value={role}>
+                          {getRoleBadgeLabel(role)}
+                        </option>
+                      ))}
+                  </optgroup>
                 </select>
                 <select
                   value={memberStatusFilter}
@@ -3032,23 +3044,7 @@ export default function GestionClient() {
                 className="bg-[#0e0e10] border border-gray-700 rounded px-3 py-2 text-sm text-white"
               >
                 <option value="">Rôle (optionnel)</option>
-                <option value="Affilié">{getRoleBadgeLabel("Affilié")}</option>
-                <option value="Développement">{getRoleBadgeLabel("Développement")}</option>
-                <option value="Modérateur en Découverte">{getRoleBadgeLabel("Modérateur en Découverte")}</option>
-                <option value="Modérateur en Accompagnement">{getRoleBadgeLabel("Modérateur en Accompagnement")}</option>
-                <option value="Modérateur en Autonomie">{getRoleBadgeLabel("Modérateur en Autonomie")}</option>
-                <option value="Modérateur en formation">{getRoleBadgeLabel("Modérateur en formation")}</option>
-                <option value="Modérateur">{getRoleBadgeLabel("Modérateur")}</option>
-                <option value="Modérateur en activité réduite">{getRoleBadgeLabel("Modérateur en activité réduite")}</option>
-                <option value="Modérateur en pause">{getRoleBadgeLabel("Modérateur en pause")}</option>
-                <option value="Admin">{getRoleBadgeLabel("Admin")}</option>
-                <option value="Admin Coordinateur">{getRoleBadgeLabel("Admin Coordinateur")}</option>
-                <option value="Créateur Junior">{getRoleBadgeLabel("Créateur Junior")}</option>
-                <option value="Les P'tits Jeunes">Les P&apos;tits Jeunes</option>
-                <option value="Soutien TENF">{getRoleBadgeLabel("Soutien TENF")}</option>
-                <option value="Contributeur Invité TENF">{getRoleBadgeLabel("Contributeur Invité TENF")}</option>
-                <option value="Contributeur TENF du Mois">{getRoleBadgeLabel("Contributeur TENF du Mois")}</option>
-                <option value="Communauté">Communauté</option>
+                <MemberRoleSelectOptions />
               </select>
               <select
                 value={bulkStatus}

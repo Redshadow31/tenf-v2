@@ -1,6 +1,13 @@
 // Helper pour filtrer les liens de navigation admin selon les permissions
 
-import { getAdminRole, hasPermission, isFounder, type AdminRole, type Permission } from "./adminRoles";
+import {
+  ADMIN_ROLE_HIERARCHY,
+  getAdminRole,
+  hasPermission,
+  isFounder,
+  type AdminRole,
+  type Permission,
+} from "./adminRoles";
 
 export interface NavLink {
   href: string;
@@ -32,17 +39,8 @@ export function filterNavLinks(
 
     // Si requiredRole, vérifier le rôle
     if (link.requiredRole) {
-      const roleHierarchy: Record<AdminRole, number> = {
-        FONDATEUR: 4,
-        ADMIN_COORDINATEUR: 3,
-        MODERATEUR: 2,
-        MODERATEUR_EN_FORMATION: 1,
-        MODERATEUR_EN_PAUSE: 0,
-        SOUTIEN_TENF: 0,
-      };
-      
-      const userLevel = roleHierarchy[role] || 0;
-      const requiredLevel = roleHierarchy[link.requiredRole] || 0;
+      const userLevel = ADMIN_ROLE_HIERARCHY[role] ?? 0;
+      const requiredLevel = ADMIN_ROLE_HIERARCHY[link.requiredRole] ?? 0;
       
       if (userLevel < requiredLevel) {
         return false;

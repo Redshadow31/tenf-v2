@@ -9,6 +9,7 @@ import {
   type IntegrationRegistration,
 } from "@/lib/integrationStorage";
 import { calendarDayKey, indexIntegrationsByCalendarDay } from "@/lib/integrationSessionCalendar";
+import { toCanonicalMemberRole } from "@/lib/memberRoles";
 
 type CorrelationMember = {
   twitchLogin: string;
@@ -60,6 +61,15 @@ function isConsideredActivated(member: any): boolean {
   const role = normalizeRole(member?.role);
   if (member?.isActive === true) return true;
   return role === "affilie" || role === "developpement" || role === "actif";
+}
+
+/** Profil passé en Communauté après intégration (date sur une session) — hors file « À activer ». */
+function isCommunityAfterIntegration(member: any, sessionDayKeys: Set<string>): boolean {
+  if (toCanonicalMemberRole(String(member?.role || "")) !== "Communauté") return false;
+  const integRaw = member?.integrationDate ?? member?.integration_date;
+  if (!integRaw) return false;
+  const dayKey = calendarDayKey(integRaw);
+  return Boolean(dayKey && sessionDayKeys.has(dayKey));
 }
 
 async function loadAllMembers(): Promise<any[]> {
@@ -174,10 +184,11 @@ async function buildSnapshot(targetIntegrationId?: string, minAttendances = 1): 
         return candidate;
       }
       const memberStatus: CorrelationMember["memberStatus"] = member.isActive === true ? "actif" : "inactif";
+      const communityIntegrated = isCommunityAfterIntegration(member, sessionDayKeys);
       return {
         ...candidate,
         inMembersList: true,
-        consideredActivated: isConsideredActivated(member),
+        consideredActivated: isConsideredActivated(member) || communityIntegrated,
         memberRole: member.role,
         memberStatus,
       };

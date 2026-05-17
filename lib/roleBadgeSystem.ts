@@ -75,25 +75,38 @@ const LEGACY_ROLE_ALIASES: Record<string, string> = {
 // Ordre d'affichage suggéré dans les pickers (les CLÉS restent compatibles
 // avec les valeurs persistées en base ; le label affiché est résolu par
 // `getRoleBadgeLabel`).
-export const ROLE_BADGE_PICKER_OPTIONS = [
+/** Clés persistées en base — ordre d’affichage staff (nomenclature TENF 2026). */
+export const STAFF_MEMBER_ROLE_KEYS = [
+  "Admin",
+  "Admin Coordinateur",
+  "Modérateur",
+  "Modérateur en Autonomie",
+  "Modérateur en Accompagnement",
+  "Modérateur en Découverte",
+  "Modérateur en activité réduite",
+  "Modérateur en pause",
+  "Soutien TENF",
+  "Contributeur Invité TENF",
+] as const;
+
+export const COMMUNITY_MEMBER_ROLE_KEYS = [
   "Nouveau",
   "Affilié",
   "Développement",
-  "Soutien TENF",
   "Créateur Junior",
   "Les P'tits Jeunes",
   "Communauté",
-  "Modérateur en Découverte",
-  "Modérateur en Accompagnement",
-  "Modérateur en Autonomie",
-  "Modérateur en formation",
-  "Modérateur",
-  "Modérateur en activité réduite",
-  "Modérateur en pause",
-  "Admin",
-  "Admin Coordinateur",
-  "Contributeur Invité TENF",
   "Contributeur TENF du Mois",
+] as const;
+
+export const ROLE_BADGE_PICKER_OPTIONS = [
+  ...STAFF_MEMBER_ROLE_KEYS,
+  ...COMMUNITY_MEMBER_ROLE_KEYS,
+] as const;
+
+export const MEMBER_ROLE_PICKER_GROUPS = [
+  { label: "Staff TENF", keys: STAFF_MEMBER_ROLE_KEYS },
+  { label: "Créateurs & communauté", keys: COMMUNITY_MEMBER_ROLE_KEYS },
 ] as const;
 
 export const SYSTEM_BADGES = [
@@ -101,7 +114,6 @@ export const SYSTEM_BADGES = [
   "Modérateur en Découverte",
   "Modérateur en Accompagnement",
   "Modérateur en Autonomie",
-  "Modérateur en formation",
   "Modérateur",
   "Modérateur en activité réduite",
   "Modérateur en pause",
@@ -116,6 +128,22 @@ export const SYSTEM_BADGES = [
 
 export function normalizeRoleLabel(value: string): string {
   return LEGACY_ROLE_ALIASES[value] || value;
+}
+
+const PICKER_ORDER = new Map<string, number>(
+  ROLE_BADGE_PICKER_OPTIONS.map((role, index) => [role, index]),
+);
+
+/** Trie les rôles pour filtres / listes (staff en premier, ordre nomenclature). */
+export function sortMemberRolesForPicker(roles: Iterable<string>): string[] {
+  return [...roles].sort((a, b) => {
+    const na = normalizeRoleLabel(a);
+    const nb = normalizeRoleLabel(b);
+    const ia = PICKER_ORDER.get(na) ?? PICKER_ORDER.get(a) ?? 999;
+    const ib = PICKER_ORDER.get(nb) ?? PICKER_ORDER.get(b) ?? 999;
+    if (ia !== ib) return ia - ib;
+    return getRoleBadgeLabel(a).localeCompare(getRoleBadgeLabel(b), "fr", { sensitivity: "base" });
+  });
 }
 
 export function getRoleBadgeLabel(value: string): string {

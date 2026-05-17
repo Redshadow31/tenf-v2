@@ -4,7 +4,7 @@ import {
   type ModerationCharterValidationEntry,
 } from '@/lib/moderationCharterValidationsStorage';
 import { requireRole } from '@/lib/requireAdmin';
-import { isFounder, getAllAdminIds, getAdminRole, FOUNDERS, normalizeAdminRole, type AdminRole } from '@/lib/adminRoles';
+import { isFounder, getAllAdminIds, getAdminRole, FOUNDERS, normalizeAdminRole, ADMIN_ROLE_ORDER, type AdminRole } from '@/lib/adminRoles';
 import { loadAdminAccessCache } from '@/lib/adminAccessCache';
 import { memberRepository } from '@/lib/repositories';
 import { getBlobStore, getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
@@ -342,7 +342,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que le rôle est valide
-    const validRoles: AdminRole[] = ['FONDATEUR', 'ADMIN_COORDINATEUR', 'MODERATEUR', 'MODERATEUR_EN_FORMATION', 'MODERATEUR_EN_PAUSE', 'SOUTIEN_TENF'];
+    const validRoles: AdminRole[] = ADMIN_ROLE_ORDER;
     if (!validRoles.includes(normalizedRole)) {
       return NextResponse.json(
         { error: "Rôle invalide" },

@@ -246,6 +246,10 @@ export default function OnboardingActivationPage() {
       onScrollToPriority={scrollToPriority}
       onScrollToTable={scrollToTable}
       formatDateShort={formatDateShort}
+      onMemberLinked={() => {
+        setLoading(true);
+        void loadData();
+      }}
     >
       {candidatesTable}
     </OnboardingActivationHubView>

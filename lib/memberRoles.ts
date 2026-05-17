@@ -71,6 +71,9 @@ export function toCanonicalMemberRole(role: string): MemberRole {
   if (isLegacyMemberRole(role)) {
     return LEGACY_ROLE_TO_CANONICAL[role];
   }
+  if (role === "Modérateur en formation" || role === "Modérateur en Formation") {
+    return "Modérateur en Accompagnement";
+  }
   if (CANONICAL_MEMBER_ROLES.includes(role as MemberRole)) {
     return role as MemberRole;
   }

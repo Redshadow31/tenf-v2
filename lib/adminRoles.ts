@@ -5,9 +5,41 @@ export type AdminRole =
   | "FONDATEUR"
   | "ADMIN_COORDINATEUR"
   | "MODERATEUR"
-  | "MODERATEUR_EN_FORMATION"
+  | "MODERATEUR_AUTONOMIE"
+  | "MODERATEUR_ACCOMPAGNEMENT"
+  | "MODERATEUR_DECOUVERTE"
   | "MODERATEUR_EN_PAUSE"
-  | "SOUTIEN_TENF";
+  | "SOUTIEN_TENF"
+  | "CONTRIBUTEUR_INVITE";
+
+/** Ordre d’affichage — aligné sur `ORG_CHART_ROLE_OPTIONS` (organigramme staff). */
+export const ADMIN_ROLE_ORDER: AdminRole[] = [
+  "FONDATEUR",
+  "ADMIN_COORDINATEUR",
+  "MODERATEUR",
+  "MODERATEUR_AUTONOMIE",
+  "MODERATEUR_ACCOMPAGNEMENT",
+  "MODERATEUR_DECOUVERTE",
+  "MODERATEUR_EN_PAUSE",
+  "SOUTIEN_TENF",
+  "CONTRIBUTEUR_INVITE",
+];
+
+/** Rôles assignables sur /admin/gestion-acces/comptes (hors fondateurs). */
+export const ASSIGNABLE_ADMIN_ROLES: AdminRole[] = ADMIN_ROLE_ORDER.filter((r) => r !== "FONDATEUR");
+
+/** Hiérarchie pour comparer les niveaux d’accès (plus élevé = plus de droits). */
+export const ADMIN_ROLE_HIERARCHY: Record<AdminRole, number> = {
+  FONDATEUR: 8,
+  ADMIN_COORDINATEUR: 7,
+  MODERATEUR: 6,
+  MODERATEUR_AUTONOMIE: 5,
+  MODERATEUR_ACCOMPAGNEMENT: 4,
+  MODERATEUR_DECOUVERTE: 3,
+  MODERATEUR_EN_PAUSE: 2,
+  SOUTIEN_TENF: 1,
+  CONTRIBUTEUR_INVITE: 0,
+};
 
 export type LegacyAdminRole =
   | "FOUNDER"
@@ -57,9 +89,12 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   FONDATEUR: ["read", "write", "validate", "revert", "global_revert"],
   ADMIN_COORDINATEUR: ["read", "write", "validate", "revert"],
   MODERATEUR: ["read", "write", "validate"],
-  MODERATEUR_EN_FORMATION: ["read", "write"],
+  MODERATEUR_AUTONOMIE: ["read", "write", "validate"],
+  MODERATEUR_ACCOMPAGNEMENT: ["read", "write"],
+  MODERATEUR_DECOUVERTE: ["read"],
   MODERATEUR_EN_PAUSE: ["read"],
   SOUTIEN_TENF: ["read"],
+  CONTRIBUTEUR_INVITE: ["read"],
 };
 
 export function normalizeAdminRole(role: string | null | undefined): AdminRole | null {
@@ -71,11 +106,16 @@ export function normalizeAdminRole(role: string | null | undefined): AdminRole |
     ADMIN_ADJOINT: "ADMIN_COORDINATEUR",
     MODERATEUR: "MODERATEUR",
     MODO_MENTOR: "MODERATEUR",
-    MODERATEUR_EN_FORMATION: "MODERATEUR_EN_FORMATION",
-    MODO_JUNIOR: "MODERATEUR_EN_FORMATION",
+    MODERATEUR_AUTONOMIE: "MODERATEUR_AUTONOMIE",
+    MODERATEUR_ACCOMPAGNEMENT: "MODERATEUR_ACCOMPAGNEMENT",
+    MODERATEUR_EN_FORMATION: "MODERATEUR_ACCOMPAGNEMENT",
+    MODO_JUNIOR: "MODERATEUR_ACCOMPAGNEMENT",
+    MODERATEUR_DECOUVERTE: "MODERATEUR_DECOUVERTE",
     MODERATEUR_EN_PAUSE: "MODERATEUR_EN_PAUSE",
     MODO_PAUSE: "MODERATEUR_EN_PAUSE",
     SOUTIEN_TENF: "SOUTIEN_TENF",
+    CONTRIBUTEUR_INVITE: "CONTRIBUTEUR_INVITE",
+    CONTRIBUTEUR_TENF: "CONTRIBUTEUR_INVITE",
   };
   return map[role] || null;
 }
@@ -99,7 +139,7 @@ export function getAdminRole(discordId: string): AdminRole | null {
   // Le cache Blobs est vérifié séparément dans les routes API via getAdminRoleFromCache
   if (ADMINS_ADJOINTS.includes(discordId)) return "ADMIN_COORDINATEUR";
   if (MODOS_MENTORS.includes(discordId)) return "MODERATEUR";
-  if (MODOS_JUNIORS.includes(discordId)) return "MODERATEUR_EN_FORMATION";
+  if (MODOS_JUNIORS.includes(discordId)) return "MODERATEUR_ACCOMPAGNEMENT";
   
   return null;
 }
@@ -171,14 +211,43 @@ export function getUserPermissions(discordId: string): Permission[] {
  */
 export function getRoleDisplayName(role: AdminRole): string {
   const names: Record<AdminRole, string> = {
-    FONDATEUR: "Fondateur TENF",
-    ADMIN_COORDINATEUR: "Coordinateur TENF",
+    FONDATEUR: "Fondateurs TENF",
+    ADMIN_COORDINATEUR: "Coordinateurs TENF",
     MODERATEUR: "Modérateur TENF",
-    MODERATEUR_EN_FORMATION: "Modérateur en Accompagnement",
+    MODERATEUR_AUTONOMIE: "Modérateur en Autonomie",
+    MODERATEUR_ACCOMPAGNEMENT: "Modérateur en Accompagnement",
+    MODERATEUR_DECOUVERTE: "Modérateur en Découverte",
     MODERATEUR_EN_PAUSE: "Modérateur en pause",
     SOUTIEN_TENF: "Soutien TENF",
+    CONTRIBUTEUR_INVITE: "Contributeur Invité TENF",
   };
   return names[role];
+}
+
+/** Classes Tailwind pour les pastilles rôle (page permissions). */
+export function getAdminRoleToggleClass(role: AdminRole): string {
+  switch (role) {
+    case "FONDATEUR":
+      return "bg-red-700 ring-red-400/40";
+    case "ADMIN_COORDINATEUR":
+      return "bg-orange-700 ring-orange-400/35";
+    case "MODERATEUR":
+      return "bg-orange-600 ring-orange-300/30";
+    case "MODERATEUR_AUTONOMIE":
+      return "bg-violet-700 ring-violet-400/35";
+    case "MODERATEUR_ACCOMPAGNEMENT":
+      return "bg-blue-700 ring-blue-400/35";
+    case "MODERATEUR_DECOUVERTE":
+      return "bg-indigo-700/90 ring-indigo-400/30";
+    case "MODERATEUR_EN_PAUSE":
+      return "bg-slate-600 ring-slate-400/30";
+    case "SOUTIEN_TENF":
+      return "bg-teal-700 ring-teal-400/35";
+    case "CONTRIBUTEUR_INVITE":
+      return "bg-zinc-600 ring-zinc-400/30";
+    default:
+      return "bg-slate-700 ring-slate-400/25";
+  }
 }
 
 /**

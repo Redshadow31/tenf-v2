@@ -9,6 +9,7 @@ import DiscordGrowthImportModal from "@/components/admin/DiscordGrowthImportModa
 import DiscordDailyActivityImportModal from "@/components/admin/DiscordDailyActivityImportModal";
 import DiscordMessagesImportModal from "@/components/admin/DiscordMessagesImportModal";
 import DiscordVocalsImportModal from "@/components/admin/DiscordVocalsImportModal";
+import type { AdminRole } from "@/lib/adminRoles";
 
 interface MonthlyDataPoint {
   month: string;
@@ -46,14 +47,6 @@ interface MeetingScheduleItem {
   enabled?: boolean;
   notes?: string;
 }
-
-type AdminRole =
-  | "FONDATEUR"
-  | "ADMIN_COORDINATEUR"
-  | "MODERATEUR"
-  | "MODERATEUR_EN_FORMATION"
-  | "MODERATEUR_EN_PAUSE"
-  | "SOUTIEN_TENF";
 
 interface WorkflowMemberLite {
   discordId?: string;

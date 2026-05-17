@@ -19,13 +19,24 @@ import {
   RefreshCw,
   LayoutGrid,
   UserCog,
+  Filter,
+  List,
+  ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
+import {
+  ASSIGNABLE_ADMIN_ROLES,
+  ADMIN_ROLE_ORDER,
+  getRoleDisplayName,
+  type AdminRole,
+} from "@/lib/adminRoles";
+import ComptesProfilesWorkspace, { profileNeedsAttention } from "@/components/admin/gestion-acces/ComptesProfilesWorkspace";
 
 interface AdminAccess {
   discordId: string;
-  role: "FONDATEUR" | "ADMIN_COORDINATEUR" | "MODERATEUR" | "MODERATEUR_EN_FORMATION" | "MODERATEUR_EN_PAUSE" | "SOUTIEN_TENF";
+  role: AdminRole;
   addedAt: string;
   addedBy: string;
   username?: string;
@@ -39,24 +50,11 @@ interface AdminAccess {
   moderationCharterVersion?: string | null;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  FONDATEUR: "Fondateur",
-  ADMIN_COORDINATEUR: "Admin Coordinateur",
-  MODERATEUR: "Modérateur",
-  MODERATEUR_EN_FORMATION: "Modérateur en formation",
-  MODERATEUR_EN_PAUSE: "Modérateur en pause",
-  SOUTIEN_TENF: "Soutien TENF",
-};
-
-const EDITABLE_ROLES: Array<Exclude<AdminAccess["role"], "FONDATEUR">> = [
-  "ADMIN_COORDINATEUR",
-  "MODERATEUR",
-  "MODERATEUR_EN_FORMATION",
-  "MODERATEUR_EN_PAUSE",
-  "SOUTIEN_TENF",
-];
+const EDITABLE_ROLES = ASSIGNABLE_ADMIN_ROLES;
 
 type SortKey = "none" | "user" | "role" | "added";
+type ComplianceFilter = "all" | "attention" | "complete";
+type LayoutView = "grouped" | "table";
 
 const inputClass =
   "w-full min-h-[2.75rem] rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 py-2.5 text-[length:clamp(0.8125rem,0.75rem+0.2vw,0.875rem)] text-zinc-100 outline-none transition focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/25";
@@ -70,9 +68,7 @@ export default function GestionAccesComptesPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [newDiscordId, setNewDiscordId] = useState("");
   const [newAdminAlias, setNewAdminAlias] = useState("");
-  const [newRole, setNewRole] = useState<
-    "ADMIN_COORDINATEUR" | "MODERATEUR" | "MODERATEUR_EN_FORMATION" | "MODERATEUR_EN_PAUSE" | "SOUTIEN_TENF"
-  >("MODERATEUR_EN_FORMATION");
+  const [newRole, setNewRole] = useState<AdminRole>("MODERATEUR_ACCOMPAGNEMENT");
   const [searchDiscord, setSearchDiscord] = useState("");
   const [discordMembers, setDiscordMembers] = useState<Array<{ id: string; username: string; avatar: string | null }>>([]);
   const [searchingDiscord, setSearchingDiscord] = useState(false);
@@ -88,6 +84,9 @@ export default function GestionAccesComptesPage() {
   const [tableRefreshing, setTableRefreshing] = useState(false);
   const [deleteTargetDiscordId, setDeleteTargetDiscordId] = useState<string | null>(null);
   const [aliasModal, setAliasModal] = useState<{ access: AdminAccess; value: string } | null>(null);
+  const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>("all");
+  const [layoutView, setLayoutView] = useState<LayoutView>("grouped");
+  const [collapsedRoles, setCollapsedRoles] = useState<Set<AdminRole>>(new Set());
 
   useEffect(() => {
     async function checkAccess() {
@@ -316,12 +315,15 @@ export default function GestionAccesComptesPage() {
       case "ADMIN_COORDINATEUR":
         return "role-badge role-badge--staff-coordinator role-badge--animated role-badge--shimmer";
       case "MODERATEUR":
+      case "MODERATEUR_AUTONOMIE":
         return "role-badge role-badge--staff-moderator role-badge--animated role-badge--shimmer";
-      case "MODERATEUR_EN_FORMATION":
+      case "MODERATEUR_ACCOMPAGNEMENT":
+      case "MODERATEUR_DECOUVERTE":
         return "role-badge role-badge--staff-trainee role-badge--animated role-badge--shimmer";
       case "MODERATEUR_EN_PAUSE":
         return "role-badge role-badge--staff-paused role-badge--animated role-badge--shimmer";
       case "SOUTIEN_TENF":
+      case "CONTRIBUTEUR_INVITE":
         return "role-badge role-badge--active-support role-badge--animated role-badge--shimmer";
       default:
         return "role-badge role-badge--default";
@@ -358,15 +360,26 @@ export default function GestionAccesComptesPage() {
       if (roleFilter !== "all" && entry.role !== roleFilter) return false;
       if (aliasFilter === "with_alias" && !String(entry.adminAlias || "").trim()) return false;
       if (aliasFilter === "without_alias" && String(entry.adminAlias || "").trim()) return false;
+      if (complianceFilter === "attention" && !profileNeedsAttention(entry)) return false;
+      if (complianceFilter === "complete" && profileNeedsAttention(entry)) return false;
       if (!query) return true;
       return (
         String(entry.username || "").toLowerCase().includes(query) ||
         String(entry.discordId || "").toLowerCase().includes(query) ||
         String(entry.adminAlias || "").toLowerCase().includes(query) ||
-        String(ROLE_LABELS[entry.role] || entry.role).toLowerCase().includes(query)
+        getRoleDisplayName(entry.role).toLowerCase().includes(query)
       );
     });
-  }, [accessList, aliasFilter, roleFilter, tableSearch]);
+  }, [accessList, aliasFilter, roleFilter, tableSearch, complianceFilter]);
+
+  const roleCounts = useMemo(() => {
+    const counts = new Map<AdminRole, number>();
+    for (const role of ADMIN_ROLE_ORDER) counts.set(role, 0);
+    for (const entry of accessList) {
+      counts.set(entry.role, (counts.get(entry.role) ?? 0) + 1);
+    }
+    return counts;
+  }, [accessList]);
 
   const sortedFilteredList = useMemo(() => {
     const list = [...filteredAccessList];
@@ -384,6 +397,32 @@ export default function GestionAccesComptesPage() {
     });
     return list;
   }, [filteredAccessList, sortKey, sortAsc]);
+
+  const groupedByRole = useMemo(() => {
+    const groups = new Map<AdminRole, AdminAccess[]>();
+    for (const role of ADMIN_ROLE_ORDER) groups.set(role, []);
+    for (const entry of sortedFilteredList) {
+      const bucket = groups.get(entry.role);
+      if (bucket) bucket.push(entry);
+      else groups.set(entry.role, [entry]);
+    }
+    return ADMIN_ROLE_ORDER.map((role) => ({
+      role,
+      members: (groups.get(role) ?? []).sort((a, b) =>
+        (a.username || a.discordId).localeCompare(b.username || b.discordId, "fr", { sensitivity: "base" }),
+      ),
+    })).filter((g) => g.members.length > 0);
+  }, [sortedFilteredList]);
+
+  const selectedAccess = useMemo(
+    () => accessList.find((a) => a.discordId === selectedDiscordId) ?? null,
+    [accessList, selectedDiscordId],
+  );
+
+  const attentionCount = useMemo(
+    () => accessList.filter(profileNeedsAttention).length,
+    [accessList],
+  );
 
   const cycleSort = (key: Exclude<SortKey, "none">) => {
     if (sortKey !== key) {
@@ -411,17 +450,46 @@ export default function GestionAccesComptesPage() {
 
   const metricCards = useMemo(
     () => [
-      { key: "total", label: "Comptes autorisés", value: accessMetrics.total, accent: "text-zinc-50", sub: "Total liste" },
-      { key: "founders", label: "Fondateurs", value: accessMetrics.founderCount, accent: "text-violet-200" },
-      { key: "locked", label: "Comptes verrouillés", value: accessMetrics.lockedCount, accent: "text-amber-200" },
-      { key: "alias", label: "Pseudo admin défini", value: accessMetrics.aliasCount, accent: "text-emerald-200" },
-      { key: "noav", label: "Sans avatar", value: accessMetrics.noAvatarCount, accent: "text-rose-200" },
-      { key: "mail", label: "E-mail staff", value: accessMetrics.staffEmailCount, accent: "text-cyan-200" },
-      { key: "charte", label: "Charte validée", value: accessMetrics.charterOkCount, accent: "text-teal-200" },
-      { key: "nosb", label: "Sans fiche Supabase", value: accessMetrics.noSupabaseMemberCount, accent: "text-orange-200" },
+      {
+        key: "all" as const,
+        label: "Tous les profils",
+        value: accessMetrics.total,
+        accent: "text-zinc-50",
+        hint: "Comptes avec accès admin",
+      },
+      {
+        key: "attention" as const,
+        label: "À compléter",
+        value: attentionCount,
+        accent: "text-amber-200",
+        hint: "Alias, e-mail, charte ou fiche manquants",
+      },
+      {
+        key: "complete" as const,
+        label: "Profils OK",
+        value: Math.max(0, accessMetrics.total - attentionCount),
+        accent: "text-emerald-200",
+        hint: "Tout est renseigné",
+      },
+      {
+        key: "founders" as const,
+        label: "Fondateurs",
+        value: accessMetrics.founderCount,
+        accent: "text-violet-200",
+        hint: "Comptes verrouillés",
+      },
     ],
-    [accessMetrics]
+    [accessMetrics, attentionCount],
   );
+
+  const toggleRoleSection = (role: AdminRole) => {
+    setCollapsedRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
+      return next;
+    });
+  };
 
   if (loading && !isFounder) {
     return (
@@ -502,9 +570,9 @@ export default function GestionAccesComptesPage() {
               <h1 className="bg-gradient-to-r from-zinc-50 via-zinc-200 to-violet-200 bg-clip-text text-[length:clamp(1.375rem,1.1rem+1.2vw,2rem)] font-bold tracking-tight text-transparent">
                 Comptes administrateurs
               </h1>
-              <p className="mt-2 max-w-3xl text-[length:clamp(0.8125rem,0.75rem+0.25vw,1rem)] leading-relaxed text-zinc-400">
-                Rôles, pseudos admin, e-mail staff et validation charte (Mon compte / charte modération). Les métriques se mettent à jour
-                avec la liste.
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+                Gérez les profils par rôle : cartes avec statut (alias, e-mail, charte, fiche membre), filtres latéraux et panneau de
+                détail pour modifier rapidement chaque compte.
               </p>
             </div>
             <button
@@ -519,21 +587,88 @@ export default function GestionAccesComptesPage() {
           </div>
           <div className="mt-[clamp(1rem,2.5vw,1.35rem)] grid grid-cols-2 gap-[clamp(0.5rem,1.5vw,0.75rem)] sm:grid-cols-3 xl:grid-cols-4">
             {metricCards.map((m) => (
-              <article
+              <button
                 key={m.key}
-                className="group rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-[clamp(0.65rem,1.5vw,1rem)] shadow-inner shadow-black/20 transition hover:border-violet-500/35 hover:bg-violet-950/15 hover:shadow-lg hover:shadow-violet-950/10"
+                type="button"
+                onClick={() => {
+                  if (m.key === "founders") setRoleFilter("FONDATEUR");
+                  else if (m.key === "attention") setComplianceFilter("attention");
+                  else if (m.key === "complete") setComplianceFilter("complete");
+                  else {
+                    setComplianceFilter("all");
+                    setRoleFilter("all");
+                  }
+                }}
+                className={`rounded-xl border p-3 text-left transition hover:border-violet-500/40 hover:bg-violet-950/20 ${
+                  (m.key === "attention" && complianceFilter === "attention") ||
+                  (m.key === "complete" && complianceFilter === "complete") ||
+                  (m.key === "founders" && roleFilter === "FONDATEUR") ||
+                  (m.key === "all" && complianceFilter === "all" && roleFilter === "all")
+                    ? "border-violet-500/50 bg-violet-950/35"
+                    : "border-zinc-800/90 bg-zinc-900/40"
+                }`}
               >
-                <p className="text-[length:clamp(0.625rem,0.55rem+0.15vw,0.6875rem)] font-bold uppercase tracking-wide text-zinc-500">
-                  {m.label}
-                </p>
-                <p className={`mt-1 font-mono text-[length:clamp(1.5rem,1.2rem+1vw,2rem)] font-bold tabular-nums ${m.accent}`}>
-                  {m.value}
-                </p>
-              </article>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{m.label}</p>
+                <p className={`mt-1 text-2xl font-bold tabular-nums ${m.accent}`}>{m.value}</p>
+                <p className="mt-1 text-[10px] text-zinc-600">{m.hint}</p>
+              </button>
             ))}
           </div>
         </header>
 
+        <ComptesProfilesWorkspace
+          accessList={accessList}
+          filteredCount={filteredAccessList.length}
+          groupedByRole={groupedByRole}
+          sortedFilteredList={sortedFilteredList}
+          selectedAccess={selectedAccess}
+          selectedDiscordId={selectedDiscordId}
+          onSelectProfile={setSelectedDiscordId}
+          roleCounts={roleCounts}
+          attentionCount={attentionCount}
+          loading={loading}
+          tableRefreshing={tableRefreshing}
+          onRefresh={() => void refreshTable()}
+          tableSearch={tableSearch}
+          onTableSearchChange={setTableSearch}
+          roleFilter={roleFilter}
+          onRoleFilterChange={setRoleFilter}
+          complianceFilter={complianceFilter}
+          onComplianceFilterChange={setComplianceFilter}
+          aliasFilter={aliasFilter}
+          onAliasFilterChange={setAliasFilter}
+          layoutView={layoutView}
+          onLayoutViewChange={setLayoutView}
+          collapsedRoles={collapsedRoles}
+          onToggleRoleSection={toggleRoleSection}
+          isAdding={isAdding}
+          onToggleAdding={() => setIsAdding((v) => !v)}
+          newDiscordId={newDiscordId}
+          onNewDiscordIdChange={setNewDiscordId}
+          newRole={newRole}
+          onNewRoleChange={setNewRole}
+          newAdminAlias={newAdminAlias}
+          onNewAdminAliasChange={setNewAdminAlias}
+          searchDiscord={searchDiscord}
+          onSearchDiscordChange={setSearchDiscord}
+          discordMembers={discordMembers}
+          onSearchDiscord={handleSearchDiscord}
+          searchingDiscord={searchingDiscord}
+          onAddAccess={() => void handleAddAccess()}
+          onPickDiscordMember={(id) => {
+            setNewDiscordId(id);
+            setDiscordMembers([]);
+            setSearchDiscord("");
+          }}
+          updatingRoleDiscordId={updatingRoleDiscordId}
+          onUpdateRole={(access, role) => void handleUpdateRole(access, role)}
+          onEditAlias={(access) => setAliasModal({ access, value: access.adminAlias || "" })}
+          onDelete={setDeleteTargetDiscordId}
+          onCopyDiscordId={(id) => void copyDiscordId(id)}
+        />
+
+        {false ? (
+        <>
         {/* Ajout */}
         <section className="mb-[clamp(1rem,2.5vw,1.75rem)] overflow-hidden rounded-2xl border border-zinc-800/90 bg-zinc-950/50 shadow-xl shadow-black/30 backdrop-blur-sm">
           <div className="flex flex-col gap-3 border-b border-zinc-800/80 bg-gradient-to-r from-zinc-900/90 via-violet-950/25 to-zinc-900/90 p-[clamp(1rem,2.5vw,1.35rem)] sm:flex-row sm:items-center sm:justify-between">
@@ -623,23 +758,14 @@ export default function GestionAccesComptesPage() {
                 <label className="mb-2 block text-[length:clamp(0.75rem,0.7rem+0.2vw,0.8125rem)] font-semibold text-zinc-200">Rôle</label>
                 <select
                   value={newRole}
-                  onChange={(e) =>
-                    setNewRole(
-                      e.target.value as
-                        | "ADMIN_COORDINATEUR"
-                        | "MODERATEUR"
-                        | "MODERATEUR_EN_FORMATION"
-                        | "MODERATEUR_EN_PAUSE"
-                        | "SOUTIEN_TENF"
-                    )
-                  }
+                  onChange={(e) => setNewRole(e.target.value as AdminRole)}
                   className={inputClass}
                 >
-                  <option value="ADMIN_COORDINATEUR">Admin Coordinateur</option>
-                  <option value="MODERATEUR">Modérateur</option>
-                  <option value="MODERATEUR_EN_FORMATION">Modérateur en formation</option>
-                  <option value="MODERATEUR_EN_PAUSE">Modérateur en pause</option>
-                  <option value="SOUTIEN_TENF">Soutien TENF</option>
+                  {EDITABLE_ROLES.map((role) => (
+                    <option key={role} value={role}>
+                      {getRoleDisplayName(role)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -736,7 +862,7 @@ export default function GestionAccesComptesPage() {
                 >
                   Tous
                 </button>
-                {(Object.keys(ROLE_LABELS) as AdminAccess["role"][]).map((role) => (
+                {ADMIN_ROLE_ORDER.map((role) => (
                   <button
                     key={role}
                     type="button"
@@ -747,7 +873,7 @@ export default function GestionAccesComptesPage() {
                         : "border-zinc-700/80 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600"
                     }`}
                   >
-                    {ROLE_LABELS[role]}
+                    {getRoleDisplayName(role)}
                   </button>
                 ))}
               </div>
@@ -902,7 +1028,7 @@ export default function GestionAccesComptesPage() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {access.role === "FONDATEUR" ? (
-                            <span className={getRoleBadgeClass(access.role)}>{ROLE_LABELS[access.role] || access.role}</span>
+                            <span className={getRoleBadgeClass(access.role)}>{getRoleDisplayName(access.role)}</span>
                           ) : (
                             <select
                               value={access.role}
@@ -916,7 +1042,7 @@ export default function GestionAccesComptesPage() {
                             >
                               {EDITABLE_ROLES.map((r) => (
                                 <option key={r} value={r}>
-                                  {ROLE_LABELS[r]}
+                                  {getRoleDisplayName(r)}
                                 </option>
                               ))}
                             </select>
@@ -1018,6 +1144,8 @@ export default function GestionAccesComptesPage() {
             </div>
           )}
         </section>
+        </>
+        ) : null}
 
         {/* Modal vérification */}
         {showAccessListModal && (
@@ -1075,7 +1203,7 @@ export default function GestionAccesComptesPage() {
                         <div className="truncate font-mono text-[11px] text-zinc-500">{access.discordId}</div>
                       </div>
                       <span className={`${getRoleBadgeClass(access.role)} shrink-0`}>
-                        {ROLE_LABELS[access.role] || access.role}
+                        {getRoleDisplayName(access.role)}
                       </span>
                     </li>
                   ))}

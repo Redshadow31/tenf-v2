@@ -303,7 +303,9 @@ function staffMissionLines(adminRole: string): string[] {
         common,
       ];
     case "MODERATEUR":
-    case "MODERATEUR_EN_FORMATION":
+    case "MODERATEUR_AUTONOMIE":
+    case "MODERATEUR_ACCOMPAGNEMENT":
+    case "MODERATEUR_DECOUVERTE":
       return [
         "Appliquer les consignes de modération et remonter les incidents structurants.",
         "Accompagner les membres avec le ton TENF (bienveillance + fermeté).",

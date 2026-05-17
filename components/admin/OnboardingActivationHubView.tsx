@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode, RefObject } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -16,6 +16,7 @@ import {
   UserPlus,
   Zap,
 } from "lucide-react";
+import { LinkAttendanceToMemberModal } from "@/components/admin/onboarding/LinkAttendanceToMemberModal";
 
 export type ActivationCandidateRow = {
   twitchLogin: string;
@@ -65,6 +66,7 @@ type Props = {
   onScrollToPriority: () => void;
   onScrollToTable: () => void;
   formatDateShort: (iso: string) => string;
+  onMemberLinked?: () => void;
   children: ReactNode;
 };
 
@@ -89,8 +91,11 @@ export function OnboardingActivationHubView({
   onScrollToPriority,
   onScrollToTable,
   formatDateShort,
+  onMemberLinked,
   children,
 }: Props) {
+  const [linkCandidate, setLinkCandidate] = useState<ActivationCandidateRow | null>(null);
+
   const hasPriorityWork =
     activationSummary.toActivateCount > 0 || activationSummary.missingInMembersListCount > 0;
 
@@ -306,11 +311,19 @@ export function OnboardingActivationHubView({
                               className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-400/20 bg-rose-950/15 px-3 py-2 text-sm"
                             >
                               <span className="min-w-0 truncate font-medium text-zinc-100">
-                                @{c.twitchLogin}
+                                {c.displayName || c.discordUsername || `@${c.twitchLogin}`}
                               </span>
                               <span className="shrink-0 text-xs text-zinc-400">
                                 {c.attendanceCount} présence{c.attendanceCount > 1 ? "s" : ""}
                               </span>
+                              <button
+                                type="button"
+                                onClick={() => setLinkCandidate(c)}
+                                className={`inline-flex items-center gap-1 text-xs text-violet-200 hover:underline ${hubFocusClass} rounded`}
+                              >
+                                Rattacher
+                                <ArrowRight className="h-3 w-3" aria-hidden />
+                              </button>
                             </li>
                           ))
                         )}
@@ -391,6 +404,10 @@ export function OnboardingActivationHubView({
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-300" aria-hidden />
                   Les présents non activés peuvent être synchronisés en un clic.
                 </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-zinc-400" aria-hidden />
+                  Profils Communauté avec date d&apos;intégration : exclus de la file « À activer ».
+                </li>
               </ul>
             </div>
             <div className={`${hubPanelClass} p-4`}>
@@ -428,6 +445,13 @@ export function OnboardingActivationHubView({
           </aside>
         </div>
       </div>
+
+      <LinkAttendanceToMemberModal
+        candidate={linkCandidate}
+        open={linkCandidate !== null}
+        onClose={() => setLinkCandidate(null)}
+        onLinked={() => onMemberLinked?.()}
+      />
     </div>
   );
 }

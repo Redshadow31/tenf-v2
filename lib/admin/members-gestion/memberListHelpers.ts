@@ -1,4 +1,6 @@
 import { calendarDayKey, type SessionDayIndex } from "@/lib/integrationSessionCalendar";
+import { toCanonicalMemberRole } from "@/lib/memberRoles";
+import { ROLE_BADGE_PICKER_OPTIONS, sortMemberRolesForPicker } from "@/lib/roleBadgeSystem";
 import type { Member, MemberRole, MemberStatus, PresetFilter, SortableColumn } from "./types";
 
 export async function parseApiResponse<T>(response: Response): Promise<T> {
@@ -82,7 +84,19 @@ const STAFF_ROLES = new Set<MemberRole | string>([
 ]);
 
 export function isStaffRole(role?: string): boolean {
-  return !!role && STAFF_ROLES.has(role);
+  if (!role) return false;
+  const canonical = toCanonicalMemberRole(role);
+  return STAFF_ROLES.has(canonical) || STAFF_ROLES.has(role);
+}
+
+/** Tous les rôles assignables + rôles présents en base (canonisés), triés nomenclature TENF. */
+export function getMemberRoleFilterOptions(existingRoles: Iterable<string | undefined | null>): string[] {
+  const merged = new Set<string>();
+  for (const key of ROLE_BADGE_PICKER_OPTIONS) merged.add(key);
+  for (const role of existingRoles) {
+    if (role?.trim()) merged.add(toCanonicalMemberRole(role.trim()));
+  }
+  return sortMemberRolesForPicker(merged);
 }
 
 export type MemberListPipelineInput = {
@@ -217,7 +231,9 @@ export function computeMemberListPipeline(
   const joinedBeforeMs = joinedBeforeFilter ? new Date(`${joinedBeforeFilter}T23:59:59.999`).getTime() : null;
   if (roleFilter !== "all" || memberStatusFilter !== "all" || joinedAfterMs !== null || joinedBeforeMs !== null) {
     filteredMembers = filteredMembers.filter((member) => {
-      if (roleFilter !== "all" && member.role !== roleFilter) return false;
+      if (roleFilter !== "all" && toCanonicalMemberRole(member.role) !== toCanonicalMemberRole(roleFilter)) {
+        return false;
+      }
       if (memberStatusFilter !== "all" && member.statut !== memberStatusFilter) return false;
       if (joinedAfterMs !== null || joinedBeforeMs !== null) {
         if (!member.createdAt) return false;

@@ -294,3 +294,54 @@ export async function loadRegistrationsMapForIntegrationIds(
   return Object.fromEntries(pairs);
 }
 
+function normalizeTwitchLogin(value?: string): string {
+  return String(value || "").trim().toLowerCase();
+}
+
+/**
+ * Rattache les présences / inscriptions d'intégration (login source) à la fiche membre cible (login annuaire).
+ */
+export async function relinkRegistrationTwitchLoginAcrossIntegrations(
+  sourceTwitchLogin: string,
+  targetTwitchLogin: string
+): Promise<{ updated: number; integrationsTouched: number }> {
+  const source = normalizeTwitchLogin(sourceTwitchLogin);
+  const target = normalizeTwitchLogin(targetTwitchLogin);
+  if (!source || !target) {
+    throw new Error("Logins Twitch source et cible requis.");
+  }
+  if (source === target) {
+    return { updated: 0, integrationsTouched: 0 };
+  }
+
+  const integrations = await loadIntegrations();
+  let updated = 0;
+  let integrationsTouched = 0;
+
+  for (const integration of integrations) {
+    const registrations = await loadRegistrations(integration.id);
+    let changed = false;
+    const next = registrations.map((reg) => {
+      if (normalizeTwitchLogin(reg.twitchLogin) !== source) return reg;
+      changed = true;
+      updated += 1;
+      const channelUrl = String(reg.twitchChannelUrl || "").trim();
+      const nextChannel =
+        channelUrl.length > 0
+          ? channelUrl.replace(/twitch\.tv\/[^/?#]+/i, `twitch.tv/${target}`)
+          : `https://www.twitch.tv/${target}`;
+      return {
+        ...reg,
+        twitchLogin: target,
+        twitchChannelUrl: nextChannel,
+      };
+    });
+    if (changed) {
+      integrationsTouched += 1;
+      await saveRegistrations(integration.id, next);
+    }
+  }
+
+  return { updated, integrationsTouched };
+}
+

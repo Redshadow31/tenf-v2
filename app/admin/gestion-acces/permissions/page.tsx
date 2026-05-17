@@ -23,19 +23,19 @@ import {
 import AdminHeader from "@/components/admin/AdminHeader";
 import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 import { adminNavigation, type NavItem } from "@/lib/admin/navigation";
-import type { AdminRole } from "@/lib/adminRoles";
+import {
+  ADMIN_ROLE_ORDER,
+  getAdminRoleToggleClass,
+  getRoleDisplayName,
+  type AdminRole,
+} from "@/lib/adminRoles";
 import type { SectionPermission } from "@/lib/sectionPermissions";
 
-const ROLE_LABELS: Record<AdminRole, string> = {
-  FONDATEUR: "Fondateurs TENF",
-  ADMIN_COORDINATEUR: "Coordinateurs TENF",
-  MODERATEUR: "Modérateur TENF",
-  MODERATEUR_EN_FORMATION: "Modérateur en Accompagnement",
-  MODERATEUR_EN_PAUSE: "Modérateur en pause",
-  SOUTIEN_TENF: "Soutien TENF",
-};
+const ROLE_ORDER = ADMIN_ROLE_ORDER;
 
-const ROLE_ORDER = Object.keys(ROLE_LABELS) as AdminRole[];
+function roleLabel(role: AdminRole): string {
+  return getRoleDisplayName(role);
+}
 
 interface PermissionsData {
   sections: Record<string, SectionPermission>;
@@ -879,7 +879,7 @@ export default function PermissionsPage() {
                                   sectionPerm={sectionPerm}
                                   restricted={restricted}
                                   extraGrant={extraGrant}
-                                  ROLE_LABELS={ROLE_LABELS}
+                                  roleLabel={roleLabel}
                                   ROLE_ORDER={ROLE_ORDER}
                                   supportMembers={supportMembers}
                                   adminAccessList={adminAccessList}
@@ -934,7 +934,7 @@ function PagePermissionBlock({
   sectionPerm,
   restricted,
   extraGrant,
-  ROLE_LABELS,
+  roleLabel,
   ROLE_ORDER,
   supportMembers,
   adminAccessList,
@@ -950,7 +950,7 @@ function PagePermissionBlock({
   sectionPerm: SectionPermission;
   restricted: boolean;
   extraGrant: boolean;
-  ROLE_LABELS: Record<AdminRole, string>;
+  roleLabel: (role: AdminRole) => string;
   ROLE_ORDER: AdminRole[];
   supportMembers: AdminAccessEntry[];
   adminAccessList: AdminAccessEntry[];
@@ -973,14 +973,14 @@ function PagePermissionBlock({
     return [...adminAccessList]
       .filter((a) => !inExtras.has(a.discordId))
       .sort((a, b) => {
-        const la = ROLE_LABELS[a.role].localeCompare(ROLE_LABELS[b.role], "fr");
+        const la = roleLabel(a.role).localeCompare(roleLabel(b.role), "fr");
         if (la !== 0) return la;
         return displayNameForAdmin(a.discordId, adminAccessList).localeCompare(
           displayNameForAdmin(b.discordId, adminAccessList),
           "fr",
         );
       });
-  }, [adminAccessList, extrasSig, ROLE_LABELS]);
+  }, [adminAccessList, extrasSig, roleLabel]);
 
   const [copiedHref, setCopiedHref] = useState(false);
   const accentClass = restricted ? "bg-amber-500" : extraGrant ? "bg-violet-500" : "bg-emerald-500/70";
@@ -1055,26 +1055,13 @@ function PagePermissionBlock({
             <div className="flex max-w-full flex-wrap justify-end gap-1.5">
               {ROLE_ORDER.map((role) => {
                 const allowed = isRoleAllowed(role);
-                const onClasses =
-                  role === "FONDATEUR"
-                    ? "bg-red-700 ring-red-400/40"
-                    : role === "ADMIN_COORDINATEUR"
-                      ? "bg-orange-700 ring-orange-400/35"
-                      : role === "MODERATEUR"
-                        ? "bg-orange-600 ring-orange-300/30"
-                        : role === "MODERATEUR_EN_FORMATION"
-                          ? "bg-blue-700 ring-blue-400/35"
-                          : role === "MODERATEUR_EN_PAUSE"
-                            ? "bg-slate-600 ring-slate-400/30"
-                            : role === "SOUTIEN_TENF"
-                              ? "bg-teal-700 ring-teal-400/35"
-                              : "bg-slate-700 ring-slate-400/25";
+                const onClasses = getAdminRoleToggleClass(role);
                 return (
                   <button
                     key={role}
                     type="button"
                     onClick={() => toggleRoleAccess(role)}
-                    title={allowed ? `Retirer ${ROLE_LABELS[role]}` : `Autoriser ${ROLE_LABELS[role]}`}
+                    title={allowed ? `Retirer ${roleLabel(role)}` : `Autoriser ${roleLabel(role)}`}
                     className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-semibold transition sm:text-xs ${
                       allowed
                         ? `text-white shadow-md ring-1 ${onClasses} hover:brightness-110 active:scale-95`
@@ -1082,7 +1069,7 @@ function PagePermissionBlock({
                     }`}
                   >
                     {allowed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5 opacity-50" />}
-                    <span className="max-w-[8.5rem] truncate sm:max-w-[10rem]">{ROLE_LABELS[role]}</span>
+                    <span className="max-w-[8.5rem] truncate sm:max-w-[10rem]">{roleLabel(role)}</span>
                   </button>
                 );
               })}
@@ -1142,7 +1129,7 @@ function PagePermissionBlock({
                   <option value="">+ Ajouter depuis la liste</option>
                   {pickableAdmins.map((m) => (
                     <option key={m.discordId} value={m.discordId}>
-                      {displayNameForAdmin(m.discordId, adminAccessList)} ({ROLE_LABELS[m.role]})
+                      {displayNameForAdmin(m.discordId, adminAccessList)} ({roleLabel(m.role)})
                     </option>
                   ))}
                 </select>
@@ -1224,7 +1211,7 @@ function PagePermissionBlock({
             {sectionPerm.roles.length > 0 ? (
               <>
                 <span className="font-semibold text-zinc-200">Rôles autorisés :</span>{" "}
-                {sectionPerm.roles.map((r) => ROLE_LABELS[r]).join(", ")}
+                {sectionPerm.roles.map((r) => roleLabel(r)).join(", ")}
               </>
             ) : (
               <>

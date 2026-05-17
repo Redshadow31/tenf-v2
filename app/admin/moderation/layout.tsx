@@ -21,9 +21,12 @@ const STAFF_ROLES = new Set([
   "FONDATEUR",
   "ADMIN_COORDINATEUR",
   "MODERATEUR",
-  "MODERATEUR_EN_FORMATION",
+  "MODERATEUR_AUTONOMIE",
+  "MODERATEUR_ACCOMPAGNEMENT",
+  "MODERATEUR_DECOUVERTE",
   "MODERATEUR_EN_PAUSE",
   "SOUTIEN_TENF",
+  "CONTRIBUTEUR_INVITE",
 ]);
 
 export default async function ModerationLayout({ children }: { children: ReactNode }) {

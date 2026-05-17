@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { getAllMemberData, loadMemberDataFromStorage } from '@/lib/memberData';
+import { ADMIN_ROLE_HIERARCHY } from '@/lib/adminRoles';
 import {
   getDiscordIdsWithStaffModerationAccess,
   resolveAdminRoleForDiscord,
 } from '@/lib/staff/staffModerationRecipients';
+
+const STAFF_ROLE_SORT_ORDER = Object.fromEntries(
+  Object.entries(ADMIN_ROLE_HIERARCHY).map(([role, level]) => [role, -level]),
+) as Record<string, number>;
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +32,7 @@ export async function GET(request: NextRequest) {
     const fromMembers = allMembers
       .filter((member) => member.discordId && staffAccessIds.has(member.discordId))
       .map((member) => {
-        const role = resolveAdminRoleForDiscord(member.discordId!) ?? 'MODERATEUR_EN_FORMATION';
+        const role = resolveAdminRoleForDiscord(member.discordId!) ?? 'MODERATEUR_ACCOMPAGNEMENT';
         return {
           discordId: member.discordId!,
           discordUsername: member.discordUsername || '',
@@ -41,7 +46,7 @@ export async function GET(request: NextRequest) {
     const withoutMemberRow: typeof fromMembers = [];
     for (const discordId of staffAccessIds) {
       if (seen.has(discordId)) continue;
-      const role = resolveAdminRoleForDiscord(discordId) ?? 'MODERATEUR_EN_FORMATION';
+      const role = resolveAdminRoleForDiscord(discordId) ?? 'MODERATEUR_ACCOMPAGNEMENT';
       withoutMemberRow.push({
         discordId,
         discordUsername: '',
@@ -51,18 +56,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const staffMembers = [...fromMembers, ...withoutMemberRow].sort((a, b) => {
-        // Trier par rôle (FONDATEUR > ADMIN_COORDINATEUR > MODERATEUR > MODERATEUR_EN_FORMATION > MODERATEUR_EN_PAUSE > SOUTIEN_TENF)
-        const roleOrder: Record<string, number> = {
-          'FONDATEUR': 0,
-          'ADMIN_COORDINATEUR': 1,
-          'MODERATEUR': 2,
-          'MODERATEUR_EN_FORMATION': 3,
-          'MODERATEUR_EN_PAUSE': 4,
-          'SOUTIEN_TENF': 5,
-        };
-        return (roleOrder[a.role] || 99) - (roleOrder[b.role] || 99);
-      });
+    const staffMembers = [...fromMembers, ...withoutMemberRow].sort(
+      (a, b) => (STAFF_ROLE_SORT_ORDER[a.role] ?? 99) - (STAFF_ROLE_SORT_ORDER[b.role] ?? 99),
+    );
 
     return NextResponse.json({ staff: staffMembers });
   } catch (error) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedAdmin, requireRole, type AuthenticatedAdmin } from "@/lib/requireAdmin";
-import { normalizeAdminRole, type AdminRole } from "@/lib/adminRoles";
+import { ADMIN_ROLE_ORDER, normalizeAdminRole, type AdminRole } from "@/lib/adminRoles";
 import { resetSectionPermissionsCache } from "@/lib/sectionPermissions";
 
 /** Aligné sur /api/admin/access : en dev, bypass fondateur sauf ENABLE_DEV_AUTH="false" */
@@ -164,7 +164,7 @@ export async function PUT(request: NextRequest) {
         .filter((role): role is AdminRole => role !== null);
 
       // Valider que tous les rôles sont valides
-      const validRoles: AdminRole[] = ["FONDATEUR", "ADMIN_COORDINATEUR", "MODERATEUR", "MODERATEUR_EN_FORMATION", "MODERATEUR_EN_PAUSE", "SOUTIEN_TENF"];
+      const validRoles: AdminRole[] = ADMIN_ROLE_ORDER;
       for (const role of sectionPerm.roles) {
         if (!validRoles.includes(role)) {
           return NextResponse.json(

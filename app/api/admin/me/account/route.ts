@@ -10,8 +10,13 @@ import {
   getLatestModerationCharterValidationForMember,
 } from "@/lib/moderationCharterValidationsStorage";
 import { listStaffMissionsForAssignee } from "@/lib/staffMissionAssignments";
-import type { AdminRole } from "@/lib/adminRoles";
-import { getAdminRole, isFounder } from "@/lib/adminRoles";
+import {
+  getAdminRole,
+  getRoleDisplayName,
+  isFounder,
+  normalizeAdminRole,
+  type AdminRole,
+} from "@/lib/adminRoles";
 import { loadAdminAccessCache, getAdminRoleFromCache, getAllAdminIdsFromCache } from "@/lib/adminAccessCache";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +25,8 @@ export const revalidate = 0;
 const CHARTER_GRACE_MS = 15 * 24 * 60 * 60 * 1000;
 
 function labelForAdminRole(role: AdminRole | string): string {
-  const map: Record<string, string> = {
-    FONDATEUR: "Fondateur",
-    ADMIN_COORDINATEUR: "Admin coordinateur",
-    MODERATEUR: "Modérateur",
-    MODERATEUR_EN_FORMATION: "Modérateur en formation",
-    MODERATEUR_EN_PAUSE: "Modérateur en pause",
-    SOUTIEN_TENF: "Soutien TENF",
-  };
-  return map[role] || String(role);
+  const normalized = normalizeAdminRole(role);
+  return normalized ? getRoleDisplayName(normalized) : String(role);
 }
 
 function isValidEmail(value: string): boolean {
@@ -68,7 +66,14 @@ async function loadStaffSnapshot(): Promise<{
     for (const id of ids) {
       const role = resolvedStaffAdminRole(id);
       if (!role) continue;
-      if (role === "MODERATEUR" || role === "MODERATEUR_EN_FORMATION") moderatorsActive += 1;
+      if (
+        role === "MODERATEUR" ||
+        role === "MODERATEUR_AUTONOMIE" ||
+        role === "MODERATEUR_ACCOMPAGNEMENT" ||
+        role === "MODERATEUR_DECOUVERTE"
+      ) {
+        moderatorsActive += 1;
+      }
       else if (role === "MODERATEUR_EN_PAUSE") moderatorsPaused += 1;
     }
     return {

@@ -196,9 +196,12 @@ export default function LoginPage() {
                   <option value="FONDATEUR">Fondateurs TENF</option>
                   <option value="ADMIN_COORDINATEUR">Coordinateurs TENF</option>
                   <option value="MODERATEUR">Modérateur TENF</option>
-                  <option value="MODERATEUR_EN_FORMATION">Modérateur en Accompagnement (accès)</option>
+                  <option value="MODERATEUR_AUTONOMIE">Modérateur en Autonomie</option>
+                  <option value="MODERATEUR_ACCOMPAGNEMENT">Modérateur en Accompagnement</option>
+                  <option value="MODERATEUR_DECOUVERTE">Modérateur en Découverte</option>
                   <option value="MODERATEUR_EN_PAUSE">Modérateur en pause</option>
                   <option value="SOUTIEN_TENF">Soutien TENF</option>
+                  <option value="CONTRIBUTEUR_INVITE">Contributeur Invité TENF</option>
                 </select>
                 <button
                   onClick={() => {
