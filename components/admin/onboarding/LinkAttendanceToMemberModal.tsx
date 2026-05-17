@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Search, UserRound, X } from "lucide-react";
+import { Loader2, Search, User, X } from "lucide-react";
 import type { ActivationCandidateRow } from "@/components/admin/OnboardingActivationHubView";
 
 type SearchMember = {
@@ -202,7 +202,7 @@ export function LinkAttendanceToMemberModal({ candidate, open, onClose, onLinked
                       />
                     ) : (
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-zinc-400">
-                        <UserRound className="h-4 w-4" aria-hidden />
+                        <User className="h-4 w-4" aria-hidden />
                       </span>
                     )}
                     <span className="min-w-0 flex-1">
