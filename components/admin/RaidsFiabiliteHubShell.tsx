@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Activity,
-  Archive,
-  ChevronRight,
-  Radio,
-  ShieldAlert,
-  Sparkles,
-  Users,
-} from "lucide-react";
+import { Archive, ChevronRight, Radio, ShieldAlert } from "lucide-react";
 
 export type RaidsFiabiliteHubActive = "raids-eventsub" | "signalements" | "historique";
 
@@ -21,27 +13,31 @@ const NAV: {
   href: string;
   label: string;
   hint: string;
+  badge?: string;
   icon: typeof Radio;
 }[] = [
   {
     id: "raids-eventsub",
     href: `${BASE}/raids-eventsub`,
-    label: "Raids — EventSub",
-    hint: "Abonnements Twitch, sync live, statuts matched / erreurs.",
+    label: "Raids EventSub",
+    hint: "Ce que Twitch détecte automatiquement : sync, volumes et statuts de traitement.",
+    badge: "Auto",
     icon: Radio,
   },
   {
     id: "signalements",
     href: `${BASE}/signalements-raids`,
-    label: "Signalements & correctifs",
-    hint: "Déclarations membres, cibles, validation manuelle sans doublon auto.",
+    label: "Signalements raids",
+    hint: "Ce que les membres déclarent ou signalent : vérifier avant de valider.",
+    badge: "Membres",
     icon: ShieldAlert,
   },
   {
     id: "historique",
     href: `${BASE}/historique-raids`,
     label: "Historique consolidé",
-    hint: "Volumes mensuels, stats streamers, doublons et tendances.",
+    hint: "Vision mensuelle pour auditer volumes, stats et corrections.",
+    badge: "Audit",
     icon: Archive,
   },
 ];
@@ -51,48 +47,58 @@ type Props = {
   children: React.ReactNode;
 };
 
+const navCardBase =
+  "group relative flex min-h-[5.5rem] flex-col rounded-xl border px-4 py-3 transition focus-within:outline-none focus-within:ring-2 focus-within:ring-violet-400/45 focus-within:ring-offset-2 focus-within:ring-offset-[#07080f]";
+const navCardInactive = "border-white/[0.08] bg-zinc-950/40 hover:border-violet-400/25 hover:bg-zinc-900/50";
+const navCardActive =
+  "border-violet-400/45 bg-violet-950/35 shadow-[inset_0_1px_0_0_rgba(167,139,250,0.12)] ring-1 ring-violet-500/20";
+
 export default function RaidsFiabiliteHubShell({ active, children }: Props) {
   const pathname = usePathname() || "";
 
   return (
     <div className="min-h-screen bg-[#07080f] text-white">
-      <div className="border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(99,102,241,0.08),transparent)]">
-        <div className="mx-auto max-w-6xl px-4 py-4 md:px-6">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                <Link href={`${BASE}`} className="transition hover:text-white">
+      <div className="border-b border-white/[0.06] bg-zinc-950/80">
+        <div className="mx-auto max-w-[1480px] px-3 py-4 md:px-6 md:py-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+            <div className="min-w-0 flex-1">
+              <nav className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                <Link href={`${BASE}`} className="transition hover:text-zinc-200">
                   Engagement
                 </Link>
-                <ChevronRight className="h-3 w-3 opacity-60" />
-                <Link href={`${BASE}/raids-fiabilite`} className="text-indigo-200/90 transition hover:text-white">
-                  Accueil catégorie
+                <ChevronRight className="h-3 w-3 shrink-0 opacity-50" aria-hidden />
+                <Link href={`${BASE}/raids-fiabilite`} className="text-violet-300/90 transition hover:text-white">
+                  Fiabilité des raids
                 </Link>
-                <ChevronRight className="h-3 w-3 opacity-60" />
-                <span className="text-slate-300">Outil actif</span>
-              </div>
-              <h1 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight text-white md:text-xl">
-                <Activity className="h-5 w-5 text-violet-400" />
-                Pilier raids — transparence côté membres TENF
-              </h1>
-              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400 md:text-sm">
-                Ces écrans servent à <span className="text-slate-200">garder la confiance</span> : chaque raid compté ou corrigé
-                alimente la réputation du collectif. Pense « preuve + traçabilité » avant chaque validation.
+                <ChevronRight className="h-3 w-3 shrink-0 opacity-50" aria-hidden />
+                <span className="text-zinc-400">Outil</span>
+              </nav>
+              <p className="mt-2 text-[clamp(1rem,0.95rem+0.35vw,1.125rem)] font-semibold tracking-tight text-zinc-100">
+                Pilier raids — suivi et corrections
+              </p>
+              <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-zinc-500">
+                Trois entrées complémentaires pour garder des chiffres fiables côté membres. Passe d’abord par EventSub, puis les
+                signalements, puis l’historique pour consolider.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-100">
-                <Users className="h-3 w-3" />
-                Impact membres
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-100">
-                <Sparkles className="h-3 w-3" />
-                Qualité staff
-              </span>
+            <div className="flex shrink-0 flex-wrap gap-2 lg:pt-1">
+              <Link
+                href={`${BASE}/points-discord`}
+                className="inline-flex items-center gap-1 rounded-lg border border-sky-500/25 bg-sky-950/30 px-3 py-2 text-xs font-medium text-sky-100 transition hover:border-sky-400/40 hover:bg-sky-900/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+              >
+                Points Discord
+                <ChevronRight className="h-3 w-3 opacity-70" aria-hidden />
+              </Link>
+              <Link
+                href={`${BASE}/follow`}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+              >
+                Follow communauté
+              </Link>
             </div>
           </div>
 
-          <nav className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Navigation Raids & fiabilité">
+          <nav className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Navigation Raids et fiabilité">
             {NAV.map((item) => {
               const Icon = item.icon;
               const isActive = active === item.id || pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -100,56 +106,47 @@ export default function RaidsFiabiliteHubShell({ active, children }: Props) {
                 <Link
                   key={item.id}
                   href={item.href}
-                  className={`group relative overflow-hidden rounded-2xl border px-4 py-3 transition ${
-                    isActive
-                      ? "border-violet-400/50 bg-[linear-gradient(145deg,rgba(139,92,246,0.22),rgba(15,17,28,0.95))] shadow-[0_12px_40px_rgba(99,102,241,0.2)]"
-                      : "border-white/10 bg-white/[0.03] hover:border-violet-400/35 hover:bg-white/[0.06]"
-                  }`}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`${navCardBase} ${isActive ? navCardActive : navCardInactive}`}
                 >
                   <div className="flex items-start gap-3">
                     <span
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
-                        isActive ? "border-violet-400/40 bg-violet-500/20 text-violet-100" : "border-white/10 bg-black/30 text-slate-400"
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+                        isActive ? "border-violet-400/35 bg-violet-500/15 text-violet-200" : "border-white/10 bg-black/25 text-zinc-500"
                       }`}
+                      aria-hidden
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-4 w-4" />
                     </span>
-                    <div className="min-w-0">
-                      <p className={`text-sm font-semibold ${isActive ? "text-white" : "text-slate-200 group-hover:text-white"}`}>
-                        {item.label}
-                      </p>
-                      <p className="mt-0.5 text-[11px] leading-snug text-slate-500 group-hover:text-slate-400">{item.hint}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`text-sm font-semibold ${isActive ? "text-white" : "text-zinc-200 group-hover:text-white"}`}>
+                          {item.label}
+                        </span>
+                        {item.badge ? (
+                          <span className="rounded-md border border-white/10 bg-black/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+                            {item.badge}
+                          </span>
+                        ) : null}
+                        {isActive ? (
+                          <span className="sr-only">(page actuelle)</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-[11px] leading-snug text-zinc-500 group-hover:text-zinc-400">{item.hint}</p>
                     </div>
                     <ChevronRight
-                      className={`ml-auto h-4 w-4 shrink-0 transition ${
-                        isActive ? "text-violet-200 opacity-100" : "text-slate-600 opacity-0 group-hover:opacity-100"
-                      }`}
+                      className={`mt-0.5 h-4 w-4 shrink-0 text-zinc-600 transition ${isActive ? "text-violet-300/80" : "opacity-0 group-hover:opacity-100"}`}
+                      aria-hidden
                     />
                   </div>
                 </Link>
               );
             })}
           </nav>
-
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
-            <Link
-              href={`${BASE}/points-discord`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition hover:bg-cyan-500/20"
-            >
-              Points Discord
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-            <Link
-              href={`${BASE}/follow`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
-            >
-              Follow communauté
-            </Link>
-          </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8">{children}</div>
+      <div className="mx-auto max-w-[1480px] px-3 py-6 md:px-6 md:py-8">{children}</div>
     </div>
   );
 }

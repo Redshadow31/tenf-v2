@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RaidDailyChart, { type DailyRaidPoint } from "@/components/RaidDailyChart";
-import { ArrowRight, Info, X } from "lucide-react";
+import AdminConfirmModal from "@/components/admin/AdminConfirmModal";
+import { Info, X } from "lucide-react";
 
 type RaidDeclaration = {
   id: string;
@@ -63,6 +64,12 @@ type DeclarationDuplicateGroup = {
 
 type RaidSourceFilter = "all" | "manual" | "raids_sub";
 
+type DestructiveConfirmAction =
+  | { kind: "dedupeRaidsMonth" }
+  | { kind: "dedupeDeclarationsMonth" }
+  | { kind: "deleteRaid"; input: { raider: string; target: string; date: string; modalTab: "sent" | "received" } }
+  | { kind: "deleteDeclaration"; id: string };
+
 const glassCardClass =
   "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] p-5 md:p-6 shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
 const sectionCardClass =
@@ -81,6 +88,12 @@ function shouldIncludeRaidBySource(raid: RaidApiItem, sourceFilter: RaidSourceFi
   const source = normalizeRaidSource(raid);
   if (sourceFilter === "all") return source === "manual" || source === "raids_sub";
   return source === sourceFilter;
+}
+
+function isFetchAbortError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") return true;
+  if (error instanceof Error && error.name === "AbortError") return true;
+  return false;
 }
 
 export default function AdminEngagementHistoriqueRaidsPage() {
@@ -126,6 +139,14 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   const [deletingDeclarationId, setDeletingDeclarationId] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<RaidSourceFilter>("all");
   const [monthSortOrder, setMonthSortOrder] = useState<"desc" | "asc">("desc");
+  const [destructiveConfirm, setDestructiveConfirm] = useState<DestructiveConfirmAction | null>(null);
+  const [destructiveLoading, setDestructiveLoading] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const tabIdHistoriqueVue = useId();
+  const tabIdStatsVue = useId();
+  const historiqueListesPanelId = useId();
+  const historiqueTabpanelLabelledby = activeTab === "history" ? tabIdHistoriqueVue : tabIdStatsVue;
 
   useEffect(() => {
     const now = new Date();
@@ -156,21 +177,31 @@ export default function AdminEngagementHistoriqueRaidsPage() {
 
   useEffect(() => {
     if (!selectedMonth) return;
+    const ac = new AbortController();
+    const { signal } = ac;
+
     (async () => {
       try {
         setLoading(true);
         setError("");
         const [declarationsResponse, raidsResponse, membersResponse] = await Promise.all([
-          fetch(`/api/admin/engagement/raids-declarations?status=all&month=${encodeURIComponent(selectedMonth)}`, { cache: "no-store" }),
-          fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(selectedMonth)}`, { cache: "no-store" }),
-          fetch("/api/admin/members", { cache: "no-store" }),
+          fetch(`/api/admin/engagement/raids-declarations?status=all&month=${encodeURIComponent(selectedMonth)}`, {
+            cache: "no-store",
+            signal,
+          }),
+          fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(selectedMonth)}`, { cache: "no-store", signal }),
+          fetch("/api/admin/members", { cache: "no-store", signal }),
         ]);
+
+        if (signal.aborted) return;
 
         const [declarationsBody, raidsBody, membersBody] = await Promise.all([
           declarationsResponse.json(),
           raidsResponse.json(),
           membersResponse.json(),
         ]);
+
+        if (signal.aborted) return;
 
         if (!declarationsResponse.ok) {
           setError(declarationsBody.error || "Impossible de charger l historique des declarations.");
@@ -190,16 +221,24 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         setRaidsFaits(((raidsBody.raidsFaits || []) as RaidApiItem[]).filter(filterBySource));
         setRaidsRecus(((raidsBody.raidsRecus || []) as RaidApiItem[]).filter(filterBySource));
         setMembers((membersBody.members || []) as MemberRow[]);
-      } catch {
+      } catch (e) {
+        if (signal.aborted || isFetchAbortError(e)) return;
         setError("Erreur reseau pendant le chargement.");
       } finally {
-        setLoading(false);
+        if (!signal.aborted) {
+          setLoading(false);
+        }
       }
     })();
+
+    return () => ac.abort();
   }, [selectedMonth, sourceFilter]);
 
   useEffect(() => {
     if (!selectedMonth) return;
+    const ac = new AbortController();
+    const { signal } = ac;
+
     (async () => {
       try {
         setTrendLoading(true);
@@ -219,11 +258,13 @@ export default function AdminEngagementHistoriqueRaidsPage() {
 
         const responses = await Promise.all(
           monthKeys.map((key) =>
-            fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(key)}`, { cache: "no-store" }).then((res) =>
+            fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(key)}`, { cache: "no-store", signal }).then((res) =>
               res.ok ? res.json() : null
             )
           )
         );
+
+        if (signal.aborted) return;
 
         const totals = responses.map((body) => {
           const filterBySource = (raid: RaidApiItem) => {
@@ -248,13 +289,18 @@ export default function AdminEngagementHistoriqueRaidsPage() {
 
         setGrowthSentPct(Number.isFinite(sentPct as number) ? sentPct : null);
         setGrowthReceivedPct(Number.isFinite(receivedPct as number) ? receivedPct : null);
-      } catch {
+      } catch (e) {
+        if (signal.aborted || isFetchAbortError(e)) return;
         setGrowthSentPct(null);
         setGrowthReceivedPct(null);
       } finally {
-        setTrendLoading(false);
+        if (!signal.aborted) {
+          setTrendLoading(false);
+        }
       }
     })();
+
+    return () => ac.abort();
   }, [selectedMonth, sourceFilter]);
 
   useEffect(() => {
@@ -268,13 +314,26 @@ export default function AdminEngagementHistoriqueRaidsPage() {
   }, [selectedMonth]);
 
   useEffect(() => {
+    if (!selectedStreamer) {
+      setModalLoading(false);
+    }
+  }, [selectedStreamer]);
+
+  useEffect(() => {
     if (!selectedStreamer || !modalMonth) return;
+    const ac = new AbortController();
+    const { signal } = ac;
+
     (async () => {
       try {
         setModalLoading(true);
         setModalError("");
-        const response = await fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(modalMonth)}`, { cache: "no-store" });
+        const response = await fetch(`/api/discord/raids/data-v2?month=${encodeURIComponent(modalMonth)}`, {
+          cache: "no-store",
+          signal,
+        });
         const body = await response.json();
+        if (signal.aborted) return;
         if (!response.ok) {
           setModalError(body.error || "Impossible de charger les details de raids.");
           setModalSentRaids([]);
@@ -299,14 +358,19 @@ export default function AdminEngagementHistoriqueRaidsPage() {
 
         setModalSentRaids(sent);
         setModalReceivedRaids(received);
-      } catch {
+      } catch (e) {
+        if (signal.aborted || isFetchAbortError(e)) return;
         setModalError("Erreur reseau pendant le chargement des details.");
         setModalSentRaids([]);
         setModalReceivedRaids([]);
       } finally {
-        setModalLoading(false);
+        if (!signal.aborted) {
+          setModalLoading(false);
+        }
       }
     })();
+
+    return () => ac.abort();
   }, [selectedStreamer, modalMonth, sourceFilter]);
 
   const getMemberDisplayName = (login?: string): string => {
@@ -539,15 +603,15 @@ export default function AdminEngagementHistoriqueRaidsPage() {
 
   function statusBadge(status: RaidDeclaration["status"]): { label: string; border: string; color: string; bg: string } {
     if (status === "to_study") {
-      return { label: "A etudier", border: "rgba(96,165,250,0.45)", color: "#93c5fd", bg: "rgba(96,165,250,0.12)" };
+      return { label: "À vérifier", border: "rgba(96,165,250,0.45)", color: "#93c5fd", bg: "rgba(96,165,250,0.12)" };
     }
     if (status === "validated") {
-      return { label: "Valide", border: "rgba(52,211,153,0.45)", color: "#34d399", bg: "rgba(52,211,153,0.12)" };
+      return { label: "Validé", border: "rgba(52,211,153,0.45)", color: "#34d399", bg: "rgba(52,211,153,0.12)" };
     }
     if (status === "rejected") {
-      return { label: "Refuse", border: "rgba(248,113,113,0.45)", color: "#f87171", bg: "rgba(248,113,113,0.12)" };
+      return { label: "Refusé", border: "rgba(248,113,113,0.45)", color: "#f87171", bg: "rgba(248,113,113,0.12)" };
     }
-    return { label: "En attente / en cours de resolution", border: "rgba(250,204,21,0.45)", color: "#facc15", bg: "rgba(250,204,21,0.12)" };
+    return { label: "En cours", border: "rgba(250,204,21,0.45)", color: "#facc15", bg: "rgba(250,204,21,0.12)" };
   }
 
   function openStreamerModal(login: string, label: string, preferredTab: "sent" | "received") {
@@ -593,124 +657,265 @@ export default function AdminEngagementHistoriqueRaidsPage() {
     setShowDuplicatesModal(true);
   }
 
-  async function runDeduplicate() {
-    if (!duplicatesList.length || deduplicating) return;
-    if (!confirm(`Supprimer les doublons du mois ${selectedMonth} ?`)) return;
-    setDeduplicating(true);
+  function requestDedupeRaidsMonth() {
+    if (!duplicatesList.length || deduplicating || destructiveLoading) return;
+    setDestructiveConfirm({ kind: "dedupeRaidsMonth" });
+  }
+
+  function requestDeleteRaid(input: { raider: string; target: string; date: string; modalTab: "sent" | "received" }) {
+    if (deletingRaidKey || destructiveLoading) return;
+    setDestructiveConfirm({ kind: "deleteRaid", input });
+  }
+
+  async function handleDestructiveConfirm() {
+    const action = destructiveConfirm;
+    if (!action || destructiveLoading) return;
+    setDestructiveLoading(true);
+    setActionFeedback(null);
+
     try {
-      const response = await fetch("/api/admin/engagement/raids-management/deduplicate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: selectedMonth }),
-      });
-      const body = await response.json();
-      if (!response.ok) {
-        alert(body?.error || "Erreur pendant la suppression des doublons.");
+      if (action.kind === "dedupeRaidsMonth") {
+        if (!duplicatesList.length) {
+          setDestructiveConfirm(null);
+          return;
+        }
+        setDeduplicating(true);
+        try {
+          const response = await fetch("/api/admin/engagement/raids-management/deduplicate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ month: selectedMonth }),
+          });
+          const body = await response.json();
+          if (!response.ok) {
+            setActionFeedback({ type: "error", text: body?.error || "Erreur pendant la suppression des doublons." });
+            setDestructiveConfirm(null);
+            return;
+          }
+          const msg = `${body?.message || "Doublons traites."} Entrees supprimees: ${body?.removed?.total ?? 0}`;
+          setActionFeedback({ type: "success", text: msg });
+          setDestructiveConfirm(null);
+          setShowDuplicatesModal(false);
+          setDuplicatesList([]);
+          const removedKeys = new Set(duplicatesList.map((item) => item.key));
+          setRaidsFaits((prev) =>
+            prev.filter((raid) => {
+              const raider = String(raid.raiderTwitchLogin || "").toLowerCase();
+              const target = String(raid.targetTwitchLogin || "").toLowerCase();
+              const date = String(raid.date || "");
+              return !removedKeys.has(`${raider}|${target}|${date}`);
+            })
+          );
+        } catch {
+          setActionFeedback({ type: "error", text: "Erreur reseau pendant la suppression des doublons." });
+          setDestructiveConfirm(null);
+        } finally {
+          setDeduplicating(false);
+        }
         return;
       }
-      alert(`${body?.message || "Doublons traites."}\nEntrees supprimees: ${body?.removed?.total ?? 0}`);
-      setShowDuplicatesModal(false);
-      setDuplicatesList([]);
-      const removedKeys = new Set(duplicatesList.map((item) => item.key));
-      setRaidsFaits((prev) =>
-        prev.filter((raid) => {
-          const raider = String(raid.raiderTwitchLogin || "").toLowerCase();
-          const target = String(raid.targetTwitchLogin || "").toLowerCase();
-          const date = String(raid.date || "");
-          return !removedKeys.has(`${raider}|${target}|${date}`);
-        })
-      );
-    } catch {
-      alert("Erreur reseau pendant la suppression des doublons.");
+
+      if (action.kind === "deleteRaid") {
+        const input = action.input;
+        const raidKey = `${input.raider}|${input.target}|${input.date}`;
+        setDeletingRaidKey(raidKey);
+        try {
+          const response = await fetch("/api/admin/engagement/raids-management/delete-raid", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              month: modalMonth || selectedMonth,
+              raider: input.raider,
+              target: input.target,
+              date: input.date,
+            }),
+          });
+          const body = await response.json();
+          if (!response.ok) {
+            setActionFeedback({ type: "error", text: body?.error || "Suppression impossible." });
+            setDestructiveConfirm(null);
+            return;
+          }
+          setActionFeedback({ type: "success", text: "Raid supprime." });
+          setDestructiveConfirm(null);
+          setRaidsFaits((prev) =>
+            prev.filter(
+              (raid) =>
+                !(
+                  String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
+                  String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
+                  String(raid.date || "") === input.date
+                )
+            )
+          );
+          setRaidsRecus((prev) =>
+            prev.filter(
+              (raid) =>
+                !(
+                  String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
+                  String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
+                  String(raid.date || "") === input.date
+                )
+            )
+          );
+          if (input.modalTab === "sent") {
+            setModalSentRaids((prev) =>
+              prev.filter(
+                (raid) =>
+                  !(
+                    String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
+                    String(raid.date || "") === input.date
+                  )
+              )
+            );
+            setModalReceivedRaids((prev) =>
+              prev.filter(
+                (raid) =>
+                  !(
+                    String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
+                    String(raid.date || "") === input.date
+                  )
+              )
+            );
+          } else {
+            setModalReceivedRaids((prev) =>
+              prev.filter(
+                (raid) =>
+                  !(
+                    String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
+                    String(raid.date || "") === input.date
+                  )
+              )
+            );
+            setModalSentRaids((prev) =>
+              prev.filter(
+                (raid) =>
+                  !(
+                    String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
+                    String(raid.date || "") === input.date
+                  )
+              )
+            );
+          }
+        } catch {
+          setActionFeedback({ type: "error", text: "Erreur reseau pendant la suppression." });
+          setDestructiveConfirm(null);
+        } finally {
+          setDeletingRaidKey(null);
+        }
+        return;
+      }
+
+      if (action.kind === "dedupeDeclarationsMonth") {
+        setDeduplicatingHistory(true);
+        try {
+          const response = await fetch("/api/admin/engagement/raids-declarations/deduplicate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ month: selectedMonth }),
+          });
+          const body = await response.json();
+          if (!response.ok) {
+            setActionFeedback({ type: "error", text: body?.error || "Suppression des doublons impossible." });
+            setDestructiveConfirm(null);
+            return;
+          }
+          setActionFeedback({
+            type: "success",
+            text: `${body?.message || "Doublons traites."} (${body?.removed ?? 0} supprime(s))`,
+          });
+          setDestructiveConfirm(null);
+          const toDelete = new Set(historyDuplicates.flatMap((group) => group.ids.slice(1)));
+          setDeclarations((prev) => prev.filter((item) => !toDelete.has(item.id)));
+          setShowHistoryDuplicatesModal(false);
+          setHistoryDuplicates([]);
+        } catch {
+          setActionFeedback({ type: "error", text: "Erreur reseau pendant la suppression des doublons." });
+          setDestructiveConfirm(null);
+        } finally {
+          setDeduplicatingHistory(false);
+        }
+        return;
+      }
+
+      if (action.kind === "deleteDeclaration") {
+        const declarationId = action.id;
+        setDeletingDeclarationId(declarationId);
+        try {
+          const response = await fetch(`/api/admin/engagement/raids-declarations/${encodeURIComponent(declarationId)}`, {
+            method: "DELETE",
+          });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            setActionFeedback({ type: "error", text: body?.error || "Suppression impossible." });
+            setDestructiveConfirm(null);
+            return;
+          }
+          setActionFeedback({ type: "success", text: "Declaration supprimee." });
+          setDestructiveConfirm(null);
+          setDeclarations((prev) => prev.filter((item) => item.id !== declarationId));
+        } catch {
+          setActionFeedback({ type: "error", text: "Erreur reseau pendant la suppression." });
+          setDestructiveConfirm(null);
+        } finally {
+          setDeletingDeclarationId(null);
+        }
+      }
     } finally {
-      setDeduplicating(false);
+      setDestructiveLoading(false);
     }
   }
 
-  async function deleteRaidLine(input: { raider: string; target: string; date: string; modalTab: "sent" | "received" }) {
-    if (deletingRaidKey) return;
-    if (!confirm("Supprimer ce raid ?")) return;
-    const raidKey = `${input.raider}|${input.target}|${input.date}`;
-    setDeletingRaidKey(raidKey);
-    try {
-      const response = await fetch("/api/admin/engagement/raids-management/delete-raid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          month: modalMonth || selectedMonth,
-          raider: input.raider,
-          target: input.target,
-          date: input.date,
-        }),
-      });
-      const body = await response.json();
-      if (!response.ok) {
-        alert(body?.error || "Suppression impossible.");
-        return;
+  function destructiveModalMeta(
+    action: DestructiveConfirmAction
+  ): { title: string; description: ReactNode; confirmLabel?: string } {
+    switch (action.kind) {
+      case "dedupeRaidsMonth":
+        return {
+          title: "Supprimer les doublons de raids pour ce mois ?",
+          description: (
+            <>
+              Mois <strong className="text-white">{selectedMonth}</strong>. {duplicatesList.length} groupe(s) detecte(s). Une
+              entree sera conservee par groupe ; les doublons seront supprimes de maniere <strong className="text-white">definitive</strong>.
+            </>
+          ),
+        };
+      case "dedupeDeclarationsMonth":
+        return {
+          title: "Supprimer les doublons de declarations ?",
+          description: (
+            <>
+              Mois <strong className="text-white">{selectedMonth}</strong>. La plus ancienne entree de chaque groupe sera conservee ; les autres seront supprimes de maniere{" "}
+              <strong className="text-white">definitive</strong>.
+            </>
+          ),
+        };
+      case "deleteRaid": {
+        const { input } = action;
+        return {
+          title: "Supprimer ce raid definitivement ?",
+          description: (
+            <>
+              Raideur : <strong className="text-white">{input.raider}</strong> vers cible{" "}
+              <strong className="text-white">{input.target}</strong>
+              <br />
+              Date : <strong className="text-white">{new Date(input.date).toLocaleString("fr-FR")}</strong>
+              <br />
+              Cette action est <strong className="text-white">irreversible</strong> pour les statistiques du mois.
+            </>
+          ),
+        };
       }
-      setRaidsFaits((prev) =>
-        prev.filter(
-          (raid) =>
-            !(
-              String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
-              String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
-              String(raid.date || "") === input.date
-            )
-        )
-      );
-      setRaidsRecus((prev) =>
-        prev.filter(
-          (raid) =>
-            !(
-              String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
-              String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
-              String(raid.date || "") === input.date
-            )
-        )
-      );
-      if (input.modalTab === "sent") {
-        setModalSentRaids((prev) =>
-          prev.filter(
-            (raid) =>
-              !(
-                String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
-                String(raid.date || "") === input.date
-              )
-          )
-        );
-        setModalReceivedRaids((prev) =>
-          prev.filter(
-            (raid) =>
-              !(
-                String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
-                String(raid.date || "") === input.date
-              )
-          )
-        );
-      } else {
-        setModalReceivedRaids((prev) =>
-          prev.filter(
-            (raid) =>
-              !(
-                String(raid.raiderTwitchLogin || "").toLowerCase() === input.raider &&
-                String(raid.date || "") === input.date
-              )
-          )
-        );
-        setModalSentRaids((prev) =>
-          prev.filter(
-            (raid) =>
-              !(
-                String(raid.targetTwitchLogin || "").toLowerCase() === input.target &&
-                String(raid.date || "") === input.date
-              )
-          )
-        );
-      }
-    } catch {
-      alert("Erreur reseau pendant la suppression.");
-    } finally {
-      setDeletingRaidKey(null);
+      case "deleteDeclaration":
+        return {
+          title: "Supprimer cette declaration definitivement ?",
+          description: (
+            <>
+              Identifiant : <strong className="text-white">{action.id}</strong>. La ligne sera retiree de l historique des declarations de maniere{" "}
+              <strong className="text-white">definitive</strong>.
+            </>
+          ),
+        };
     }
   }
 
@@ -746,113 +951,77 @@ export default function AdminEngagementHistoriqueRaidsPage() {
     setShowHistoryDuplicatesModal(true);
   }
 
-  async function runHistoryDeduplicate() {
-    if (deduplicatingHistory) return;
-    if (!confirm(`Supprimer les doublons des declarations pour ${selectedMonth} ?`)) return;
-    setDeduplicatingHistory(true);
-    try {
-      const response = await fetch("/api/admin/engagement/raids-declarations/deduplicate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: selectedMonth }),
-      });
-      const body = await response.json();
-      if (!response.ok) {
-        alert(body?.error || "Suppression des doublons impossible.");
-        return;
-      }
-
-      alert(`${body?.message || "Doublons traites."} (${body?.removed ?? 0} supprime(s))`);
-      const toDelete = new Set(historyDuplicates.flatMap((group) => group.ids.slice(1)));
-      setDeclarations((prev) => prev.filter((item) => !toDelete.has(item.id)));
-      setShowHistoryDuplicatesModal(false);
-      setHistoryDuplicates([]);
-    } catch {
-      alert("Erreur reseau pendant la suppression des doublons.");
-    } finally {
-      setDeduplicatingHistory(false);
-    }
+  function requestDedupeDeclarationsMonth() {
+    if (deduplicatingHistory || destructiveLoading) return;
+    setDestructiveConfirm({ kind: "dedupeDeclarationsMonth" });
   }
 
-  async function deleteDeclarationRow(declarationId: string) {
-    if (!declarationId || deletingDeclarationId) return;
-    if (!confirm("Supprimer cette declaration ?")) return;
-    setDeletingDeclarationId(declarationId);
-    try {
-      const response = await fetch(`/api/admin/engagement/raids-declarations/${encodeURIComponent(declarationId)}`, {
-        method: "DELETE",
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        alert(body?.error || "Suppression impossible.");
-        return;
-      }
-      setDeclarations((prev) => prev.filter((item) => item.id !== declarationId));
-    } catch {
-      alert("Erreur reseau pendant la suppression.");
-    } finally {
-      setDeletingDeclarationId(null);
-    }
+  function requestDeleteDeclaration(declarationId: string) {
+    if (!declarationId || deletingDeclarationId || destructiveLoading) return;
+    setDestructiveConfirm({ kind: "deleteDeclaration", id: declarationId });
   }
+
+  const pointsDiscordHref = isCommunity ? "/admin/communaute/engagement/points-discord" : "/admin/engagement/points-discord";
+  const followHref = isCommunity ? "/admin/communaute/engagement/follow" : "/admin/engagement/follow";
+  const shellSurface = "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20";
 
   return (
-    <div className={`text-white space-y-6 ${isCommunity ? "pb-2" : "min-h-screen bg-[#0e0e10] p-8"}`}>
-      <section className={glassCardClass}>
-        <Link href={engagementHref} className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
+    <div className={`text-white ${isCommunity ? "pb-2" : "min-h-screen bg-[#07080f] py-6 md:py-8"}`}>
+      <div className="mx-auto w-full max-w-[1480px] px-3 md:px-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start xl:gap-8">
+          <div className="min-w-0 space-y-6">
+      <section className={`${shellSurface} p-4 sm:p-5`}>
+        <Link href={engagementHref} className="inline-flex text-xs font-medium text-zinc-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950">
           {isCommunity ? "← Hub engagement" : "← Retour à Engagement"}
         </Link>
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {isCommunity ? null : (
             <Link
               href="/admin/raids2"
-              className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-emerald-300"
-              style={{ borderColor: "rgba(52,211,153,0.45)" }}
+              className="inline-flex rounded-lg border border-emerald-500/25 bg-emerald-950/25 px-2.5 py-1.5 text-xs font-medium text-emerald-100 transition hover:border-emerald-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/45"
             >
-              Ouvrir suivi des raids (import manuel)
+              Import manuel (legacy)
             </Link>
           )}
           <Link
             href={signalementsHref}
-            className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-[#facc15]"
-            style={{ borderColor: "rgba(250,204,21,0.4)" }}
+            className="inline-flex rounded-lg border border-amber-500/25 bg-amber-950/20 px-2.5 py-1.5 text-xs font-medium text-amber-100 transition hover:border-amber-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/45"
           >
-            File signalements
+            Signalements
           </Link>
           <Link
             href={raidsSubHref}
-            className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold text-sky-300"
-            style={{ borderColor: "rgba(56,189,248,0.45)" }}
+            className="inline-flex rounded-lg border border-sky-500/25 bg-sky-950/25 px-2.5 py-1.5 text-xs font-medium text-sky-100 transition hover:border-sky-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/45"
           >
             Raids EventSub
-            <ArrowRight className="ml-1 h-3.5 w-3.5" />
           </Link>
-        </div>
-        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
-          {isCommunity ? "Historique — mémoire des raids TENF" : "Historique des raids"}
-        </h1>
-        <p className="max-w-4xl text-sm text-slate-300">
+          <Link
+            href={pointsDiscordHref}
+            className="inline-flex rounded-lg border border-emerald-500/25 bg-emerald-950/25 px-2.5 py-1.5 text-xs font-medium text-emerald-100 transition hover:border-emerald-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/45"
+          >
+            Points Discord
+          </Link>
           {isCommunity ? (
-            <>
-              Ici se croisent les <strong className="text-white">preuves automatiques</strong> (EventSub) et les{" "}
-              <strong className="text-white">corrections humaines</strong> (signalements). Utilise ce module pour expliquer la
-              dynamique du mois aux membres, repérer les pics d’activité et sécuriser les chiffres avant toute communication
-              externe.
-            </>
-          ) : (
-            <>
-              Vue consolidée des raids manuels et EventSub pour analyser volumes, qualité de validation, tendances mensuelles
-              et actions de correction.
-            </>
-          )}
+            <Link
+              href={followHref}
+              className="inline-flex rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/45"
+            >
+              Follow
+            </Link>
+          ) : null}
+        </div>
+        <h1 className="mt-4 text-[clamp(1.35rem,1.1rem+0.9vw,1.85rem)] font-semibold tracking-tight text-white">
+          Historique raids
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+          {isCommunity
+            ? "Consulter, auditer et corriger les données consolidées du mois. Les suppressions restent tracées et confirmées."
+            : "Vue consolidée des raids manuels et EventSub pour analyser volumes, validations et tendances."}
         </p>
       </section>
 
       <div
-        className={`${sectionCardClass} mb-0 rounded-xl border p-4`}
-        style={{
-          borderColor: "rgba(139,92,246,0.26)",
-          background: "radial-gradient(circle at 10% 8%, rgba(139,92,246,0.14), rgba(26,26,29,0.95) 42%)",
-        }}
+        className={`${shellSurface} p-4 sm:p-5`}
       >
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-center gap-2">
@@ -876,8 +1045,8 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               className="rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: "rgba(255,255,255,0.2)", backgroundColor: "#0e0e10", color: "white" }}
             >
-              <option value="desc">Plus recent → plus ancien</option>
-              <option value="asc">Plus ancien → plus recent</option>
+              <option value="desc">Plus récent → plus ancien</option>
+              <option value="asc">Plus ancien → plus récent</option>
             </select>
           </div>
 
@@ -892,7 +1061,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                   key={item.key}
                   type="button"
                   onClick={() => setSourceFilter(item.key)}
-                  className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                  className="rounded-full px-2.5 py-1 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1d]"
                   style={{
                     color: sourceFilter === item.key ? "#ffffff" : "#cbd5e1",
                     backgroundColor:
@@ -910,34 +1079,70 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("history")}
-              className="rounded-lg border px-3 py-2 text-sm font-semibold"
-              style={{
-                borderColor: activeTab === "history" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
-                color: activeTab === "history" ? "#d8b4fe" : "#cbd5e1",
-              }}
-            >
-              Historique des raids
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("stats")}
-              className="rounded-lg border px-3 py-2 text-sm font-semibold"
-              style={{
-                borderColor: activeTab === "stats" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
-                color: activeTab === "stats" ? "#d8b4fe" : "#cbd5e1",
-              }}
-            >
-              Stats de raids
-            </button>
+            <div role="tablist" aria-label="Vue historique ou statistiques" className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                role="tab"
+                id={tabIdHistoriqueVue}
+                aria-selected={activeTab === "history"}
+                aria-controls={historiqueListesPanelId}
+                tabIndex={activeTab === "history" ? 0 : -1}
+                onClick={() => setActiveTab("history")}
+                className="rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1d]"
+                style={{
+                  borderColor: activeTab === "history" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
+                  color: activeTab === "history" ? "#d8b4fe" : "#cbd5e1",
+                }}
+              >
+                Historique des raids
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id={tabIdStatsVue}
+                aria-selected={activeTab === "stats"}
+                aria-controls={historiqueListesPanelId}
+                tabIndex={activeTab === "stats" ? 0 : -1}
+                onClick={() => setActiveTab("stats")}
+                className="rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1d]"
+                style={{
+                  borderColor: activeTab === "stats" ? "rgba(145,70,255,0.6)" : "rgba(255,255,255,0.2)",
+                  color: activeTab === "stats" ? "#d8b4fe" : "#cbd5e1",
+                }}
+              >
+                Stats de raids
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-4">
+          <section className={`${shellSurface} p-4`} aria-label="Synthèse chiffrée du mois">
+            <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Raids envoyés</p>
+                <p className="mt-1 text-[clamp(1.25rem,1rem+0.8vw,1.75rem)] font-semibold tabular-nums text-violet-200">{totals.sent}</p>
+              </div>
+              <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Raids reçus</p>
+                <p className="mt-1 text-[clamp(1.25rem,1rem+0.8vw,1.75rem)] font-semibold tabular-nums text-sky-200">{totals.received}</p>
+              </div>
+              <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Déclarations</p>
+                <p className="mt-1 text-[clamp(1.25rem,1rem+0.8vw,1.75rem)] font-semibold tabular-nums text-white">{totals.declarations}</p>
+              </div>
+              <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Fiches à clarifier</p>
+                <p className="mt-1 text-[clamp(1.25rem,1rem+0.8vw,1.75rem)] font-semibold tabular-nums text-amber-200">
+                  {totals.pending + totals.toStudy}
+                </p>
+                <p className="mt-1 text-[10px] text-zinc-600">En cours + à vérifier.</p>
+              </div>
+            </div>
+          </section>
+
           <section className="rounded-xl border border-[#353a50] bg-[#101622]/85 p-3 shadow-[0_10px_24px_rgba(2,6,23,0.35)]">
-            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Validation</p>
+            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-gray-400">Détail validation</p>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
               <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
                 <p className="text-gray-400">Declarations</p>
@@ -948,7 +1153,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                 <p className="font-semibold text-yellow-300">{totals.pending}</p>
               </div>
               <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
-                <p className="text-gray-400">A etudier</p>
+                <p className="text-gray-400">À vérifier</p>
                 <p className="font-semibold text-sky-300">{totals.toStudy}</p>
               </div>
               <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
@@ -970,7 +1175,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                 <p className="font-semibold text-[#c4b5fd]">{totals.sent}</p>
               </div>
               <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
-                <p className="text-gray-400">Raids recus</p>
+                <p className="text-gray-400">Raids reçus</p>
                 <p className="font-semibold text-[#93c5fd]">{totals.received}</p>
               </div>
               <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
@@ -1006,7 +1211,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                 </p>
               </div>
               <div className="rounded-md border border-gray-700 px-3 py-2 text-sm">
-                <p className="text-gray-400">Croissance raids recus (vs moy. 3 mois)</p>
+                <p className="text-gray-400">Croissance raids reçus (vs moy. 3 mois)</p>
                 <p className="font-semibold" style={{ color: growthReceivedPct === null ? "#cbd5e1" : growthReceivedPct >= 0 ? "#34d399" : "#f87171" }}>
                   {trendLoading ? "..." : growthReceivedPct === null ? "N/A" : `${growthReceivedPct >= 0 ? "+" : ""}${growthReceivedPct.toFixed(1)}%`}
                 </p>
@@ -1025,18 +1230,19 @@ export default function AdminEngagementHistoriqueRaidsPage() {
             {selectedDayDetails ? (
               <div className="rounded-lg border border-gray-700 bg-[#101014] p-3">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-white">Detail du jour {selectedChartDay}</p>
+                  <p className="text-sm font-semibold text-white">Détail du jour {selectedChartDay}</p>
                   <button
                     type="button"
                     onClick={() => setSelectedChartDay(null)}
-                    className="rounded-md border px-2 py-1 text-xs text-gray-300"
+                    className="rounded-md border px-2 py-1 text-xs text-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
                     style={{ borderColor: "rgba(255,255,255,0.2)" }}
+                    aria-label="Fermer le détail du jour"
                   >
                     Fermer
                   </button>
                 </div>
                 <p className="text-xs text-gray-400">
-                  {selectedDayDetails.sent.reduce((sum, raid) => sum + (raid.count || 1), 0)} raid(s) fait(s) et {selectedDayDetails.received.length} raid(s) recu(s)
+                  {selectedDayDetails.sent.reduce((sum, raid) => sum + (raid.count || 1), 0)} raid(s) fait(s) et {selectedDayDetails.received.length} raid(s) reçu(s)
                 </p>
               </div>
             ) : null}
@@ -1044,29 +1250,43 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         </div>
       </div>
 
-      <section className={`${sectionCardClass} p-4`}>
-        <h2 className="text-base font-semibold text-slate-100">Explication de la page</h2>
-        <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
-          <p className="rounded-lg border border-indigo-300/30 bg-indigo-300/10 px-3 py-2 text-indigo-100">
-            1. Filtrer le mois et la source pour isoler les zones de friction.
+      <div
+        id={historiqueListesPanelId}
+        role="tabpanel"
+        aria-labelledby={historiqueTabpanelLabelledby}
+        className={`${shellSurface} p-4 sm:p-6`}
+      >
+        {actionFeedback ? (
+          <div
+            role={actionFeedback.type === "error" ? "alert" : "status"}
+            aria-live={actionFeedback.type === "error" ? "assertive" : "polite"}
+            className={`mb-3 rounded-lg border px-4 py-3 text-sm ${
+              actionFeedback.type === "error"
+                ? "border-red-500/40 bg-red-900/20 text-red-200"
+                : "border-emerald-500/40 bg-emerald-900/20 text-emerald-200"
+            }`}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <span>{actionFeedback.text}</span>
+              <button
+                type="button"
+                onClick={() => setActionFeedback(null)}
+                className="shrink-0 rounded border border-white/15 px-2 py-0.5 text-xs text-white/80 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {error ? (
+          <p className="mb-3 text-sm text-red-300" role="alert">
+            {error}
           </p>
-          <p className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-cyan-100">
-            2. Comparer l'historique de validation avec les stats de raids faits/reçus.
-          </p>
-          <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-amber-100">
-            3. Utiliser les modals et outils anti-doublons pour assainir les données.
-          </p>
-        </div>
-        <p className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-500/30 bg-slate-500/10 px-3 py-2 text-xs text-slate-200">
-          <Info className="h-3.5 w-3.5" />
-          Le mode "Tous" combine manuel + raids-sub pour une lecture consolidée.
-        </p>
-      </section>
-
-      <div className={`${sectionCardClass} rounded-lg border p-6`}>
-        {error ? <p className="mb-3 text-sm text-red-300">{error}</p> : null}
+        ) : null}
         {loading ? (
-          <p className="text-sm text-gray-300">Chargement des donnees...</p>
+          <p className="text-sm text-gray-300" role="status" aria-live="polite">
+            Chargement des données...
+          </p>
         ) : activeTab === "history" ? (
           filteredDeclarations.length === 0 ? (
             <p className="text-sm text-gray-300">Aucun raid declare sur ce mois.</p>
@@ -1092,7 +1312,9 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                       Gestion doublons
                     </button>
                   ) : null}
-                  <span className="text-xs text-gray-400">{filteredDeclarations.length} resultat(s)</span>
+                  <span className="text-xs text-gray-400" role="status" aria-live="polite">
+                    {filteredDeclarations.length} résultat(s)
+                  </span>
                 </div>
               </div>
 
@@ -1114,8 +1336,8 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                         {canUseAdvancedTools ? (
                           <button
                             type="button"
-                            onClick={() => deleteDeclarationRow(row.id)}
-                            disabled={deletingDeclarationId === row.id}
+                            onClick={() => requestDeleteDeclaration(row.id)}
+                            disabled={deletingDeclarationId === row.id || destructiveConfirm !== null || destructiveLoading}
                             className="rounded-md border px-2 py-1 text-[11px] font-semibold text-red-300 disabled:opacity-50"
                             style={{ borderColor: "rgba(248,113,113,0.45)", backgroundColor: "rgba(248,113,113,0.1)" }}
                             title="Supprimer cette declaration"
@@ -1223,7 +1445,9 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                 className="w-full max-w-[420px] rounded-lg border px-3 py-2 text-sm"
                 style={{ borderColor: "rgba(255,255,255,0.18)", backgroundColor: "#101014", color: "#fff" }}
               />
-              <span className="text-xs text-gray-400">{activeStatsRows.length} resultat(s)</span>
+              <span className="text-xs text-gray-400" role="status" aria-live="polite">
+                {activeStatsRows.length} résultat(s)
+              </span>
             </div>
 
             {activeStatsRows.length === 0 ? (
@@ -1290,6 +1514,64 @@ export default function AdminEngagementHistoriqueRaidsPage() {
         )}
       </div>
 
+          </div>
+
+          <aside className="min-w-0 space-y-4 xl:sticky xl:top-6 xl:self-start">
+            <div className={`${shellSurface} p-4`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Mois & source</p>
+              <p className="mt-2 text-sm text-zinc-300">
+                Mois : <strong className="text-white">{selectedMonth || "—"}</strong>
+              </p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Source :{" "}
+                <strong className="text-zinc-200">
+                  {sourceFilter === "all" ? "Manuel + EventSub" : sourceFilter === "manual" ? "Manuel" : "Raids-sub"}
+                </strong>
+              </p>
+            </div>
+            <div className={`${shellSurface} p-4`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Lecture rapide</p>
+              <ol className="mt-3 list-decimal space-y-2 pl-4 text-xs leading-relaxed text-zinc-400">
+                <li>Filtre le mois et la source pour isoler les pics.</li>
+                <li>Croise déclarations et volumes avant communication externe.</li>
+                <li>Les suppressions restent derrière une modale de confirmation.</li>
+              </ol>
+              <p className="mt-3 flex flex-wrap items-start gap-2 rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2 text-[11px] text-zinc-400">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
+                <span>« Tous » combine manuel + raids-sub.</span>
+              </p>
+            </div>
+            <div className={`${shellSurface} p-4`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Liens rapides</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                <li>
+                  <Link href={raidsSubHref} className="text-sky-200/90 underline-offset-2 hover:underline">
+                    Raids EventSub
+                  </Link>
+                </li>
+                <li>
+                  <Link href={signalementsHref} className="text-amber-200/90 underline-offset-2 hover:underline">
+                    Signalements
+                  </Link>
+                </li>
+                <li>
+                  <Link href={pointsDiscordHref} className="text-emerald-200/90 underline-offset-2 hover:underline">
+                    Points Discord
+                  </Link>
+                </li>
+                {isCommunity ? (
+                  <li>
+                    <Link href={followHref} className="text-zinc-300 underline-offset-2 hover:underline">
+                      Follow communauté
+                    </Link>
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </div>
+
       {showHistoryDuplicatesModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowHistoryDuplicatesModal(false)}>
           <div
@@ -1309,10 +1591,11 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               <button
                 type="button"
                 onClick={() => setShowHistoryDuplicatesModal(false)}
-                className="rounded-md border p-2 text-gray-300 hover:text-white"
+                aria-label="Fermer la fenêtre doublons historique"
+                className="rounded-md border p-2 text-gray-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
                 style={{ borderColor: "rgba(255,255,255,0.2)" }}
               >
-                <X size={16} />
+                <X size={16} aria-hidden />
               </button>
             </div>
 
@@ -1344,8 +1627,8 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={runHistoryDeduplicate}
-                    disabled={deduplicatingHistory}
+                    onClick={requestDedupeDeclarationsMonth}
+                    disabled={deduplicatingHistory || destructiveConfirm !== null || destructiveLoading}
                     className="rounded-md border px-3 py-1.5 text-xs font-semibold text-amber-200 disabled:opacity-50"
                     style={{ borderColor: "rgba(251,191,36,0.5)", backgroundColor: "rgba(251,191,36,0.14)" }}
                   >
@@ -1377,10 +1660,11 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               <button
                 type="button"
                 onClick={() => setShowDuplicatesModal(false)}
-                className="rounded-md border p-2 text-gray-300 hover:text-white"
+                aria-label="Fermer la fenêtre de vérification des doublons"
+                className="rounded-md border p-2 text-gray-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
                 style={{ borderColor: "rgba(255,255,255,0.2)" }}
               >
-                <X size={16} />
+                <X size={16} aria-hidden />
               </button>
             </div>
 
@@ -1412,8 +1696,8 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={runDeduplicate}
-                    disabled={deduplicating}
+                    onClick={requestDedupeRaidsMonth}
+                    disabled={deduplicating || destructiveConfirm !== null || destructiveLoading}
                     className="rounded-md border px-3 py-1.5 text-xs font-semibold text-amber-200 disabled:opacity-50"
                     style={{ borderColor: "rgba(251,191,36,0.5)", backgroundColor: "rgba(251,191,36,0.14)" }}
                   >
@@ -1445,10 +1729,11 @@ export default function AdminEngagementHistoriqueRaidsPage() {
               <button
                 type="button"
                 onClick={() => setSelectedStreamer(null)}
-                className="rounded-md border p-2 text-gray-300 hover:text-white"
+                aria-label="Fermer la fenêtre détail streamer"
+                className="rounded-md border p-2 text-gray-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
                 style={{ borderColor: "rgba(255,255,255,0.2)" }}
               >
-                <X size={16} />
+                <X size={16} aria-hidden />
               </button>
             </div>
 
@@ -1522,7 +1807,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                           <button
                             type="button"
                             onClick={() =>
-                              deleteRaidLine({
+                              requestDeleteRaid({
                                 raider: String(selectedStreamer?.login || "").toLowerCase(),
                                 target: String(raid.targetTwitchLogin || "").toLowerCase(),
                                 date: String(raid.date || ""),
@@ -1530,8 +1815,10 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                               })
                             }
                             disabled={
+                              destructiveConfirm !== null ||
+                              destructiveLoading ||
                               deletingRaidKey ===
-                              `${String(selectedStreamer?.login || "").toLowerCase()}|${String(raid.targetTwitchLogin || "").toLowerCase()}|${String(raid.date || "")}`
+                                `${String(selectedStreamer?.login || "").toLowerCase()}|${String(raid.targetTwitchLogin || "").toLowerCase()}|${String(raid.date || "")}`
                             }
                             className="rounded-md border px-2 py-1 text-[11px] font-semibold text-red-300 disabled:opacity-50"
                             style={{ borderColor: "rgba(248,113,113,0.45)", backgroundColor: "rgba(248,113,113,0.1)" }}
@@ -1560,7 +1847,7 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            deleteRaidLine({
+                            requestDeleteRaid({
                               raider: String(raid.raiderTwitchLogin || "").toLowerCase(),
                               target: String(selectedStreamer?.login || "").toLowerCase(),
                               date: String(raid.date || ""),
@@ -1568,8 +1855,10 @@ export default function AdminEngagementHistoriqueRaidsPage() {
                             })
                           }
                           disabled={
+                            destructiveConfirm !== null ||
+                            destructiveLoading ||
                             deletingRaidKey ===
-                            `${String(raid.raiderTwitchLogin || "").toLowerCase()}|${String(selectedStreamer?.login || "").toLowerCase()}|${String(raid.date || "")}`
+                              `${String(raid.raiderTwitchLogin || "").toLowerCase()}|${String(selectedStreamer?.login || "").toLowerCase()}|${String(raid.date || "")}`
                           }
                           className="rounded-md border px-2 py-1 text-[11px] font-semibold text-red-300 disabled:opacity-50"
                           style={{ borderColor: "rgba(248,113,113,0.45)", backgroundColor: "rgba(248,113,113,0.1)" }}
@@ -1587,6 +1876,22 @@ export default function AdminEngagementHistoriqueRaidsPage() {
           </div>
         </div>
       ) : null}
+
+      <AdminConfirmModal
+        open={destructiveConfirm !== null}
+        tone="danger"
+        title={destructiveConfirm ? destructiveModalMeta(destructiveConfirm).title : ""}
+        description={destructiveConfirm ? destructiveModalMeta(destructiveConfirm).description : undefined}
+        confirmLabel="Confirmer la suppression"
+        loading={destructiveLoading}
+        onCancel={() => {
+          if (destructiveLoading) return;
+          setDestructiveConfirm(null);
+        }}
+        onConfirm={() => {
+          void handleDestructiveConfirm();
+        }}
+      />
     </div>
   );
 }

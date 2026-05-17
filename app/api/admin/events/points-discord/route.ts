@@ -1,5 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireAdmin, requireSectionAccess } from "@/lib/requireAdmin";
+
+/**
+ * RBAC : la page hub canonique « Points Discord » est utilisée comme
+ * section de référence pour cette API. Les rôles autorisés via
+ * /admin/gestion-acces/permissions peuvent attribuer des points.
+ *
+ * Règle métier forcée serveur : présence évènement validée = +300 points.
+ * Aucune valeur `points` du client n'est acceptée.
+ *
+ * TODO (RBAC dédié) : à terme remplacer `requireSectionAccess(href)` par une
+ * permission métier dédiée (ex. `engagement.points.award`) une fois que la
+ * convention granulaire sera retenue dans le projet.
+ */
+const POINTS_DISCORD_SECTION_HREF = "/admin/communaute/engagement/points-discord";
+const EVENT_POINTS_VALUE = 300;
 import { buildDiscordUsernameByTwitchLoginMap } from "@/lib/adminDiscordUsernameLookup";
 import { eventRepository } from "@/lib/repositories";
 import {
@@ -158,7 +173,7 @@ export async function GET(request: NextRequest) {
   try {
     const admin = await requireAdmin();
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -209,14 +224,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSectionAccess(POINTS_DISCORD_SECTION_HREF);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const body = await request.json().catch(() => ({}));
-    const pointsRaw = Number.parseInt(String(body?.points || "300"), 10);
-    const points = Number.isFinite(pointsRaw) && pointsRaw > 0 ? pointsRaw : 300;
+    // Sécurité métier : on force la valeur côté serveur. Aucun `points` du
+    // client n'est utilisé.
+    const points = EVENT_POINTS_VALUE;
     const note = String(body?.note || "").trim();
     const presenceKeys: string[] = Array.isArray(body?.presenceKeys)
       ? Array.from(
@@ -333,14 +349,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         alreadyAwarded: true,
-        message: "Les points ont deja ete attribues pour cette presence.",
+        message: "Les points ont déjà été attribués pour cette présence.",
       });
     }
 
     const candidate = await loadPresenceCandidate(parsed.eventId, parsed.twitchLogin);
     if (!candidate) {
       return NextResponse.json(
-        { error: "Presence introuvable ou non validee pour ce membre/evenement." },
+        { error: "Présence introuvable ou non validée pour ce membre / évènement." },
         { status: 404 }
       );
     }
@@ -375,7 +391,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         alreadyAwarded: true,
-        message: "Les points ont deja ete attribues pour cette presence.",
+        message: "Les points ont déjà été attribués pour cette présence.",
       });
     }
 

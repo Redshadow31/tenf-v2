@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import AdminConfirmModal from "@/components/admin/AdminConfirmModal";
+import PointsDiscordAwardConfirmModal, {
+  type PointsDiscordAwardTarget,
+} from "@/components/admin/points-discord/PointsDiscordAwardConfirmModal";
 
 type EventTodoItem = {
   presence_key: string;
@@ -112,6 +116,8 @@ export default function EventDiscordPointsTab() {
   const [bulkFeedback, setBulkFeedback] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState<string>(() => toMonthKey(new Date()));
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [awardTarget, setAwardTarget] = useState<(PointsDiscordAwardTarget & { presenceKey: string }) | null>(null);
   const historyLoadedAtRef = useRef<Record<string, number>>({});
   const availableMonths = useMemo(() => getLast12Months(), []);
 
@@ -132,7 +138,7 @@ export default function EventDiscordPointsTab() {
       const response = await fetch(`/api/admin/events/points-discord?${params.toString()}`, { cache: "no-store" });
       const body = await readApiJson<EventPointsResponse & { error?: string }>(response);
       if (!response.ok) {
-        throw new Error(body.error || "Impossible de charger les points evenement.");
+        throw new Error(body.error || "Impossible de charger les points évènement.");
       }
       setWarning(body.warning || "");
       if (includeTodo) {
@@ -144,7 +150,7 @@ export default function EventDiscordPointsTab() {
       }
       setLastRefreshAt(new Date());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur reseau.");
+      setError(e instanceof Error ? e.message : "Erreur réseau.");
     } finally {
       setLoading(false);
     }
@@ -230,7 +236,19 @@ export default function EventDiscordPointsTab() {
     [filteredHistory]
   );
 
-  async function awardPoints(presenceKey: string) {
+  function openAwardModal(item: EventTodoItem) {
+    setAwardTarget({
+      presenceKey: item.presence_key,
+      source: "event",
+      displayLabel: `${item.display_name} (${item.twitch_login})`,
+      discordUsername: item.discord_username || null,
+      contextLabel: `${item.event_title} · ${new Date(item.event_at).toLocaleString("fr-FR")}`,
+    });
+  }
+
+  async function confirmAwardUnitary() {
+    if (!awardTarget) return;
+    const presenceKey = awardTarget.presenceKey;
     setSavingId(presenceKey);
     try {
       const response = await fetch("/api/admin/events/points-discord", {
@@ -238,33 +256,32 @@ export default function EventDiscordPointsTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           presenceKey,
-          points: 300,
           note: (noteByPresenceKey[presenceKey] || "").trim(),
         }),
       });
       const body = await readApiJson<{ error?: string } & Record<string, unknown>>(response);
       if (!response.ok) {
-        throw new Error(String((body as { error?: string }).error || "Impossible d attribuer les points evenement."));
+        throw new Error(String((body as { error?: string }).error || "Impossible d’attribuer les points évènement."));
       }
+      setAwardTarget(null);
       await loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur reseau.");
+      setError(e instanceof Error ? e.message : "Erreur réseau.");
     } finally {
       setSavingId("");
     }
   }
 
-  async function awardAllPoints() {
+  function openBulkConfirmModal() {
     if (sortedTodo.length === 0) {
-      setBulkFeedback("Aucun participant evenement en attente.");
+      setBulkFeedback("Aucun participant évènement en attente.");
       return;
     }
-    const confirmed = window.confirm(
-      `Valider ${sortedTodo.length} presence(s) en une seule fois ?\n` +
-        "Cette action attribue +300 points pour chaque presence validee non encore traitee."
-    );
-    if (!confirmed) return;
+    setBulkModalOpen(true);
+  }
 
+  async function executeBulkAward() {
+    if (sortedTodo.length === 0) return;
     setBulkSaving(true);
     setBulkFeedback("");
     try {
@@ -273,8 +290,7 @@ export default function EventDiscordPointsTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           presenceKeys: sortedTodo.map((item) => item.presence_key),
-          points: 300,
-          note: "Validation groupee depuis points-discord (events)",
+          note: "Validation groupée depuis points-discord (events)",
         }),
       });
       const body = await readApiJson<{
@@ -285,18 +301,19 @@ export default function EventDiscordPointsTab() {
         missingCount?: number;
       }>(response);
       if (!response.ok) {
-        throw new Error(body.error || "Impossible de valider toutes les presences.");
+        throw new Error(body.error || "Impossible de valider toutes les présences.");
       }
       const inserted = Number(body.insertedCount || 0);
       const already = Number(body.alreadyAwardedCount || 0);
       const invalid = Number(body.invalidCount || 0);
       const missing = Number(body.missingCount || 0);
       setBulkFeedback(
-        `Validation groupee terminee: ${inserted} ajoute(s), ${already} deja attribue(s), ${invalid} invalide(s), ${missing} introuvable(s).`
+        `Validation groupée terminée : ${inserted} ajouté(s), ${already} déjà attribué(s), ${invalid} invalide(s), ${missing} introuvable(s).`,
       );
+      setBulkModalOpen(false);
       await loadData({ includeTodo: true, includeHistory: activeTab === "history", month: selectedMonth });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur reseau.");
+      setError(e instanceof Error ? e.message : "Erreur réseau.");
     } finally {
       setBulkSaving(false);
     }
@@ -305,12 +322,12 @@ export default function EventDiscordPointsTab() {
   async function copyEventCommands() {
     const payload = eventCommands.join("\n").trim();
     if (!payload) {
-      setCopyFeedback("Aucune commande a copier.");
+      setCopyFeedback("Aucune commande à copier.");
       return;
     }
     try {
       await navigator.clipboard.writeText(payload);
-      setCopyFeedback(`Copie OK (${eventCommands.length} commande${eventCommands.length > 1 ? "s" : ""}).`);
+      setCopyFeedback(`Copie effectuée (${eventCommands.length} commande${eventCommands.length > 1 ? "s" : ""}).`);
     } catch {
       setCopyFeedback("Copie impossible depuis le navigateur.");
     }
@@ -319,167 +336,277 @@ export default function EventDiscordPointsTab() {
   return (
     <div className="space-y-6">
       <section className={`${panelClass} p-5`}>
-        <h2 className="text-base font-semibold text-slate-100">Comment fonctionne l&apos;onglet Evenements</h2>
+        <h2 className="text-base font-semibold text-slate-100">Comment fonctionne l&apos;onglet Évènements</h2>
         <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
           <p className="rounded-lg border border-indigo-300/30 bg-indigo-300/10 px-3 py-2 text-indigo-100">
-            1. On recupere les presences validees (`present=true`) sur les evenements du mois.
+            1. On récupère les présences validées (<code>present=true</code>) sur les évènements du mois.
           </p>
           <p className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-cyan-100">
-            2. Pseudo Discord : presence, inscription event, puis fiche membre (discord_username ou discord_id via API Bot).
+            2. Pseudo Discord&nbsp;: présence, inscription event, puis fiche membre (discord_username ou discord_id via API Bot).
           </p>
           <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-amber-100">
-            3. Validation points: <strong>+300</strong> avec commande bot <strong>/event @pseudo</strong>.
+            3. Validation des points&nbsp;: <strong>+300</strong> avec la commande bot <strong>/event @pseudo</strong>.
           </p>
         </div>
       </section>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className={`${panelClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Presences validees a traiter</p>
-          <p className="text-2xl font-bold text-amber-300">{sortedTodo.length}</p>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Présences à traiter</p>
+          <p className="text-[clamp(1.5rem,1.25rem+0.8vw,2rem)] font-bold text-amber-300">{sortedTodo.length}</p>
         </div>
         <div className={`${panelClass} p-4`}>
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Points potentiels</p>
-          <p className="text-2xl font-bold text-indigo-200">{todoPointsTotal}</p>
+          <p className="text-[clamp(1.5rem,1.25rem+0.8vw,2rem)] font-bold text-indigo-200">{todoPointsTotal}</p>
         </div>
         <div className={`${panelClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Historique (mois)</p>
-          <p className="text-2xl font-bold text-cyan-200">{history.length}</p>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Historique ({selectedMonth})</p>
+          <p className="text-[clamp(1.5rem,1.25rem+0.8vw,2rem)] font-bold text-cyan-200">{history.length}</p>
         </div>
         <div className={`${panelClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Points attribues (filtre)</p>
-          <p className="text-2xl font-bold text-emerald-300">{historyPointsTotal}</p>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Points attribués (filtre)</p>
+          <p className="text-[clamp(1.5rem,1.25rem+0.8vw,2rem)] font-bold text-emerald-300">{historyPointsTotal}</p>
         </div>
       </div>
 
-      <div className={`${panelClass} p-4`}>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setActiveTab("todo")} className={activeTab === "todo" ? tabActiveTodoClass : tabInactiveClass}>
-            A faire ({todo.length})
-          </button>
-          <button type="button" onClick={() => setActiveTab("history")} className={activeTab === "history" ? tabActiveHistoryClass : tabInactiveClass}>
-            Historique ({history.length})
-          </button>
-          {activeTab === "history" ? (
-            <>
-              <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} className={controlClass}>
-                {availableMonths.map((month) => (
-                  <option key={month} value={month}>
-                    {formatMonthLabel(month)}
-                  </option>
-                ))}
-              </select>
-              <input
-                value={historySearch}
-                onChange={(event) => setHistorySearch(event.target.value)}
-                placeholder="Rechercher event / twitch / discord / admin / note..."
-                className={`${controlClass} w-full max-w-[420px]`}
-              />
-            </>
-          ) : null}
-        </div>
+      <div
+        role="tablist"
+        aria-label="État des présences évènement"
+        className={`${panelClass} flex flex-wrap items-center gap-2 p-4`}
+      >
+        <button
+          type="button"
+          role="tab"
+          id="ev-tab-todo"
+          aria-controls="ev-panel-todo"
+          aria-selected={activeTab === "todo"}
+          tabIndex={activeTab === "todo" ? 0 : -1}
+          onClick={() => setActiveTab("todo")}
+          className={activeTab === "todo" ? tabActiveTodoClass : tabInactiveClass}
+        >
+          À traiter ({todo.length})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="ev-tab-history"
+          aria-controls="ev-panel-history"
+          aria-selected={activeTab === "history"}
+          tabIndex={activeTab === "history" ? 0 : -1}
+          onClick={() => setActiveTab("history")}
+          className={activeTab === "history" ? tabActiveHistoryClass : tabInactiveClass}
+        >
+          Historique ({history.length})
+        </button>
+        {activeTab === "history" ? (
+          <>
+            <select
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(event.target.value)}
+              className={controlClass}
+              aria-label="Mois affiché dans l’historique"
+            >
+              {availableMonths.map((month) => (
+                <option key={month} value={month}>
+                  {formatMonthLabel(month)}
+                </option>
+              ))}
+            </select>
+            <input
+              type="search"
+              value={historySearch}
+              onChange={(event) => setHistorySearch(event.target.value)}
+              placeholder="Rechercher event / twitch / discord / admin / note…"
+              className={`${controlClass} w-full max-w-[420px]`}
+              aria-label="Rechercher dans l’historique évènement"
+            />
+            <p role="status" aria-live="polite" className="ml-auto text-xs text-slate-400">
+              {filteredHistory.length} résultat{filteredHistory.length > 1 ? "s" : ""}
+            </p>
+          </>
+        ) : null}
       </div>
 
-      {warning ? <div className="rounded-xl border border-yellow-500/40 bg-yellow-900/20 px-4 py-3 text-sm text-yellow-200">{warning}</div> : null}
-      {error ? <div className="rounded-xl border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200">{error}</div> : null}
+      {warning ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-yellow-500/40 bg-yellow-900/20 px-4 py-3 text-sm text-yellow-200"
+        >
+          {warning}
+        </div>
+      ) : null}
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200"
+        >
+          {error}
+        </div>
+      ) : null}
 
       <div className={`${panelClass} p-6`}>
         <p className="mb-3 text-xs text-slate-400">
-          Auto-refresh: 30s
-          {lastRefreshAt ? ` • derniere mise a jour ${lastRefreshAt.toLocaleTimeString("fr-FR")}` : ""}
+          Auto-actualisation toutes les 30 s
+          {lastRefreshAt ? ` · dernière mise à jour ${lastRefreshAt.toLocaleTimeString("fr-FR")}` : ""}
         </p>
         {loading ? (
-          <p className="text-sm text-gray-300">Chargement des donnees...</p>
+          <p className="text-sm text-gray-300">Chargement des données…</p>
         ) : activeTab === "todo" ? (
-          sortedTodo.length === 0 ? (
-            <p className="text-sm text-gray-300">Aucun point evenement en attente.</p>
-          ) : (
-            <div className="space-y-4">
-              <article className="rounded-xl border border-cyan-400/35 bg-cyan-500/10 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-cyan-100">
-                    Commandes Discord evenements (participants valides, 20 pseudos max/commande)
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button type="button" onClick={() => void copyEventCommands()} className={secondaryButtonClass}>
-                      Generer + Copier
-                    </button>
-                    <button type="button" onClick={() => void awardAllPoints()} disabled={bulkSaving || sortedTodo.length === 0} className={primaryButtonClass}>
-                      {bulkSaving ? "Validation globale..." : "Tout valider (+300)"}
-                    </button>
-                  </div>
-                </div>
-                {copyFeedback ? <p className="mt-2 text-xs text-cyan-100">{copyFeedback}</p> : null}
-                {bulkFeedback ? <p className="mt-2 text-xs text-emerald-200">{bulkFeedback}</p> : null}
-                {eventCommands.length === 0 ? (
-                  <p className="mt-2 text-xs text-gray-300">Aucun pseudo Discord exploitable sur les presences en attente.</p>
-                ) : (
-                  <textarea readOnly value={eventCommands.join("\n")} className="mt-3 min-h-[84px] w-full rounded-xl border border-cyan-400/35 bg-[#0e1720] px-3 py-2 font-mono text-xs text-cyan-100" />
-                )}
-                {missingDiscord.length > 0 ? (
-                  <p className="mt-2 text-xs text-amber-200">Pseudo Discord manquant pour: {missingDiscord.join(", ")}</p>
-                ) : null}
-              </article>
-              {sortedTodo.map((item) => (
-                <article key={item.presence_key} className="rounded-xl border border-[#343a52] bg-[#111725]/85 p-4">
+          <div
+            role="tabpanel"
+            id="ev-panel-todo"
+            aria-labelledby="ev-tab-todo"
+          >
+            {sortedTodo.length === 0 ? (
+              <p className="text-sm text-gray-300">Aucune présence évènement en attente.</p>
+            ) : (
+              <div className="space-y-4">
+                <article className="rounded-xl border border-cyan-400/35 bg-cyan-500/10 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-base font-semibold text-white">
-                      {item.display_name} ({item.twitch_login}) • {item.event_title}
+                    <p className="text-sm font-semibold text-cyan-100">
+                      Commandes Discord évènements (participants validés, 20 pseudos max / commande)
                     </p>
-                    <span className="inline-flex items-center rounded-full border border-yellow-400/40 bg-yellow-500/10 px-2 py-1 text-xs font-semibold text-yellow-300">
-                      +300 a attribuer
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button type="button" onClick={() => void copyEventCommands()} className={secondaryButtonClass}>
+                        Générer + Copier
+                      </button>
+                      <button
+                        type="button"
+                        onClick={openBulkConfirmModal}
+                        disabled={bulkSaving || sortedTodo.length === 0}
+                        className={primaryButtonClass}
+                      >
+                        {bulkSaving ? "Validation globale…" : "Tout valider (+300)"}
+                      </button>
+                    </div>
                   </div>
-                  <p className="mt-1 text-sm text-gray-400">
-                    Event: {new Date(item.event_at).toLocaleString("fr-FR")}
-                    {item.validated_at ? ` • presence validee: ${new Date(item.validated_at).toLocaleString("fr-FR")}` : ""}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Pseudo Discord: {item.discord_username ? `@${String(item.discord_username).replace(/^@/, "")}` : "introuvable"}
-                  </p>
-                  <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
-                    <input
-                      value={noteByPresenceKey[item.presence_key] || ""}
-                      onChange={(event) => setNoteByPresenceKey((prev) => ({ ...prev, [item.presence_key]: event.target.value }))}
-                      placeholder="Note optionnelle (ex: points envoyes via bot manuellement)"
-                      className={controlClass}
+                  {copyFeedback ? (
+                    <p role="status" aria-live="polite" className="mt-2 text-xs text-cyan-100">
+                      {copyFeedback}
+                    </p>
+                  ) : null}
+                  {bulkFeedback ? (
+                    <p role="status" aria-live="polite" className="mt-2 text-xs text-emerald-200">
+                      {bulkFeedback}
+                    </p>
+                  ) : null}
+                  {eventCommands.length === 0 ? (
+                    <p className="mt-2 text-xs text-gray-300">Aucun pseudo Discord exploitable sur les présences en attente.</p>
+                  ) : (
+                    <textarea
+                      readOnly
+                      value={eventCommands.join("\n")}
+                      aria-label="Commandes Discord générées"
+                      className="mt-3 min-h-[84px] w-full rounded-xl border border-cyan-400/35 bg-[#0e1720] px-3 py-2 font-mono text-xs text-cyan-100"
                     />
-                    <button type="button" onClick={() => void awardPoints(item.presence_key)} disabled={bulkSaving || savingId === item.presence_key} className={primaryButtonClass}>
-                      {savingId === item.presence_key ? "Validation..." : "Valider points +300"}
-                    </button>
-                  </div>
+                  )}
+                  {missingDiscord.length > 0 ? (
+                    <p className="mt-2 text-xs text-amber-200">Pseudo Discord manquant pour&nbsp;: {missingDiscord.join(", ")}</p>
+                  ) : null}
                 </article>
-              ))}
-            </div>
-          )
-        ) : filteredHistory.length === 0 ? (
-          <p className="text-sm text-gray-300">Aucun point evenement attribue pour ce mois.</p>
+                {sortedTodo.map((item) => (
+                  <article key={item.presence_key} className="rounded-xl border border-[#343a52] bg-[#111725]/85 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-base font-semibold text-white">
+                        {item.display_name} ({item.twitch_login}) · {item.event_title}
+                      </p>
+                      <span className="inline-flex items-center rounded-full border border-yellow-400/40 bg-yellow-500/10 px-2 py-1 text-xs font-semibold text-yellow-300">
+                        +300 à attribuer
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-400">
+                      Évènement&nbsp;: {new Date(item.event_at).toLocaleString("fr-FR")}
+                      {item.validated_at ? ` · présence validée : ${new Date(item.validated_at).toLocaleString("fr-FR")}` : ""}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Pseudo Discord&nbsp;: {item.discord_username ? `@${String(item.discord_username).replace(/^@/, "")}` : "introuvable"}
+                    </p>
+                    <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+                      <input
+                        value={noteByPresenceKey[item.presence_key] || ""}
+                        onChange={(event) => setNoteByPresenceKey((prev) => ({ ...prev, [item.presence_key]: event.target.value }))}
+                        placeholder="Note optionnelle (ex. : points envoyés via bot manuellement)"
+                        className={controlClass}
+                        aria-label={`Note pour la présence de ${item.display_name}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => openAwardModal(item)}
+                        disabled={bulkSaving || savingId === item.presence_key}
+                        className={primaryButtonClass}
+                      >
+                        {savingId === item.presence_key ? "Validation…" : "Valider points +300"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
         ) : (
-          <div className="space-y-3">
-            {filteredHistory.map((item) => (
-              <article key={item.id} className="rounded-xl border border-[#2f3d3a] bg-[#111b19]/80 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-base font-semibold text-white">
-                    {item.displayName} ({item.twitchLogin}) • {item.eventTitle}
-                  </p>
-                  <span className="inline-flex items-center rounded-full border border-emerald-400/45 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300">
-                    {item.status === "awarded" ? "Points attribues" : item.status}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-gray-400">
-                  Event: {new Date(item.eventAt).toLocaleString("fr-FR")} • Validation points: {new Date(item.awardedAt).toLocaleString("fr-FR")}
-                </p>
-                <p className="mt-1 text-sm text-gray-300">Points: +{item.points}</p>
-                <p className="mt-1 text-xs text-gray-400">
-                  Valide par: {item.awardedByUsername} ({item.awardedByDiscordId})
-                </p>
-                {item.discordUsername ? <p className="mt-1 text-xs text-gray-400">Discord: @{String(item.discordUsername).replace(/^@/, "")}</p> : null}
-                {item.note ? <p className="mt-1 text-xs text-gray-400">Note: {item.note}</p> : null}
-              </article>
-            ))}
+          <div
+            role="tabpanel"
+            id="ev-panel-history"
+            aria-labelledby="ev-tab-history"
+          >
+            {filteredHistory.length === 0 ? (
+              <p className="text-sm text-gray-300">Aucun point évènement attribué pour ce mois.</p>
+            ) : (
+              <div className="space-y-3">
+                {filteredHistory.map((item) => (
+                  <article key={item.id} className="rounded-xl border border-[#2f3d3a] bg-[#111b19]/80 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-base font-semibold text-white">
+                        {item.displayName} ({item.twitchLogin}) · {item.eventTitle}
+                      </p>
+                      <span className="inline-flex items-center rounded-full border border-emerald-400/45 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300">
+                        {item.status === "awarded" ? "Points attribués" : item.status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-400">
+                      Évènement&nbsp;: {new Date(item.eventAt).toLocaleString("fr-FR")} · Validation des points&nbsp;: {new Date(item.awardedAt).toLocaleString("fr-FR")}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-300">Points&nbsp;: +{item.points}</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Validé par&nbsp;: {item.awardedByUsername} ({item.awardedByDiscordId})
+                    </p>
+                    {item.discordUsername ? (
+                      <p className="mt-1 text-xs text-gray-400">Discord&nbsp;: @{String(item.discordUsername).replace(/^@/, "")}</p>
+                    ) : null}
+                    {item.note ? <p className="mt-1 text-xs text-gray-400">Note&nbsp;: {item.note}</p> : null}
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      <PointsDiscordAwardConfirmModal
+        open={awardTarget !== null}
+        target={awardTarget}
+        loading={Boolean(awardTarget && savingId === awardTarget.presenceKey)}
+        onCancel={() => !savingId && setAwardTarget(null)}
+        onConfirm={() => void confirmAwardUnitary()}
+      />
+
+      <AdminConfirmModal
+        open={bulkModalOpen}
+        tone="warning"
+        title="Valider les présences évènement ?"
+        description={
+          <>
+            Cette action attribuera <strong className="text-amber-200">+300 points</strong> Discord pour chaque
+            présence validée non encore traitée ({sortedTodo.length} présence{sortedTodo.length > 1 ? "s" : ""}).
+            Les compteurs serveur seront affichés à la fin (ajoutés, déjà attribués, invalides, introuvables).
+          </>
+        }
+        confirmLabel="Valider les présences"
+        loading={bulkSaving}
+        onCancel={() => !bulkSaving && setBulkModalOpen(false)}
+        onConfirm={() => void executeBulkAward()}
+      />
     </div>
   );
 }

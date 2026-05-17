@@ -464,6 +464,12 @@ export default function FaqRejoindreClient() {
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 py-10 md:px-8 md:py-14">
+        <Link
+          href="/rejoindre"
+          className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 transition hover:text-white sm:text-sm"
+        >
+          ← Retour à « Rejoindre TENF »
+        </Link>
         <section className="overflow-hidden rounded-3xl border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
           <div className="relative border-b border-white/10 bg-gradient-to-br from-violet-950/50 via-[#12141f] to-fuchsia-950/30 px-6 py-8 md:px-10 md:py-10">
             <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-fuchsia-500/15 blur-3xl" />

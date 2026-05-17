@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const admin = await requireAdvancedAdminAccess();
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const snapshotId = request.nextUrl.searchParams.get("snapshotId");

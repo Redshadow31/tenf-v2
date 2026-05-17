@@ -21,6 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { getDiscordUser, loginWithDiscord, type DiscordUser } from "@/lib/discord";
+import { STAFF_CANDIDACY_POLE_INTEREST_OPTIONS } from "@/lib/staff/staffNomenclature";
 
 type RolePostule = "moderateur" | "soutien" | "les_deux";
 type AdminStatus = "nouveau" | "a_contacter" | "entretien_prevu" | "accepte" | "refuse" | "archive";
@@ -153,17 +154,7 @@ const INITIAL_FORM: FormState = {
   accepte_documenter: "",
 };
 
-const INTEREST_OPTIONS = [
-  "modération chat",
-  "modération vocal",
-  "accueil nouveaux",
-  "gestion conflits",
-  "rédaction CR",
-  "organisation événements",
-  "soutien communauté",
-  "accompagnement nouveaux",
-  "autre",
-] as const;
+const INTEREST_OPTIONS = [...STAFF_CANDIDACY_POLE_INTEREST_OPTIONS] as const;
 
 /** Champs texte / select : focus visible, confort lecture. */
 const FIELD_CLASS =
@@ -1373,7 +1364,7 @@ export default function PostulerPage() {
                     <FormField
                       label="Pôles d’intérêt"
                       required
-                      hint="Coche tout ce qui t’interpelle — tu pourras affiner plus tard avec le staff. Pas de minimum « prestige »."
+                      hint="Choisis les pôles de mission qui t’interpellent — tu pourras affiner plus tard avec le staff. Le pôle « Veille & Situations Sensibles » n’est pas proposé ici (invitation interne)."
                     >
                       <div className="flex flex-wrap gap-2">
                         {INTEREST_OPTIONS.map((option) => (
@@ -1898,7 +1889,7 @@ export default function PostulerPage() {
                     <FormField
                       label="Pôles d’intérêt"
                       required
-                      hint="Les mêmes tags que plus haut — indique où tu aimerais contribuer en priorité."
+                      hint="Même liste que pour le parcours soutien : indique les pôles de mission où tu aimerais t’investir en priorité (rôle principal ≠ pôle — on t’explique tout sur la page organisation staff)."
                     >
                       <div className="flex flex-wrap gap-2">
                         {INTEREST_OPTIONS.map((option) => (

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AdminHeader from "@/components/admin/AdminHeader";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 import type { OrgChartEntry, OrgChartMemberRef, OrgChartPoleKey, OrgChartRoleKey, OrgChartStatusKey } from "@/lib/staff/orgChartTypes";
 import {
   ORG_CHART_POLE_OPTIONS,
@@ -178,15 +180,20 @@ export default function AdminOrganigrammeStaffPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8" style={{ backgroundColor: "var(--color-bg)" }}>
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
+      <AdminHeader
+        title="Organigramme staff"
+        navLinks={administrationSiteHubNav("/admin/gestion-acces/organigramme-staff")}
+      />
+      <main className="px-4 py-8 md:px-8">
+        <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-2xl border p-6" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--color-text)" }}>
             Organigramme staff
           </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Source de verite: membres existants de la gestion membre. Cette page ajoute uniquement la couche d'affichage public
-            (role, statut, pole(s), visibilite). L'ordre public se fait automatiquement par role puis par nom.
+            Source de vérité : membres existants de la gestion membre. Cette page ajoute uniquement la couche d’affichage public
+            (rôle, statut, pôle(s), visibilité). L’ordre public se fait automatiquement par rôle puis par nom.
           </p>
         </section>
 
@@ -423,5 +430,6 @@ export default function AdminOrganigrammeStaffPage() {
         </section>
       </div>
     </main>
+    </div>
   );
 }

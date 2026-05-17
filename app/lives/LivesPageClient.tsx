@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useState, type ComponentProps, type CSSProperties } from "react";
+import { Dice5, ExternalLink, HeartHandshake, RefreshCcw, Sparkles } from "lucide-react";
 import CharityProgressBar from "@/components/lives/CharityProgressBar";
 import CommunityStatsSection from "@/components/lives/CommunityStatsSection";
 import JoinTENFSection from "@/components/lives/JoinTENFSection";
@@ -87,7 +88,25 @@ type UpaLiteContent = {
 const NEW_MEMBER_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 const LIVE_MEMBER_MODAL_BANNER =
-  "Tu es sur la page Lives TENF : ce créateur est détecté en direct ici. La fiche réunit bio, planning annoncé et réseaux — complément idéal avant d’ouvrir le chat Twitch.";
+  "Tu es sur la page Lives TENF : ce créateur est détecté en direct ici. La fiche réunit bio, planning annoncé et réseaux — complément idéal avant d'ouvrir le chat Twitch.";
+
+// Wrapper fluide : la page contrôle ses propres marges intérieures pour
+// occuper l'espace libre et rester scalable au zoom navigateur.
+const LIVES_PAGE_STYLE: CSSProperties = {
+  // @ts-expect-error CSS custom property
+  "--lives-px": "clamp(0.75rem, 2vw, 2.5rem)",
+  paddingLeft: "var(--lives-px)",
+  paddingRight: "var(--lives-px)",
+  paddingTop: "clamp(1rem, 1.5vw, 1.75rem)",
+  paddingBottom: "clamp(6rem, 4vw, 3.5rem)",
+};
+
+const LIVES_CONTAINER_STYLE: CSSProperties = {
+  maxWidth: "min(120rem, 100%)",
+  marginLeft: "auto",
+  marginRight: "auto",
+  width: "100%",
+};
 
 function liveMemberToModalPayload(
   live: LiveMember,
@@ -591,12 +610,12 @@ export default function LivesPageClient() {
 
   const handlePickRandomLive = () => {
     if (filteredLives.length === 0) {
-      setRandomHint("Aucun live disponible avec les filtres actuels.");
+      setRandomHint("Aucun live ne correspond aux filtres actuels.");
       return;
     }
     const randomIndex = Math.floor(Math.random() * filteredLives.length);
     const selected = filteredLives[randomIndex];
-    setRandomHint(`Selection aleatoire: ${selected.displayName}`);
+    setRandomHint(`Sélection aléatoire : ${selected.displayName} — bonne découverte !`);
     window.open(selected.twitchUrl, "_blank", "noopener,noreferrer");
   };
 
@@ -608,12 +627,12 @@ export default function LivesPageClient() {
   }
 
   useEffect(() => {
-    if (filteredLives.length === 0) {
-      setRandomHint("Aucun live ne correspond aux filtres actuels.");
+    if (liveMembers.length > 0 && filteredLives.length === 0) {
+      setRandomHint("Aucun live ne correspond aux filtres actuels — élargis la recherche pour relancer un tirage.");
     } else {
       setRandomHint(null);
     }
-  }, [filteredLives.length]);
+  }, [filteredLives.length, liveMembers.length]);
 
   const upaActiveRange = useMemo(() => {
     const startRaw = upaContent?.general?.startDate || "";
@@ -700,27 +719,62 @@ export default function LivesPageClient() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold" style={{ color: "var(--color-text)" }}>
-          Lives en direct
-        </h1>
-        <div
-          className="rounded-xl border p-8 text-center"
-          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
-        >
-          <p style={{ color: "var(--color-text-secondary)" }}>Chargement des lives...</p>
+      <div style={LIVES_PAGE_STYLE}>
+        <div className="space-y-6" style={LIVES_CONTAINER_STYLE}>
+          <div
+            className="relative overflow-hidden rounded-3xl border"
+            style={{
+              padding: "clamp(1.5rem, 2vw, 2.5rem)",
+              borderColor: "rgba(145,70,255,0.3)",
+              background:
+                "linear-gradient(120deg, rgba(21,21,26,0.97) 0%, rgba(36,21,54,0.9) 60%, rgba(30,18,35,0.92) 100%)",
+            }}
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-violet-300">
+              On synchronise avec Twitch…
+            </p>
+            <h1
+              className="mt-3 font-extrabold tracking-tight"
+              style={{ color: "var(--color-text)", fontSize: "clamp(1.6rem, 1.2rem + 1.5vw, 2.5rem)" }}
+            >
+              Les lives TENF arrivent…
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-zinc-400">
+              On vérifie qui est en direct sur Twitch, on prépare les vignettes et on compose la sélection — quelques
+              secondes maximum.
+            </p>
+            <div
+              className="mt-6 h-1 w-full overflow-hidden rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+              role="status"
+              aria-live="polite"
+              aria-label="Chargement des lives en cours"
+            >
+              <span className="block h-full w-1/2 animate-pulse bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500" />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-32 animate-pulse rounded-2xl border"
+                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
+    <div style={LIVES_PAGE_STYLE}>
+      <div className="space-y-6 sm:space-y-8" style={LIVES_CONTAINER_STYLE}>
       <LivesHero
         displayedLivesCount={filteredLives.length}
         onPickRandomLive={handlePickRandomLive}
         randomDisabled={filteredLives.length === 0}
-        eventsHref="/events2"
+        eventsHref="/evenements"
         spotlightDisplayName={spotlightDisplayName}
         spotlightText={spotlightEncouragement}
       />
@@ -740,19 +794,31 @@ export default function LivesPageClient() {
 
       {error ? (
         <div
-          className="rounded-lg border p-3 text-sm"
+          className="flex items-start gap-3 rounded-xl border p-4 text-sm leading-relaxed"
           style={{
             borderColor: "rgba(239,68,68,0.4)",
             color: "#fca5a5",
             backgroundColor: "rgba(239,68,68,0.08)",
           }}
+          role="alert"
         >
-          {error}
+          <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-red-300" aria-hidden />
+          <div>
+            <p className="font-semibold">{error}</p>
+            <p className="mt-0.5 text-xs text-red-200/80">
+              On retente automatiquement toutes les minutes. Tu peux aussi rafraîchir la page.
+            </p>
+          </div>
         </div>
       ) : null}
 
       {randomHint ? (
-        <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+        <p
+          className="inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-100 sm:text-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <Dice5 className="h-3.5 w-3.5" aria-hidden />
           {randomHint}
         </p>
       ) : null}
@@ -765,39 +831,67 @@ export default function LivesPageClient() {
 
       {spotlightLive ? (
         <section
-          className="rounded-3xl border p-4 md:p-6"
+          className="relative overflow-hidden rounded-3xl border"
           style={{
+            padding: "clamp(1.25rem, 2vw, 2.25rem)",
             borderColor: "rgba(145,70,255,0.45)",
             background:
               "radial-gradient(circle at 12% 15%, rgba(145,70,255,0.22), rgba(145,70,255,0) 40%), linear-gradient(160deg, rgba(24,22,35,0.98), rgba(13,12,20,0.99))",
             boxShadow: "0 22px 52px rgba(0,0,0,0.36)",
           }}
+          aria-labelledby="spotlight-section-title"
         >
-          <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+          <div
+            className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl"
+            aria-hidden
+          />
+          <div className="relative grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
             <div className="space-y-3">
               <p
-                className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.12em]"
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.14em]"
                 style={{
                   borderColor: "rgba(145,70,255,0.6)",
                   color: "#d8c4ff",
                   backgroundColor: "rgba(145,70,255,0.2)",
                 }}
               >
-                SPOTLIGHT TENF EN COURS
+                <Sparkles className="h-3.5 w-3.5 text-amber-200" aria-hidden />
+                Spotlight TENF en cours
               </p>
-              <h2 className="text-2xl md:text-3xl font-bold" style={{ color: "#efe5ff" }}>
-                Mise en avant unique du moment
+              <h2
+                id="spotlight-section-title"
+                className="font-bold"
+                style={{ color: "#efe5ff", fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2.1rem)" }}
+              >
+                On met tout l'amour sur ce live ce soir
               </h2>
-              <p className="text-sm md:text-base" style={{ color: "rgba(255,255,255,0.82)" }}>
-                Un seul live est propulse a la fois pour concentrer toute la visibilite communautaire.
+              <p
+                className="leading-relaxed"
+                style={{ color: "rgba(255,255,255,0.85)", fontSize: "clamp(0.9rem, 0.85rem + 0.15vw, 1rem)" }}
+              >
+                Une seule chaîne est mise en avant à la fois pour concentrer la visibilité et offrir un vrai moment de
+                soutien à un membre. C'est notre façon de dire « on est là pour toi ce soir ».
               </p>
-              <p className="text-xs md:text-sm" style={{ color: "#cdb1ff" }}>
-                Au streamer spotlight: ta voix compte ici, on est avec toi et on soutient ton energie.
-              </p>
-              <p className="text-xs md:text-sm" style={{ color: "rgba(255,255,255,0.78)" }}>
-                A la communaute: viens comme tu es, un message bienveillant, un follow ou quelques minutes de presence
-                peuvent vraiment faire la difference.
-              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-violet-400/25 bg-violet-500/10 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-violet-200">
+                    Au streamer Spotlight
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-violet-100/85">
+                    Ta voix compte ici. On est avec toi et on soutient ton énergie — pas de pression, juste un vrai
+                    moment partagé.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/12 bg-white/[0.04] p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-300">
+                    À la communauté
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-300/90">
+                    Viens comme tu es : un message bienveillant, un follow ou quelques minutes de présence peuvent
+                    vraiment faire la différence.
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="mx-auto w-full max-w-md">
               <LiveCard
@@ -812,39 +906,55 @@ export default function LivesPageClient() {
 
       {isUpaPeriodActive && upaLiveMembers.length > 0 ? (
         <section
-          className="rounded-3xl border p-4 md:p-6 space-y-5"
+          className="space-y-5 rounded-3xl border"
           style={{
+            padding: "clamp(1.25rem, 2vw, 2.25rem)",
             borderColor: "rgba(212,175,55,0.42)",
             background:
               "radial-gradient(circle at 10% 20%, rgba(212,175,55,0.2), rgba(212,175,55,0) 42%), radial-gradient(circle at 85% 12%, rgba(145,70,255,0.14), rgba(145,70,255,0) 40%), linear-gradient(160deg, rgba(24,24,34,0.97), rgba(12,12,18,0.99))",
             boxShadow: "0 22px 52px rgba(0,0,0,0.38)",
           }}
+          aria-labelledby="upa-section-title"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p
-                className="inline-flex rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.12em]"
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.14em]"
                 style={{
                   borderColor: "rgba(212,175,55,0.55)",
                   color: "#f5df9d",
                   backgroundColor: "rgba(212,175,55,0.13)",
                 }}
               >
-                SEMAINE CARITATIVE UPA
+                <HeartHandshake className="h-3.5 w-3.5" aria-hidden />
+                Semaine caritative UPA
               </p>
-              <h2 className="mt-2 text-2xl md:text-3xl font-bold" style={{ color: "#f7edd0" }}>
+              <h2
+                id="upa-section-title"
+                className="mt-2 font-bold"
+                style={{ color: "#f7edd0", fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2.1rem)" }}
+              >
                 Lives caritatifs UPA en cours
               </h2>
-              <p className="text-sm md:text-base" style={{ color: "rgba(255,255,255,0.8)" }}>
-                Mise en avant automatique pendant la periode UPA pour amplifier la visibilite des lives solidaires.
+              <p
+                className="max-w-2xl leading-relaxed"
+                style={{ color: "rgba(255,255,255,0.85)", fontSize: "clamp(0.9rem, 0.85rem + 0.15vw, 1rem)" }}
+              >
+                On met automatiquement en avant les lives qui se mobilisent pendant la semaine UPA : ton clic, ton
+                message ou un petit don peuvent faire avancer la cagnotte.
               </p>
-              <p className="mt-2 text-sm font-semibold" style={{ color: "#e9d79a" }}>
+              <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "#e9d79a" }}>
+                <Sparkles className="h-4 w-4" aria-hidden />
                 Cause soutenue : Ligue contre le cancer
               </p>
             </div>
-            <div className="rounded-xl border px-3 py-2 text-right" style={{ borderColor: "rgba(212,175,55,0.35)", backgroundColor: "rgba(212,175,55,0.08)" }}>
-              <p className="text-sm font-semibold" style={{ color: "#f5df9d" }}>
-                {upaLiveMembers.length} live{upaLiveMembers.length > 1 ? "s" : ""} UPA actif{upaLiveMembers.length > 1 ? "s" : ""}
+            <div
+              className="rounded-xl border px-3 py-2 text-right"
+              style={{ borderColor: "rgba(212,175,55,0.35)", backgroundColor: "rgba(212,175,55,0.08)" }}
+            >
+              <p className="text-sm font-bold" style={{ color: "#f5df9d" }}>
+                {upaLiveMembers.length} live{upaLiveMembers.length > 1 ? "s" : ""} UPA actif
+                {upaLiveMembers.length > 1 ? "s" : ""}
               </p>
               {upaStatusLabel ? (
                 <p className="text-xs" style={{ color: "rgba(255,255,255,0.72)" }}>
@@ -858,16 +968,24 @@ export default function LivesPageClient() {
             {upaDateRangeLabel ? (
               <span
                 className="inline-flex items-center rounded-full border px-3 py-1"
-                style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.84)", backgroundColor: "rgba(255,255,255,0.08)" }}
+                style={{
+                  borderColor: "rgba(255,255,255,0.2)",
+                  color: "rgba(255,255,255,0.84)",
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                }}
               >
                 {upaDateRangeLabel}
               </span>
             ) : null}
             <span
               className="inline-flex items-center rounded-full border px-3 py-1"
-              style={{ borderColor: "rgba(145,70,255,0.35)", color: "#d9c3ff", backgroundColor: "rgba(145,70,255,0.14)" }}
+              style={{
+                borderColor: "rgba(145,70,255,0.35)",
+                color: "#d9c3ff",
+                backgroundColor: "rgba(145,70,255,0.14)",
+              }}
             >
-              Priorite solidarite
+              Priorité solidarité
             </span>
           </div>
 
@@ -883,25 +1001,16 @@ export default function LivesPageClient() {
                   "linear-gradient(165deg, rgba(212,175,55,0.12), rgba(145,70,255,0.06) 45%, rgba(0,0,0,0.2))",
               }}
             >
-              <p className="text-xs font-semibold tracking-wide" style={{ color: "#f5df9d" }}>
+              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#f5df9d" }}>
                 Cagnotte en direct
               </p>
-              <CharityProgressBar raised={charityStats.raised} displayGoal={charityStats.displayGoal} currency={charityStats.currency} />
-              {streamlabsGoalWidgetSrc ? (
-                <p className="mt-2 text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>
-                  <a
-                    href={streamlabsGoalWidgetSrc}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2 hover:opacity-90"
-                    style={{ color: "#e9d79a" }}
-                  >
-                    Voir le meme objectif dans le widget Streamlabs
-                  </a>
-                </p>
-              ) : null}
+              <CharityProgressBar
+                raised={charityStats.raised}
+                displayGoal={charityStats.displayGoal}
+                currency={charityStats.currency}
+              />
               <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
-                Donnees synchronisees automatiquement (environ toutes les 2 minutes).
+                Mise à jour automatique toutes les 2 minutes environ — chaque don apparaît en quasi-direct.
               </p>
             </div>
           ) : null}
@@ -912,7 +1021,7 @@ export default function LivesPageClient() {
                 href={upaCharityCampaignHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-full items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition-all hover:-translate-y-[1px] sm:w-auto sm:px-5"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition-all hover:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 sm:w-auto sm:px-5"
                 style={{
                   borderColor: "rgba(212,175,55,0.55)",
                   color: "#1a1407",
@@ -920,68 +1029,31 @@ export default function LivesPageClient() {
                   boxShadow: "0 12px 28px rgba(212,175,55,0.22)",
                 }}
               >
+                <HeartHandshake className="h-4 w-4" aria-hidden />
                 Suivre la cagnotte en direct
+                <ExternalLink className="h-3.5 w-3.5 opacity-70 transition group-hover:opacity-100" aria-hidden />
               </a>
               <p className="text-xs sm:max-w-md" style={{ color: "rgba(255,255,255,0.72)" }}>
-                Les dons et le total collecte se mettent a jour sur la page officielle de la campagne (ex. Streamlabs Charity).
+                Les dons et le total collecté se mettent à jour sur la page officielle de la campagne (Streamlabs
+                Charity).
               </p>
             </div>
           ) : null}
 
-          {streamlabsGoalWidgetSrc && charityStats !== null && charityStats.available === false ? (
-            <div
-              className="rounded-2xl border px-4 py-4"
-              style={{ borderColor: "rgba(212,175,55,0.35)", backgroundColor: "rgba(0,0,0,0.22)" }}
+          {streamlabsGoalWidgetSrc && !upaCharityCampaignHref ? (
+            <a
+              href={streamlabsGoalWidgetSrc}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold underline-offset-2 hover:underline focus-visible:underline"
+              style={{ color: "#e9d79a" }}
             >
-              <p className="text-xs font-semibold" style={{ color: "#f5df9d" }}>
-                Objectif Streamlabs (widget externe)
-              </p>
-              <div className="mt-2 space-y-2 text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.78)" }}>
-                <p className="font-semibold" style={{ color: "#f5df9d" }}>
-                  Pour afficher le montant sur cette page (sans clic obligatoire)
-                </p>
-                <ol className="list-decimal space-y-1.5 pl-4">
-                  <li>
-                    Ouvre ta campagne sur{" "}
-                    <strong>streamlabscharity.com</strong> (pas seulement le widget streamlabs.com).
-                  </li>
-                  <li>
-                    Copie l&apos;URL de la page publique : elle doit ressembler à{" "}
-                    <code className="rounded bg-black/30 px-1 text-[10px]">
-                      https://streamlabscharity.com/@nom-equipe/slug-campagne
-                    </code>
-                  </li>
-                  <li>
-                    Colle-la dans <strong>Admin → UPA → Lien cagnotte caritative</strong>, puis Enregistrer.
-                  </li>
-                  <li>
-                    Option Netlify : <code className="text-[10px]">STREAMLABS_CHARITY_STATS_API_URL</code> = l&apos;URL
-                    exacte d&apos;un appel <code className="text-[10px]">.../api/v1/teams/@...</code> (onglet Reseau F12
-                    sur la page campagne).
-                  </li>
-                </ol>
-                <p style={{ color: "rgba(255,255,255,0.6)" }}>
-                  Le bouton ci-dessous reste un secours si l&apos;API ne repond pas encore apres deploiement.
-                </p>
-              </div>
-              <a
-                href={streamlabsGoalWidgetSrc}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-flex w-full items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition-all hover:-translate-y-[1px] sm:w-auto"
-                style={{
-                  borderColor: "rgba(212,175,55,0.55)",
-                  color: "#1a1407",
-                  background: "linear-gradient(160deg, #f0dc8f, #d4af37)",
-                  boxShadow: "0 12px 28px rgba(212,175,55,0.22)",
-                }}
-              >
-                Ouvrir le widget Streamlabs
-              </a>
-            </div>
+              Voir l'objectif dans le widget Streamlabs
+              <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
+            </a>
           ) : null}
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 2xl:grid-cols-4">
             {upaLiveMembers.map((live) => (
               <LiveCard
                 key={`upa-${live.twitchLogin}-${live.startedAt}`}
@@ -994,33 +1066,63 @@ export default function LivesPageClient() {
       ) : null}
 
       {regularLiveMembers.length > 0 ? (
-        <section className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {regularLiveMembers.map((live) => (
-            <LiveCard
-              key={`${live.twitchLogin}-${live.startedAt}`}
-              live={live}
-              onOpenMemberProfile={() => openLiveMemberModal(live)}
-            />
-          ))}
+        <section aria-labelledby="regular-lives-title">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2
+                id="regular-lives-title"
+                className="font-bold tracking-tight"
+                style={{ color: "var(--color-text)", fontSize: "clamp(1.2rem, 1rem + 0.7vw, 1.6rem)" }}
+              >
+                Tous les lives TENF
+              </h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                {regularLiveMembers.length} chaîne{regularLiveMembers.length > 1 ? "s" : ""} en direct — ouvre une
+                fiche pour découvrir la personne avant d'arriver sur Twitch.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-2 self-start rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-zinc-300 sm:self-end">
+              <Sparkles className="h-3.5 w-3.5 text-violet-300" aria-hidden />
+              Mises en avant en haut, puis ordre aléatoire
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 2xl:grid-cols-4">
+            {regularLiveMembers.map((live) => (
+              <LiveCard
+                key={`${live.twitchLogin}-${live.startedAt}`}
+                live={live}
+                onOpenMemberProfile={() => openLiveMemberModal(live)}
+              />
+            ))}
+          </div>
         </section>
       ) : upaLiveMembers.length === 0 && spotlightLiveMembers.length === 0 ? (
         <section
-          className="rounded-xl border p-8 text-center"
+          className="rounded-2xl border border-dashed p-8 text-center"
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
         >
-          <p className="text-base font-medium" style={{ color: "var(--color-text)" }}>
-            Aucun live ne correspond aux filtres actuels.
+          <div
+            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-violet-500/15 text-violet-300"
+            aria-hidden
+          >
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <p className="mt-4 text-base font-bold" style={{ color: "var(--color-text)" }}>
+            Personne en live avec ces filtres
           </p>
-          <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            Ajuste la recherche ou les filtres de jeu/role.
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+            Soit la communauté est plus calme ce moment-ci, soit tes filtres sont trop précis. Élargis la recherche,
+            ou pars à l'aventure avec le tirage au sort en haut de page.
           </p>
         </section>
       ) : null}
 
-      <UpcomingEventsSection events={upcomingEvents} allEventsHref="/events2" />
+      <UpcomingEventsSection events={upcomingEvents} allEventsHref="/evenements" />
 
       <JoinTENFSection href="/rejoindre" />
+      </div>
 
+      {/* FAB mobile — repris uniquement quand au moins un live est cliquable */}
       <div className="fixed inset-x-3 bottom-3 z-40 md:hidden">
         <div
           className="rounded-2xl border p-2 shadow-2xl backdrop-blur-sm"
@@ -1033,10 +1135,21 @@ export default function LivesPageClient() {
             type="button"
             onClick={handlePickRandomLive}
             disabled={filteredLives.length === 0}
-            className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label={
+              filteredLives.length === 0
+                ? "Aucun live à tirer au sort pour l'instant"
+                : `Découvrir un live au hasard parmi ${filteredLives.length} lives`
+            }
+            className="group flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
             style={{ backgroundColor: "var(--color-primary)" }}
           >
-            🎲 Decouvrir un live au hasard
+            <Dice5 className="h-4 w-4 transition group-hover:rotate-12" aria-hidden />
+            Découvrir un live au hasard
+            {filteredLives.length > 0 ? (
+              <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[10px] font-bold">
+                {filteredLives.length}
+              </span>
+            ) : null}
           </button>
         </div>
       </div>

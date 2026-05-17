@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { MemberRole } from "@/lib/memberRoles";
+import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -71,8 +72,11 @@ const ROLE_SELECT_OPTIONS: MemberRole[] = [
   "Nouveau",
   "Affilié",
   "Développement",
-  "Modérateur",
+  "Modérateur en Découverte",
+  "Modérateur en Accompagnement",
+  "Modérateur en Autonomie",
   "Modérateur en formation",
+  "Modérateur",
   "Modérateur en activité réduite",
   "Modérateur en pause",
   "Admin",
@@ -80,6 +84,7 @@ const ROLE_SELECT_OPTIONS: MemberRole[] = [
   "Créateur Junior",
   "Les P'tits Jeunes",
   "Soutien TENF",
+  "Contributeur Invité TENF",
   "Contributeur TENF du Mois",
   "Communauté",
 ];
@@ -391,7 +396,7 @@ export default function AddChannelModal({
                       >
                         {ROLE_SELECT_OPTIONS.map((r) => (
                           <option key={r} value={r}>
-                            {r === "Communauté" ? "Communauté (évaluation)" : r}
+                            {r === "Communauté" ? "Communauté (évaluation)" : getRoleBadgeLabel(r)}
                           </option>
                         ))}
                       </select>

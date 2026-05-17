@@ -322,6 +322,71 @@ export async function requireSectionAccess(sectionHref: string): Promise<Authent
 }
 
 /**
+ * Exige un rôle admin + accès à au moins une des sections listées (RBAC par href).
+ * Utilisé pour les routes partagées entre hub `/admin/communaute/...` et chemins legacy.
+ *
+ * Charte modération : bypass si au moins une des sections est autorisée pendant le blocage.
+ */
+export async function requireSectionAccessAny(
+  sectionHrefs: readonly string[],
+  options?: RequireAdminOptions
+): Promise<AuthenticatedAdmin | null> {
+  if (!sectionHrefs.length) {
+    return null;
+  }
+  const charterBypass =
+    options?.bypassModerationCharterGate === true ||
+    sectionHrefs.some((href) => isAdminPathAllowedDuringCharterBlock(href));
+  const admin = await requireAdmin({
+    ...options,
+    bypassModerationCharterGate: charterBypass,
+  });
+
+  if (!admin) {
+    return null;
+  }
+
+  if (await hasAdvancedAdminAccess(admin.discordId)) {
+    return admin;
+  }
+
+  try {
+    await loadSectionPermissionsCache();
+  } catch (error) {
+    console.warn("[requireAdmin] Cannot load section permissions cache (requireSectionAccessAny):", error);
+    return null;
+  }
+
+  for (const href of sectionHrefs) {
+    if (hasSectionAccess(href, admin.role, admin.discordId)) {
+      return admin;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Utilisateur connecté via Discord (session NextAuth avec `discordId`).
+ * Pour les routes API partagées espace membre / admin qui ne doivent pas être publiques.
+ * Les visiteurs anonymes reçoivent null → répondre en 401.
+ */
+export async function requireAuthenticatedDiscordUser(): Promise<{
+  discordId: string;
+  username: string;
+} | null> {
+  const session = await getServerSession(authOptions);
+  const discordId = String(session?.user?.discordId || "").trim();
+  if (!discordId) {
+    return null;
+  }
+  return {
+    discordId,
+    username: String(session?.user?.username || "").trim() || "unknown",
+  };
+}
+
+/**
  * Exige un accès admin avancé (ou fondateur)
  * Retourne l'admin authentifié si autorisé, sinon null
  */

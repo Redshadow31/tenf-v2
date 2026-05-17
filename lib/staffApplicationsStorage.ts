@@ -246,7 +246,7 @@ export async function updateStaffApplicationAdmin(input: {
   if (input.has_red_flag !== undefined) {
     next.has_red_flag = input.has_red_flag;
     if (input.has_red_flag) {
-      const label = (input.red_flag_label || "Red flag manuel").trim();
+      const label = (input.red_flag_label || "Signalement sensible manuel").trim();
       next.red_flags = Array.from(new Set([...(next.red_flags || []), label]));
     } else {
       next.red_flags = [];

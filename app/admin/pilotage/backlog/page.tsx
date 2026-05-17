@@ -193,7 +193,7 @@ export default function PilotageBacklogPage() {
               id: "member-errors",
               label: "Incohérences données membres",
               count: errors,
-              href: "/admin/membres/erreurs",
+              href: "/admin/membres/incomplets?vue=erreurs",
               priority: errors > 10 ? "P1" : "P2",
               source: "Control center alerts",
             });

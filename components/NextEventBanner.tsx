@@ -109,10 +109,10 @@ export default function NextEventBanner() {
               <span>Événements indisponibles pour le moment</span>
             </div>
             <Link
-              href="/events2"
+              href="/evenements"
               className="text-xs text-[#9146ff] hover:text-[#7c3aed] transition-colors underline"
             >
-              Voir /events2
+              Voir l&apos;agenda
             </Link>
           </div>
         </div>
@@ -161,7 +161,7 @@ export default function NextEventBanner() {
             <span className="text-[#9146ff]">💜</span>
           </div>
           <Link
-            href="/events2"
+            href="/evenements"
             className="text-xs sm:text-sm text-[#9146ff] hover:text-[#7c3aed] transition-colors underline whitespace-nowrap"
           >
             Voir les événements
@@ -251,7 +251,7 @@ export default function NextEventBanner() {
 
           {/* Lien "Voir l'event" */}
           <Link
-            href="/events2"
+            href="/evenements"
             className="text-xs sm:text-sm text-[#9146ff] hover:text-[#7c3aed] transition-colors underline whitespace-nowrap flex-shrink-0"
           >
             Voir l&apos;event

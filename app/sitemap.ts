@@ -19,8 +19,7 @@ const routes: Array<{
   { path: "/fonctionnement-tenf/faq", changeFrequency: "weekly", priority: 0.85 },
   { path: "/fonctionnement-tenf/parcours-complet", changeFrequency: "weekly", priority: 0.75 },
   { path: "/lives", changeFrequency: "hourly", priority: 0.9 },
-  { path: "/events", changeFrequency: "daily", priority: 0.8 },
-  { path: "/events2", changeFrequency: "weekly", priority: 0.7 },
+  { path: "/evenements", changeFrequency: "daily", priority: 0.8 },
   { path: "/evenements-communautaires", changeFrequency: "weekly", priority: 0.8 },
   { path: "/new-family-aventura", changeFrequency: "weekly", priority: 0.8 },
   { path: "/new-family-aventura/infos-pratiques", changeFrequency: "weekly", priority: 0.7 },
@@ -40,6 +39,17 @@ const routes: Array<{
   { path: "/postuler/merci", changeFrequency: "monthly", priority: 0.3 },
   { path: "/partenaire-tenf", changeFrequency: "monthly", priority: 0.5 },
   { path: "/soutien-nexou", changeFrequency: "monthly", priority: 0.5 },
+  // Pages publiques essentielles (crédibilité, transparence)
+  { path: "/charte", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/contact", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/partenariats", changeFrequency: "weekly", priority: 0.75 },
+  // Pages publiques exposées dans le Header — ajoutées suite à l'audit
+  { path: "/soutenir-tenf", changeFrequency: "monthly", priority: 0.55 },
+  { path: "/interviews", changeFrequency: "monthly", priority: 0.55 },
+  { path: "/decouvrir-createurs", changeFrequency: "weekly", priority: 0.6 },
+  { path: "/organisation-staff", changeFrequency: "monthly", priority: 0.55 },
+  { path: "/organisation-staff/organigramme", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/integration", changeFrequency: "weekly", priority: 0.7 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

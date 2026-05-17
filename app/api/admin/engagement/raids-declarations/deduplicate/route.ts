@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSectionAccess } from "@/lib/requireAdmin";
+import { requireSectionAccessAny } from "@/lib/requireAdmin";
+import { RAIDS_HISTORIQUE_FIABILITE_SECTION_HREFS } from "@/lib/admin/raidsFiabiliteRbac";
 import { hasAdvancedAdminAccess } from "@/lib/advancedAccess";
+import { logAction } from "@/lib/admin/logger";
 import { supabaseAdmin } from "@/lib/db/supabase";
 
 export const dynamic = "force-dynamic";
@@ -8,9 +10,9 @@ export const revalidate = 0;
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireSectionAccess("/admin/engagement/raids-a-valider");
+    const admin = await requireSectionAccessAny(RAIDS_HISTORIQUE_FIABILITE_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const canManage = await hasAdvancedAdminAccess(admin.discordId);
@@ -61,6 +63,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Suppression des doublons impossible" }, { status: 500 });
       }
     }
+
+    void logAction({
+      action: "raids.declarations.deduplicate",
+      resourceType: "raid_declarations",
+      resourceId: month || "all",
+      newValue: { removed: toDelete.length },
+      metadata: {
+        sourcePage: "/admin/communaute/engagement/historique-raids",
+        month: month || undefined,
+      },
+    });
 
     return NextResponse.json({
       success: true,

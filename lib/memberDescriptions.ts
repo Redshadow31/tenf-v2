@@ -4,6 +4,7 @@
  */
 
 import { MemberRole } from "./memberRoles";
+import { getRoleBadgeLabel } from "./roleBadgeSystem";
 
 /**
  * Génère une description générique selon le rôle du membre
@@ -21,40 +22,7 @@ export function getDefaultMemberDescription(
  * Retourne le texte du rôle pour la description
  */
 function getRoleText(role: MemberRole): string {
-  switch (role) {
-    case "Développement":
-      return "Créateur en Développement";
-    case "Affilié":
-      return "Créateur Affilié";
-    case "Modérateur Junior":
-      return "Modérateur en formation";
-    case "Modérateur en formation":
-      return "Modérateur en formation";
-    case "Mentor":
-      return "Modérateur";
-    case "Modérateur":
-      return "Modérateur";
-    case "Modérateur en activité réduite":
-      return "Modérateur en activité réduite";
-    case "Modérateur en pause":
-      return "Modérateur en pause";
-    case "Admin":
-      return "Administrateur";
-    case "Admin Adjoint":
-      return "Administrateur Coordinateur";
-    case "Admin Coordinateur":
-      return "Administrateur Coordinateur";
-    case "Créateur Junior":
-      return "Créateur Junior";
-    case "Les P'tits Jeunes":
-      return "Les P'tits Jeunes";
-    case "Soutien TENF":
-      return "Soutien TENF";
-    case "Contributeur TENF du Mois":
-      return "Contributeur TENF du Mois";
-    default:
-      return "membre";
-  }
+  return getRoleBadgeLabel(String(role));
 }
 
 /**

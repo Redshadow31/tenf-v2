@@ -9,8 +9,10 @@ const ITEMS = [
   { id: "accueil-vip", label: "VIP" },
   { id: "accueil-valeur", label: "Pourquoi TENF" },
   { id: "accueil-etapes", label: "Parcours" },
+  { id: "accueil-compare", label: "TENF vs autres" },
   { id: "accueil-avis", label: "Avis" },
   { id: "accueil-histoire", label: "Histoire" },
+  { id: "accueil-faq", label: "FAQ" },
   { id: "accueil-cta", label: "Rejoindre" },
 ] as const;
 
@@ -42,8 +44,12 @@ export default function HomeStickyNav() {
 
   return (
     <nav
-      className="home-journey-nav sticky top-[51px] z-40 -mx-3 mb-2 border-b border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] bg-[color-mix(in_srgb,var(--color-bg)_88%,transparent)] px-2 py-2 backdrop-blur-md sm:-mx-6 sm:mb-4 sm:px-3 lg:-mx-8"
+      className="home-journey-nav sticky top-[51px] z-40 mb-2 border-b border-[color-mix(in_srgb,var(--color-border)_80%,transparent)] bg-[color-mix(in_srgb,var(--color-bg)_88%,transparent)] px-2 py-2 backdrop-blur-md sm:mb-4 sm:px-3"
       aria-label="Sections de la page d’accueil"
+      style={{
+        marginLeft: "calc(-1 * var(--home-px, 0.75rem))",
+        marginRight: "calc(-1 * var(--home-px, 0.75rem))",
+      }}
     >
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin sm:flex-wrap sm:justify-center sm:overflow-visible sm:pb-0">
         {ITEMS.map((item) => (

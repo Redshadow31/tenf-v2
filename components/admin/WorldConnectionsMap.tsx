@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Globe2 } from "lucide-react";
 import worldMap from "@svg-maps/world";
+import { ALI } from "@/components/admin/audit-logs/auditLogsUi";
 
 export interface CountryConnectionPoint {
   countryCode: string;
@@ -39,11 +41,9 @@ export default function WorldConnectionsMap({
   const [hovered, setHovered] = useState<CountryConnectionPoint | null>(null);
   const pathRefs = useRef<Record<string, SVGPathElement | null>>({});
   const [pathCenters, setPathCenters] = useState<Record<string, { x: number; y: number }>>({});
-  const mapData = worldMap as unknown as {
-    viewBox: string;
-    locations: SvgMapLocation[];
-  };
+  const mapData = worldMap as unknown as { viewBox: string; locations: SvgMapLocation[] };
   const worldViewBox = useMemo(() => parseViewBox(mapData.viewBox), [mapData.viewBox]);
+
   const countryIndex = useMemo(() => {
     const index = new Map<string, CountryConnectionPoint>();
     for (const country of countries) {
@@ -51,6 +51,21 @@ export default function WorldConnectionsMap({
     }
     return index;
   }, [countries]);
+
+  const topCountries = useMemo(
+    () => [...countries].sort((a, b) => b.count - a.count).slice(0, 5),
+    [countries],
+  );
+
+  const topCountriesSummary = useMemo(() => {
+    if (topCountries.length === 0) return "Aucune connexion géolocalisée sur la période.";
+    return topCountries.map((c) => `${c.countryName} (${c.count})`).join(" · ");
+  }, [topCountries]);
+
+  const totalOnMap = useMemo(
+    () => countries.reduce((sum, c) => sum + c.count, 0),
+    [countries],
+  );
 
   useEffect(() => {
     const nextCenters: Record<string, { x: number; y: number }> = {};
@@ -60,10 +75,7 @@ export default function WorldConnectionsMap({
       if (!path) continue;
       const box = path.getBBox();
       if (!Number.isFinite(box.x) || !Number.isFinite(box.y) || box.width <= 0 || box.height <= 0) continue;
-      nextCenters[code] = {
-        x: box.x + box.width / 2,
-        y: box.y + box.height / 2,
-      };
+      nextCenters[code] = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     }
     setPathCenters(nextCenters);
   }, [countries]);
@@ -74,67 +86,60 @@ export default function WorldConnectionsMap({
         .map((country) => {
           const center = pathCenters[country.countryCode.toLowerCase()];
           if (!center) return null;
-          return {
-            ...country,
-            ...center,
-          };
+          return { ...country, ...center };
         })
         .filter(Boolean) as Array<CountryConnectionPoint & { x: number; y: number }>,
-    [countries, pathCenters]
+    [countries, pathCenters],
   );
 
-  const maxCount = Math.max(1, ...countries.map((country) => country.count));
+  const maxCount = Math.max(1, ...countries.map((c) => c.count));
 
   return (
-    <div className="rounded-lg border border-[#2a2a2d] bg-[#111114] p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">Carte mondiale des connexions</h3>
-        <p className="text-xs text-gray-400">Regroupement par pays</p>
-      </div>
-      <div className="relative overflow-hidden rounded-lg border border-[#26262a] bg-[#0b0b0e]">
-        <svg viewBox={mapData.viewBox} className="h-[420px] w-full md:h-[540px]" preserveAspectRatio="xMidYMid meet">
-          <defs>
-            <linearGradient id="worldGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#121220" />
-              <stop offset="100%" stopColor="#0a0a12" />
-            </linearGradient>
-            <linearGradient id="countryFill" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#1c2438" />
-              <stop offset="100%" stopColor="#161d2f" />
-            </linearGradient>
-          </defs>
+    <section
+      className={`overflow-hidden ${ALI.card}`}
+      aria-labelledby="world-map-title"
+    >
+      <header
+        className={`flex flex-wrap items-center justify-between gap-3 ${ALI.panelHeader}`}
+        style={{ padding: "clamp(0.75rem, 1vw, 1rem) clamp(0.85rem, 1vw, 1.1rem)" }}
+      >
+        <div className="flex items-center gap-3">
+          <span className={`${ALI.iconBox} ${ALI.iconCyan}`} aria-hidden>
+            <Globe2 className="h-4 w-4" />
+          </span>
+          <div>
+            <p className={ALI.sectionLabel}>Géographie</p>
+            <h3 id="world-map-title" className={`text-lg font-bold ${ALI.text}`}>
+              Carte mondiale des connexions
+            </h3>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {totalOnMap > 0 ? (
+            <span className={ALI.badge}>{totalOnMap} connexion{totalOnMap > 1 ? "s" : ""}</span>
+          ) : null}
+          <span className={`text-xs ${ALI.textMuted}`}>Clic sur un pays pour filtrer</span>
+        </div>
+      </header>
 
+      <div
+        className="relative border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-bg)_88%,var(--color-card))]"
+        role="img"
+        aria-label={`Carte des connexions. ${topCountriesSummary}`}
+      >
+        <svg
+          viewBox={mapData.viewBox}
+          className="h-[min(380px,52vh)] w-full md:h-[min(480px,48vh)]"
+          preserveAspectRatio="xMidYMid meet"
+          aria-hidden
+        >
           <rect
             x={worldViewBox.minX}
             y={worldViewBox.minY}
             width={worldViewBox.width}
             height={worldViewBox.height}
-            fill="url(#worldGrad)"
+            fill="color-mix(in srgb, var(--color-bg) 90%, var(--color-card))"
           />
-
-          {[1, 2, 3, 4, 5].map((line) => (
-            <line
-              key={`h-${line}`}
-              x1={worldViewBox.minX}
-              x2={worldViewBox.minX + worldViewBox.width}
-              y1={worldViewBox.minY + (line * worldViewBox.height) / 6}
-              y2={worldViewBox.minY + (line * worldViewBox.height) / 6}
-              stroke="#1b1f31"
-              strokeWidth={1}
-            />
-          ))}
-          {[1, 2, 3, 4, 5, 6, 7].map((line) => (
-            <line
-              key={`v-${line}`}
-              y1={worldViewBox.minY}
-              y2={worldViewBox.minY + worldViewBox.height}
-              x1={worldViewBox.minX + (line * worldViewBox.width) / 8}
-              x2={worldViewBox.minX + (line * worldViewBox.width) / 8}
-              stroke="#181c2a"
-              strokeWidth={1}
-            />
-          ))}
-
           <g>
             {mapData.locations.map((location) => {
               const country = countryIndex.get(location.id.toLowerCase());
@@ -147,39 +152,59 @@ export default function WorldConnectionsMap({
                     pathRefs.current[location.id.toLowerCase()] = node;
                   }}
                   d={location.path}
-                  fill={isSelected ? "#2c3f7e" : hasConnections ? "#263a71" : "url(#countryFill)"}
-                  stroke={isSelected ? "#8ea9ff" : hasConnections ? "#6f8ef7" : "#3b4866"}
-                  strokeWidth={isSelected ? 1.4 : 0.85}
-                  opacity={hasConnections ? 0.95 : 0.78}
+                  fill={
+                    isSelected
+                      ? "color-mix(in srgb, var(--color-primary) 50%, var(--color-card))"
+                      : hasConnections
+                        ? "color-mix(in srgb, var(--color-primary) 24%, var(--color-card))"
+                        : "color-mix(in srgb, var(--color-text) 5%, var(--color-card))"
+                  }
+                  stroke={
+                    isSelected
+                      ? "color-mix(in srgb, var(--color-primary) 75%, transparent)"
+                      : hasConnections
+                        ? "color-mix(in srgb, var(--color-primary) 45%, var(--color-border))"
+                        : "var(--color-border)"
+                  }
+                  strokeWidth={isSelected ? 1.5 : 0.85}
                 />
               );
             })}
           </g>
-
           {points.map((point) => {
             const ratio = point.count / maxCount;
-            const radius = 4 + ratio * 12;
+            const radius = 4 + ratio * 11;
             const isSelected = selectedCountry === point.countryCode;
+            const label = `${point.countryName}, ${point.count} connexion${point.count > 1 ? "s" : ""}`;
             return (
               <g
                 key={point.countryCode}
                 onMouseEnter={() => setHovered(point)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={() => onCountryClick?.(point.countryCode)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onCountryClick?.(point.countryCode);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={label}
                 style={{ cursor: "pointer" }}
               >
                 <circle
                   cx={point.x}
                   cy={point.y}
-                  r={radius + 4}
-                  fill={isSelected ? "rgba(145,70,255,0.35)" : "rgba(88,101,242,0.28)"}
+                  r={radius + 5}
+                  fill={isSelected ? "rgba(145,70,255,0.35)" : "rgba(88,101,242,0.25)"}
                 />
                 <circle
                   cx={point.x}
                   cy={point.y}
                   r={radius}
                   fill={isSelected ? "#9146ff" : "#4f7cff"}
-                  stroke="#ffffff"
+                  stroke="var(--color-card)"
                   strokeWidth="1.2"
                 />
               </g>
@@ -187,18 +212,27 @@ export default function WorldConnectionsMap({
           })}
         </svg>
 
-        {hovered && (
-          <div className="pointer-events-none absolute left-3 top-3 rounded-md border border-[#3a3a42] bg-[#14141b]/95 px-3 py-2 text-xs text-gray-200">
-            <p className="font-semibold text-white">{hovered.countryName}</p>
-            <p>{hovered.count} connexion(s)</p>
-            {typeof hovered.members === "number" && typeof hovered.general === "number" ? (
-              <p className="text-[11px] text-gray-300">
-                {hovered.members} membres · {hovered.general} visiteurs
-              </p>
-            ) : null}
+        {hovered ? (
+          <div
+            className="pointer-events-none absolute left-4 top-4 rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-card)_97%,var(--color-bg))] px-3 py-2 shadow-lg"
+            aria-hidden
+          >
+            <p className={`font-bold ${ALI.text}`}>{hovered.countryName}</p>
+            <p className={`text-sm ${ALI.textSecondary}`}>{hovered.count} connexion(s)</p>
           </div>
-        )}
+        ) : null}
       </div>
-    </div>
+
+      <footer
+        className="border-t border-[var(--color-border)] px-4 py-3"
+        style={{ backgroundColor: "color-mix(in srgb, var(--color-text) 2%, var(--color-card))" }}
+      >
+        <p className={`text-sm ${ALI.textSecondary}`}>
+          <span className="sr-only">Principaux pays : </span>
+          <span className={`font-medium ${ALI.text}`}>Top pays — </span>
+          {topCountriesSummary}
+        </p>
+      </footer>
+    </section>
   );
 }

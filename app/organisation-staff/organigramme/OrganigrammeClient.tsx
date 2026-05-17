@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { OrgChartEntry, OrgChartPoleKey } from "@/lib/staff/orgChartTypes";
-import { ORG_CHART_POLE_OPTIONS, poleTagFromKey } from "@/lib/staff/orgChartTypes";
+import { ORG_CHART_POLE_OPTIONS, poleLabelFromKey, poleTagFromKey, roleLabelFromKey } from "@/lib/staff/orgChartTypes";
 
 type FilterKey = "all" | "direction" | "mod_active" | "mod_training" | "mod_pause" | "support";
 type Audience = "public" | "member";
@@ -24,11 +24,11 @@ type ViewMode = "cards" | "compact";
 
 const FILTERS: Array<{ key: FilterKey; label: string; description: string }> = [
   { key: "all", label: "Toute l'équipe", description: "Vue complète des profils publics" },
-  { key: "direction", label: "Direction", description: "Fondateurs et admin coordinateurs" },
-  { key: "mod_active", label: "Modération active", description: "Modérateurs en fonction" },
-  { key: "mod_training", label: "En formation", description: "Montée en compétences modération" },
+  { key: "direction", label: "Direction", description: "Fondateurs TENF et Coordinateurs TENF" },
+  { key: "mod_active", label: "Modération active", description: "Modérateurs TENF et en Autonomie" },
+  { key: "mod_training", label: "En formation", description: "Modérateurs en Découverte et Accompagnement" },
   { key: "mod_pause", label: "En pause", description: "Hiatus tout en restant liés à TENF" },
-  { key: "support", label: "Soutien TENF", description: "Engagement sans modération active" },
+  { key: "support", label: "Soutien & invités", description: "Soutien TENF et Contributeurs Invités" },
 ];
 
 const SECTION_META: Record<string, { subtitle: string; accent: string }> = {
@@ -51,12 +51,18 @@ const SECTION_META: Record<string, { subtitle: string; accent: string }> = {
 };
 
 const POLE_ACCENTS: Record<OrgChartPoleKey, string> = {
+  // Pôles historiques (conservés pour la rétrocompatibilité des données)
   POLE_ANIMATION_EVENTS: "#ec4899",
-  POLE_COMMUNICATION_VISUALS: "#3b82f6",
-  POLE_FORMATION_COORD_MEMBERS: "#eab308",
+  POLE_COMMUNICATION_VISUALS: "#06b6d4",
+  POLE_FORMATION_COORD_MEMBERS: "#f97316",
   POLE_FORMATION_COORD_STAFF: "#f59e0b",
   POLE_TECH_BOTS: "#a855f7",
   POLE_ACCUEIL_INTEGRATION: "#f97316",
+  // Nouveaux pôles introduits par la refonte
+  POLE_VISION_PILOTAGE: "#3b82f6",
+  POLE_COORDINATION: "#6366f1",
+  POLE_VIE_STAFF: "#0ea5e9",
+  POLE_VEILLE_SITUATIONS_SENSIBLES: "#ef4444",
 };
 
 function matchesFilter(entry: OrgChartEntry, filter: FilterKey): boolean {
@@ -64,10 +70,22 @@ function matchesFilter(entry: OrgChartEntry, filter: FilterKey): boolean {
   if (filter === "direction") {
     return entry.roleKey === "FONDATEUR" || entry.roleKey === "ADMIN_COORDINATEUR";
   }
-  if (filter === "mod_active") return entry.roleKey === "MODERATEUR";
-  if (filter === "mod_training") return entry.roleKey === "MODERATEUR_EN_FORMATION";
+  if (filter === "mod_active") {
+    return entry.roleKey === "MODERATEUR" || entry.roleKey === "MODERATEUR_AUTONOMIE";
+  }
+  if (filter === "mod_training") {
+    return (
+      entry.roleKey === "MODERATEUR_EN_FORMATION" ||
+      entry.roleKey === "MODERATEUR_ACCOMPAGNEMENT" ||
+      entry.roleKey === "MODERATEUR_DECOUVERTE"
+    );
+  }
   if (filter === "mod_pause") return entry.roleKey === "MODERATEUR_EN_PAUSE";
-  return entry.roleKey === "SOUTIEN_TENF" || entry.statusKey === "SUPPORT";
+  return (
+    entry.roleKey === "SOUTIEN_TENF" ||
+    entry.roleKey === "CONTRIBUTEUR_INVITE" ||
+    entry.statusKey === "SUPPORT"
+  );
 }
 
 function normalize(s: string) {
@@ -85,8 +103,10 @@ function entryMatchesSearch(entry: OrgChartEntry, q: string): boolean {
     entry.member.twitchLogin,
     entry.bioShort,
     entry.roleLabel,
+    roleLabelFromKey(entry.roleKey),
     entry.statusLabel,
     entry.poleLabel || "",
+    entry.poleKey ? poleLabelFromKey(entry.poleKey) : "",
     ...entry.secondaryPoleKeys.map((k) => poleTagFromKey(k).label),
   ]
     .filter(Boolean)
@@ -136,19 +156,25 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
       })
     );
 
+  const isModeratorRole = (entry: OrgChartEntry) =>
+    entry.roleKey === "MODERATEUR" ||
+    entry.roleKey === "MODERATEUR_AUTONOMIE" ||
+    entry.roleKey === "MODERATEUR_ACCOMPAGNEMENT" ||
+    entry.roleKey === "MODERATEUR_DECOUVERTE" ||
+    entry.roleKey === "MODERATEUR_EN_FORMATION" ||
+    entry.roleKey === "MODERATEUR_EN_PAUSE";
+
+  const isSupportRole = (entry: OrgChartEntry) =>
+    entry.roleKey === "SOUTIEN_TENF" ||
+    entry.roleKey === "CONTRIBUTEUR_INVITE" ||
+    entry.statusKey === "SUPPORT";
+
   const groupedAll = useMemo(
     () => ({
       founders: sortByMemberName(baseEntries.filter((entry) => entry.roleKey === "FONDATEUR")),
       adminCoordinators: sortByMemberName(baseEntries.filter((entry) => entry.roleKey === "ADMIN_COORDINATEUR")),
-      moderators: sortByMemberName(
-        baseEntries.filter(
-          (entry) =>
-            entry.roleKey === "MODERATEUR" ||
-            entry.roleKey === "MODERATEUR_EN_FORMATION" ||
-            entry.roleKey === "MODERATEUR_EN_PAUSE"
-        )
-      ),
-      support: sortByMemberName(baseEntries.filter((entry) => entry.roleKey === "SOUTIEN_TENF" || entry.statusKey === "SUPPORT")),
+      moderators: sortByMemberName(baseEntries.filter(isModeratorRole)),
+      support: sortByMemberName(baseEntries.filter(isSupportRole)),
     }),
     [baseEntries]
   );
@@ -157,24 +183,17 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
     () => ({
       founders: sortByMemberName(visibleEntries.filter((entry) => entry.roleKey === "FONDATEUR")),
       adminCoordinators: sortByMemberName(visibleEntries.filter((entry) => entry.roleKey === "ADMIN_COORDINATEUR")),
-      moderators: sortByMemberName(
-        visibleEntries.filter(
-          (entry) =>
-            entry.roleKey === "MODERATEUR" ||
-            entry.roleKey === "MODERATEUR_EN_FORMATION" ||
-            entry.roleKey === "MODERATEUR_EN_PAUSE"
-        )
-      ),
-      support: sortByMemberName(visibleEntries.filter((entry) => entry.roleKey === "SOUTIEN_TENF" || entry.statusKey === "SUPPORT")),
+      moderators: sortByMemberName(visibleEntries.filter(isModeratorRole)),
+      support: sortByMemberName(visibleEntries.filter(isSupportRole)),
     }),
     [visibleEntries]
   );
 
   const sections: Array<{ key: string; title: string; items: OrgChartEntry[] }> = [
-    { key: "founders", title: "Fondateurs", items: grouped.founders },
-    { key: "adminCoordinators", title: "Admin coordinateurs", items: grouped.adminCoordinators },
-    { key: "moderators", title: "Modérateurs TENF", items: grouped.moderators },
-    { key: "support", title: "Soutien TENF", items: grouped.support },
+    { key: "founders", title: "Fondateurs TENF", items: grouped.founders },
+    { key: "adminCoordinators", title: "Coordinateurs TENF", items: grouped.adminCoordinators },
+    { key: "moderators", title: "Modération", items: grouped.moderators },
+    { key: "support", title: "Soutien & invités", items: grouped.support },
   ].filter((section) => section.items.length > 0);
 
   const totalVisible = visibleEntries.length;
@@ -695,7 +714,7 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                             backgroundColor: "rgba(148,163,184,0.08)",
                           }}
                         >
-                          {entry.roleLabel}
+                          {roleLabelFromKey(entry.roleKey)}
                         </span>
                         <span
                           className="rounded-full border px-2 py-1 text-xs"
@@ -718,7 +737,7 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                             color: section.key === "support" ? "#86efac" : POLE_ACCENTS[entry.poleKey] || "var(--color-primary)",
                           }}
                         >
-                          {entry.poleLabel}
+                          {poleLabelFromKey(entry.poleKey)}
                         </p>
                       ) : null}
                       {entry.secondaryPoleKeys.length > 0 ? (
@@ -761,11 +780,11 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                         </div>
                         <div className="mt-1 flex flex-wrap gap-1">
                           <span className="rounded-md px-2 py-0.5 text-[11px]" style={{ backgroundColor: "rgba(148,163,184,0.12)", color: "var(--color-text-secondary)" }}>
-                            {entry.roleLabel}
+                            {roleLabelFromKey(entry.roleKey)}
                           </span>
-                          {entry.poleLabel ? (
+                          {entry.poleKey ? (
                             <span className="rounded-md px-2 py-0.5 text-[11px]" style={{ backgroundColor: "rgba(59,130,246,0.12)", color: "var(--color-primary)" }}>
-                              {entry.poleLabel}
+                              {poleLabelFromKey(entry.poleKey)}
                             </span>
                           ) : null}
                         </div>
@@ -847,21 +866,21 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
             <div className="space-y-4 px-6 pb-6 pt-2">
               <div className="flex flex-wrap gap-2">
                 <span className="rounded-full border px-2.5 py-1 text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
-                  {selectedEntry.roleLabel}
+                  {roleLabelFromKey(selectedEntry.roleKey)}
                 </span>
                 <span className="rounded-full border px-2.5 py-1 text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
                   {selectedEntry.statusLabel}
                 </span>
-                {selectedEntry.poleLabel && selectedEntry.poleKey ? (
+                {selectedEntry.poleKey ? (
                   <span
                     className="rounded-full border px-2.5 py-1 text-xs font-medium"
                     style={{
                       borderColor: POLE_ACCENTS[selectedEntry.poleKey] || "var(--color-border)",
                       color: POLE_ACCENTS[selectedEntry.poleKey] || "var(--color-text-secondary)",
-                      backgroundColor: selectedEntry.poleKey ? `${POLE_ACCENTS[selectedEntry.poleKey]}18` : undefined,
+                      backgroundColor: `${POLE_ACCENTS[selectedEntry.poleKey]}18`,
                     }}
                   >
-                    {selectedEntry.poleLabel}
+                    {poleLabelFromKey(selectedEntry.poleKey)}
                   </span>
                 ) : null}
                 {selectedEntry.secondaryPoleKeys.map((pole) => {

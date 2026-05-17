@@ -2,54 +2,79 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, RefreshCw } from "lucide-react";
+import { ArrowRight, ListOrdered, RefreshCw } from "lucide-react";
+import MembersCockpitShell from "@/components/admin/members-hub/MembersCockpitShell";
+import MembersActionsCockpitAside from "@/components/admin/members-hub/MembersActionsCockpitAside";
+import MembersActionsStaffGuide from "@/components/admin/members-hub/MembersActionsStaffGuide";
+import {
+  cockpitBtnClass,
+  cockpitHeroClass,
+  cockpitPanelClass,
+  hubFocusRingClass,
+  hubSectionLabelClass,
+} from "@/components/admin/members-hub/membersHubStyles";
+import {
+  getMembersOpsScore,
+  IMPACT_LABELS,
+  PRIORITY_LABELS,
+  type MembersOpsImpact,
+  type MembersOpsItem,
+  type MembersOpsPriority,
+} from "@/lib/admin/members/membersOpsQueue";
 
-type QueueImpact = "bloquant_onboarding" | "risque_moderation" | "qualite_data" | "processus_interne";
+/**
+ * File complète des actions membres.
+ *
+ * Alignée avec le hub /admin/membres :
+ *  - mêmes priorités P1 / P2 / P3 (via `PRIORITY_LABELS`)
+ *  - mêmes impacts (Onboarding / Modération / Qualité data / Processus interne)
+ *    via `IMPACT_LABELS`
+ *  - même formule de score (`getMembersOpsScore`)
+ *  - hrefs alignés sur les routes finales (pas de routes legacy)
+ */
 
-type QueueItem = {
-  id: string;
-  title: string;
-  description: string;
-  count: number;
-  priority: "P1" | "P2" | "P3";
-  impact: QueueImpact;
-  href: string;
+type QueueRow = Pick<
+  MembersOpsItem,
+  "id" | "title" | "description" | "count" | "priority" | "impact" | "href"
+> & {
   source: string;
 };
 
-function priorityClass(priority: QueueItem["priority"]): string {
+function priorityClass(priority: MembersOpsPriority): string {
   if (priority === "P1") return "bg-rose-500/15 border-rose-400/40 text-rose-200";
   if (priority === "P2") return "bg-amber-500/15 border-amber-400/40 text-amber-200";
   return "bg-sky-500/15 border-sky-400/40 text-sky-200";
 }
 
-function impactClass(impact: QueueImpact): string {
-  if (impact === "bloquant_onboarding") return "bg-fuchsia-500/15 border-fuchsia-400/40 text-fuchsia-200";
-  if (impact === "risque_moderation") return "bg-orange-500/15 border-orange-400/40 text-orange-200";
+function impactClass(impact: MembersOpsImpact): string {
+  if (impact === "onboarding") return "bg-fuchsia-500/15 border-fuchsia-400/40 text-fuchsia-200";
+  if (impact === "moderation") return "bg-orange-500/15 border-orange-400/40 text-orange-200";
   if (impact === "qualite_data") return "bg-cyan-500/15 border-cyan-400/40 text-cyan-200";
-  return "bg-slate-500/15 border-slate-400/40 text-slate-200";
+  return "bg-zinc-500/15 border-zinc-400/40 text-zinc-200";
 }
 
-function impactLabel(impact: QueueImpact): string {
-  if (impact === "bloquant_onboarding") return "Onboarding";
-  if (impact === "risque_moderation") return "Moderation";
-  if (impact === "qualite_data") return "Qualite data";
-  return "Processus";
+function filterChipClass(active: boolean): string {
+  return `rounded-lg border px-3 py-2 text-xs font-semibold transition ${hubFocusRingClass} ${
+    active
+      ? "border-violet-400/40 bg-violet-500/15 text-violet-100"
+      : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-violet-400/25 hover:text-zinc-200"
+  }`;
 }
 
-const glassCardClass =
-  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
-const sectionCardClass =
-  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
-const subtleButtonClass =
-  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
+const IMPACT_FILTERS: Array<{ id: MembersOpsImpact | "all"; label: string }> = [
+  { id: "all", label: "Impact : Tous" },
+  { id: "onboarding", label: IMPACT_LABELS.onboarding },
+  { id: "moderation", label: IMPACT_LABELS.moderation },
+  { id: "qualite_data", label: IMPACT_LABELS.qualite_data },
+  { id: "processus_interne", label: IMPACT_LABELS.processus_interne },
+];
 
 export default function MembersActionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<QueueItem[]>([]);
-  const [priorityFilter, setPriorityFilter] = useState<QueueItem["priority"] | "all">("all");
-  const [impactFilter, setImpactFilter] = useState<QueueImpact | "all">("all");
+  const [items, setItems] = useState<QueueRow[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<MembersOpsPriority | "all">("all");
+  const [impactFilter, setImpactFilter] = useState<MembersOpsImpact | "all">("all");
   const [refreshTick, setRefreshTick] = useState(0);
 
   const loadQueues = useCallback(async () => {
@@ -71,18 +96,18 @@ export default function MembersActionsPage() {
         fetch("/api/admin/dashboard/aggregate", { cache: "no-store" }),
       ]);
 
-      const next: QueueItem[] = [];
+      const next: QueueRow[] = [];
 
       if (profileValidationRes.status === "fulfilled" && profileValidationRes.value.ok) {
         const payload = await profileValidationRes.value.json();
         const count = Array.isArray(payload?.pending) ? payload.pending.length : 0;
         next.push({
           id: "profile-validation",
-          title: "Validation de profils",
-          description: "Demandes de modifications de profil en attente de traitement.",
+          title: "Créateurs bloqués avant intégration",
+          description: "Profils en attente d'une lecture staff : valider pour débloquer l'arrivée.",
           count,
           priority: count > 12 ? "P1" : count > 0 ? "P2" : "P3",
-          impact: "bloquant_onboarding",
+          impact: "onboarding",
           href: "/admin/membres/validation-profil",
           source: "member_profile_pending",
         });
@@ -92,14 +117,17 @@ export default function MembersActionsPage() {
         const payload = await staffApplicationsRes.value.json();
         const applications = Array.isArray(payload?.applications) ? payload.applications : [];
         const pendingStatuses = new Set(["nouveau", "a_contacter", "entretien_prevu"]);
-        const count = applications.filter((application: any) => pendingStatuses.has(String(application?.admin_status || ""))).length;
+        const count = applications.filter((application: unknown) => {
+          const status = (application as { admin_status?: unknown })?.admin_status;
+          return pendingStatuses.has(String(status || ""));
+        }).length;
         next.push({
           id: "staff-applications",
-          title: "Postulations staff",
-          description: "Candidatures à instruire ou relancer.",
+          title: "Candidatures staff à instruire",
+          description: "Créateurs qui souhaitent rejoindre l'équipe : à trier avant entretien ou réponse.",
           count,
           priority: count > 10 ? "P1" : count > 0 ? "P2" : "P3",
-          impact: "risque_moderation",
+          impact: "moderation",
           href: "/admin/membres/postulations",
           source: "staff_applications",
         });
@@ -111,12 +139,12 @@ export default function MembersActionsPage() {
         const count = Array.isArray(missing) ? missing.length : 0;
         next.push({
           id: "sync-gap",
-          title: "Ecarts sync membres",
-          description: "Profils presents en legacy mais absents Supabase.",
+          title: "Données à réconcilier",
+          description: "Créateurs présents en source historique mais absents de la nouvelle base.",
           count,
           priority: count > 20 ? "P1" : count > 0 ? "P2" : "P3",
           impact: "qualite_data",
-          href: "/admin/membres/synchronisation",
+          href: "/admin/membres/qualite-data?onglet=sync",
           source: "migration/check-sync-members",
         });
       }
@@ -127,22 +155,22 @@ export default function MembersActionsPage() {
         const errors = Number(payload?.errors || 0);
         next.push({
           id: "incomplete",
-          title: "Comptes incomplets",
-          description: "Profils avec champs obligatoires manquants.",
+          title: "Fiches à fiabiliser",
+          description: "Profils ouverts mais incomplets : à finaliser pour rester exploitables.",
           count: incompleteAccounts,
           priority: incompleteAccounts > 25 ? "P2" : "P3",
-          impact: "bloquant_onboarding",
+          impact: "onboarding",
           href: "/admin/membres/incomplets",
           source: "control-center/alerts",
         });
         next.push({
           id: "errors",
-          title: "Incoherences membres",
-          description: "Anomalies de donnees a corriger (logins, IDs, incoherences).",
+          title: "Incohérences à corriger sur les fiches",
+          description: "Anomalies techniques (logins, IDs) : ces créateurs ne sont pas exploitables.",
           count: errors,
           priority: errors > 12 ? "P1" : errors > 0 ? "P2" : "P3",
           impact: "qualite_data",
-          href: "/admin/membres/erreurs",
+          href: "/admin/membres/incomplets?vue=erreurs",
           source: "control-center/alerts",
         });
       }
@@ -152,8 +180,8 @@ export default function MembersActionsPage() {
         const overdue = Number(payload?.data?.summary?.reviewOverdue || 0);
         next.push({
           id: "reviews",
-          title: "Revues membres en retard",
-          description: "Membres a revoir selon la date de prochaine revue.",
+          title: "Membres à accompagner",
+          description: "Revues dépassées : un échange ou un point d'étape s'impose pour ces créateurs.",
           count: overdue,
           priority: overdue > 20 ? "P1" : overdue > 0 ? "P2" : "P3",
           impact: "processus_interne",
@@ -166,9 +194,8 @@ export default function MembersActionsPage() {
         next
           .filter((item) => item.count > 0)
           .sort((a, b) => {
-            const score = (value: QueueItem["priority"]) => (value === "P1" ? 3 : value === "P2" ? 2 : 1);
-            const priorityDiff = score(b.priority) - score(a.priority);
-            if (priorityDiff !== 0) return priorityDiff;
+            const scoreDiff = getMembersOpsScore(b) - getMembersOpsScore(a);
+            if (scoreDiff !== 0) return scoreDiff;
             return b.count - a.count;
           })
       );
@@ -199,10 +226,15 @@ export default function MembersActionsPage() {
     });
   }, [impactFilter, items, priorityFilter]);
 
+  const filteredVolume = useMemo(
+    () => filteredItems.reduce((sum, item) => sum + item.count, 0),
+    [filteredItems]
+  );
+
   const impactBreakdown = useMemo(() => {
-    const counts = {
-      bloquant_onboarding: 0,
-      risque_moderation: 0,
+    const counts: Record<MembersOpsImpact, number> = {
+      onboarding: 0,
+      moderation: 0,
       qualite_data: 0,
       processus_interne: 0,
     };
@@ -215,8 +247,8 @@ export default function MembersActionsPage() {
       counts,
       total,
       pcts: {
-        bloquant_onboarding: pct(counts.bloquant_onboarding),
-        risque_moderation: pct(counts.risque_moderation),
+        onboarding: pct(counts.onboarding),
+        moderation: pct(counts.moderation),
         qualite_data: pct(counts.qualite_data),
         processus_interne: pct(counts.processus_interne),
       },
@@ -224,189 +256,285 @@ export default function MembersActionsPage() {
   }, [items]);
 
   const donutBackground = useMemo(() => {
-    if (impactBreakdown.total === 0) return "conic-gradient(#1f2433 0% 100%)";
-    const p1 = impactBreakdown.pcts.bloquant_onboarding;
-    const p2 = impactBreakdown.pcts.risque_moderation;
+    if (impactBreakdown.total === 0) return "conic-gradient(#27272a 0% 100%)";
+    const p1 = impactBreakdown.pcts.onboarding;
+    const p2 = impactBreakdown.pcts.moderation;
     const p3 = impactBreakdown.pcts.qualite_data;
     const p4 = Math.max(0, 100 - (p1 + p2 + p3));
     return `conic-gradient(#e879f9 0% ${p1}%, #fb923c ${p1}% ${p1 + p2}%, #22d3ee ${p1 + p2}% ${p1 + p2 + p3}%, #94a3b8 ${p1 + p2 + p3}% ${p1 + p2 + p3 + p4}%)`;
   }, [impactBreakdown]);
 
-  const p1Rate = totals.total > 0 ? Math.round((items.filter((item) => item.priority === "P1").reduce((sum, item) => sum + item.count, 0) / totals.total) * 100) : 0;
-  const p2Rate = totals.total > 0 ? Math.round((items.filter((item) => item.priority === "P2").reduce((sum, item) => sum + item.count, 0) / totals.total) * 100) : 0;
+  const p1Rate =
+    totals.total > 0
+      ? Math.round(
+          (items.filter((item) => item.priority === "P1").reduce((sum, item) => sum + item.count, 0) / totals.total) *
+            100
+        )
+      : 0;
+  const p2Rate =
+    totals.total > 0
+      ? Math.round(
+          (items.filter((item) => item.priority === "P2").reduce((sum, item) => sum + item.count, 0) / totals.total) *
+            100
+        )
+      : 0;
   const p3Rate = Math.max(0, 100 - p1Rate - p2Rate);
 
   return (
-    <div className="text-white space-y-6">
-      <section className={`${glassCardClass} p-6`}>
+    <MembersCockpitShell
+      aside={<MembersActionsCockpitAside totalVolume={totals.total} p1Files={totals.p1} />}
+    >
+      <header className={`${cockpitHeroClass} p-[clamp(1rem,1.6vw,1.5rem)] sm:p-6`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <Link href="/admin/membres" className="text-slate-300 hover:text-white transition-colors mb-3 inline-block">
-          ← Retour au Dashboard membres
-        </Link>
-            <h1 className="bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent">
-              Gestion des membres - Actions a traiter
+          <div className="min-w-0 max-w-3xl">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-violet-400/30 bg-violet-500/10 px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-violet-200">
+                Membres TENF
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-zinc-400">
+                Cockpit staff
+              </span>
+            </div>
+            <p className={hubSectionLabelClass}>File opérationnelle</p>
+            <h1 className="mt-1 text-[clamp(1.35rem,2.2vw,1.85rem)] font-semibold tracking-tight text-zinc-50">
+              Actions à traiter
             </h1>
-            <p className="mt-2 text-sm text-slate-300">
-              Queue unifiee des actions prioritaires profils, recrutement staff, sync et qualite des donnees.
+            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+              Toute la file unifiée : validations, staff, sync et qualité. Mêmes priorités et impacts que le hub — avec
+              volumes et filtres complets.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setRefreshTick((prev) => prev + 1)}
-            className={subtleButtonClass}
+            disabled={loading}
+            className={`${cockpitBtnClass} ${hubFocusRingClass} shrink-0 disabled:opacity-50`}
           >
-            <RefreshCw className="h-4 w-4" />
-            Actualiser la queue
+            <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? "animate-spin" : ""}`} aria-hidden />
+            Actualiser
           </button>
         </div>
-      </section>
+      </header>
 
       {error ? (
-        <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-          Chargement partiel: {error}
+        <div
+          className="rounded-xl border border-rose-500/35 bg-rose-950/30 px-4 py-3 text-sm text-rose-200"
+          role="alert"
+        >
+          Chargement partiel : {error}
         </div>
       ) : null}
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={`${sectionCardClass} p-4`}>
-          <p className="text-sm text-slate-400">Files actives</p>
-          <p className="mt-2 text-3xl font-bold">{items.length}</p>
+      <MembersActionsStaffGuide activeFiles={items.length} totalVolume={totals.total} p1Files={totals.p1} />
+
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Indicateurs file">
+        <div className={`${cockpitPanelClass} p-4`}>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Files actives</p>
+          <p className="mt-2 text-3xl font-bold tabular-nums text-zinc-50">{loading ? "—" : items.length}</p>
         </div>
-        <div className={`${sectionCardClass} p-4`}>
-          <p className="text-sm text-slate-400">Volume total</p>
-          <p className="mt-2 text-3xl font-bold">{totals.total}</p>
+        <div className={`${cockpitPanelClass} p-4`}>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Volume total</p>
+          <p className="mt-2 text-3xl font-bold tabular-nums text-zinc-50">{loading ? "—" : totals.total}</p>
         </div>
-        <div className={`${sectionCardClass} p-4`}>
-          <p className="text-sm text-slate-400">Files P1</p>
-          <p className="mt-2 text-3xl font-bold text-rose-300">{totals.p1}</p>
+        <div className={`${cockpitPanelClass} p-4`}>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Types en P1</p>
+          <p className="mt-2 text-3xl font-bold tabular-nums text-rose-300">{loading ? "—" : totals.p1}</p>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <article className={`${sectionCardClass} p-5`}>
-          <h2 className="text-lg font-semibold text-slate-100">Progression par priorite</h2>
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-3" aria-label="Synthèse priorités et impacts">
+        <article className={`${cockpitPanelClass} p-5`}>
+          <h2 className="text-sm font-semibold text-zinc-100">Répartition par priorité</h2>
+          <p className="mt-1 text-xs text-zinc-500">Part du volume total (dossiers), pas du nombre de lignes.</p>
           <div className="mt-4 space-y-3">
             <div>
-              <div className="mb-1 flex justify-between text-xs text-slate-300"><span>P1 critique</span><span>{p1Rate}%</span></div>
-              <div className="h-2.5 rounded-full bg-slate-800"><div className="h-2.5 rounded-full bg-gradient-to-r from-rose-500 to-rose-300" style={{ width: `${p1Rate}%` }} /></div>
+              <div className="mb-1 flex justify-between text-xs text-zinc-400">
+                <span>{PRIORITY_LABELS.P1}</span>
+                <span className="tabular-nums">{p1Rate}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-zinc-800">
+                <div
+                  className="h-2.5 rounded-full bg-gradient-to-r from-rose-600 to-rose-400"
+                  style={{ width: `${p1Rate}%` }}
+                />
+              </div>
             </div>
             <div>
-              <div className="mb-1 flex justify-between text-xs text-slate-300"><span>P2 important</span><span>{p2Rate}%</span></div>
-              <div className="h-2.5 rounded-full bg-slate-800"><div className="h-2.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-300" style={{ width: `${p2Rate}%` }} /></div>
+              <div className="mb-1 flex justify-between text-xs text-zinc-400">
+                <span>{PRIORITY_LABELS.P2}</span>
+                <span className="tabular-nums">{p2Rate}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-zinc-800">
+                <div
+                  className="h-2.5 rounded-full bg-gradient-to-r from-amber-600 to-amber-400"
+                  style={{ width: `${p2Rate}%` }}
+                />
+              </div>
             </div>
             <div>
-              <div className="mb-1 flex justify-between text-xs text-slate-300"><span>P3 normal</span><span>{p3Rate}%</span></div>
-              <div className="h-2.5 rounded-full bg-slate-800"><div className="h-2.5 rounded-full bg-gradient-to-r from-sky-500 to-sky-300" style={{ width: `${p3Rate}%` }} /></div>
+              <div className="mb-1 flex justify-between text-xs text-zinc-400">
+                <span>{PRIORITY_LABELS.P3}</span>
+                <span className="tabular-nums">{p3Rate}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-zinc-800">
+                <div
+                  className="h-2.5 rounded-full bg-gradient-to-r from-sky-600 to-sky-400"
+                  style={{ width: `${p3Rate}%` }}
+                />
+              </div>
             </div>
           </div>
         </article>
-        <article className={`${sectionCardClass} p-5`}>
-          <h2 className="text-lg font-semibold text-slate-100">Camembert impact</h2>
+        <article className={`${cockpitPanelClass} p-5`}>
+          <h2 className="text-sm font-semibold text-zinc-100">Volume par impact</h2>
           <div className="mt-4 flex items-center gap-4">
-            <div className="relative h-32 w-32 rounded-full" style={{ background: donutBackground }}>
-              <div className="absolute inset-4 flex items-center justify-center rounded-full bg-[#0f1321] text-center">
+            <div className="relative h-32 w-32 shrink-0 rounded-full" style={{ background: donutBackground }}>
+              <div className="absolute inset-4 flex items-center justify-center rounded-full bg-zinc-950 text-center ring-1 ring-white/10">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.08em] text-slate-400">Volume</p>
-                  <p className="text-xl font-semibold text-slate-100">{impactBreakdown.total}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-zinc-500">Dossiers</p>
+                  <p className="text-xl font-semibold tabular-nums text-zinc-100">{impactBreakdown.total}</p>
                 </div>
               </div>
             </div>
-            <div className="space-y-1.5 text-xs">
-              <p className="text-fuchsia-200">Onboarding: {impactBreakdown.counts.bloquant_onboarding}</p>
-              <p className="text-orange-200">Moderation: {impactBreakdown.counts.risque_moderation}</p>
-              <p className="text-cyan-200">Qualite data: {impactBreakdown.counts.qualite_data}</p>
-              <p className="text-slate-300">Processus: {impactBreakdown.counts.processus_interne}</p>
+            <div className="space-y-1.5 text-xs text-zinc-400">
+              <p>
+                <span className="text-fuchsia-200">{IMPACT_LABELS.onboarding}</span> :{" "}
+                {impactBreakdown.counts.onboarding}
+              </p>
+              <p>
+                <span className="text-orange-200">{IMPACT_LABELS.moderation}</span> :{" "}
+                {impactBreakdown.counts.moderation}
+              </p>
+              <p>
+                <span className="text-cyan-200">{IMPACT_LABELS.qualite_data}</span> :{" "}
+                {impactBreakdown.counts.qualite_data}
+              </p>
+              <p>
+                <span className="text-zinc-300">{IMPACT_LABELS.processus_interne}</span> :{" "}
+                {impactBreakdown.counts.processus_interne}
+              </p>
             </div>
           </div>
         </article>
-        <article className={`${sectionCardClass} p-5`}>
-          <h2 className="text-lg font-semibold text-slate-100">Lecture rapide</h2>
-          <p className="mt-2 text-sm text-slate-300">
+        <article className={`${cockpitPanelClass} p-5`}>
+          <h2 className="text-sm font-semibold text-zinc-100">Lecture rapide</h2>
+          <p className="mt-2 text-sm text-zinc-400">
             {totals.p1 > 0
-              ? `${totals.p1} files critiques ouvertes. Prioriser P1 en premier.`
-              : "Aucune file critique detectee."}
+              ? `${totals.p1} type${totals.p1 > 1 ? "s" : ""} de file en P1 — commence par le filtre P1 ci-dessous.`
+              : totals.total === 0
+                ? "Aucun dossier en attente : la file est vide."
+                : "Aucun type critique P1 : tu peux traiter P2 ou la vue complète."}
           </p>
-          <p className="mt-2 text-xs text-slate-400">
-            Repartition files: P1 {totals.p1}, P2 {totals.p2}, P3 {totals.p3}
+          <p className="mt-2 text-xs text-zinc-500">
+            Lignes actives : P1 {totals.p1}, P2 {totals.p2}, P3 {totals.p3}
           </p>
         </article>
       </section>
 
-      <section className={`${sectionCardClass} flex flex-wrap items-center gap-2 p-3`}>
+      <section className={`${cockpitPanelClass} flex flex-wrap items-center gap-2 p-3`} aria-label="Filtres">
         {(["all", "P1", "P2", "P3"] as const).map((value) => (
           <button
             key={value}
             type="button"
             onClick={() => setPriorityFilter(value)}
-            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-              priorityFilter === value
-                ? "border-indigo-300/50 bg-indigo-400/20 text-indigo-100"
-                : "border-[#353a50] bg-[#121623]/80 text-slate-300 hover:border-indigo-300/35 hover:text-indigo-100"
-            }`}
+            className={filterChipClass(priorityFilter === value)}
           >
-            {value === "all" ? "Priorite: Toutes" : value}
+            {value === "all" ? "Priorité : Toutes" : PRIORITY_LABELS[value]}
           </button>
         ))}
-        {(["all", "bloquant_onboarding", "risque_moderation", "qualite_data", "processus_interne"] as const).map((value) => (
+        {IMPACT_FILTERS.map((filter) => (
           <button
-            key={value}
+            key={filter.id}
             type="button"
-            onClick={() => setImpactFilter(value)}
-            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-              impactFilter === value
-                ? "border-indigo-300/50 bg-indigo-400/20 text-indigo-100"
-                : "border-[#353a50] bg-[#121623]/80 text-slate-300 hover:border-indigo-300/35 hover:text-indigo-100"
-            }`}
+            onClick={() => setImpactFilter(filter.id)}
+            className={filterChipClass(impactFilter === filter.id)}
           >
-            {value === "all" ? "Impact: Tous" : impactLabel(value)}
+            {filter.label}
           </button>
         ))}
+        {(priorityFilter !== "all" || impactFilter !== "all") && filteredItems.length > 0 ? (
+          <p className="ml-auto text-xs text-zinc-500 tabular-nums">
+            {filteredItems.length} ligne{filteredItems.length > 1 ? "s" : ""} · {filteredVolume} dossier
+            {filteredVolume > 1 ? "s" : ""}
+          </p>
+        ) : null}
       </section>
 
       {loading ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300">Chargement de la queue...</div>
+        <div className={`${cockpitPanelClass} px-4 py-3 text-sm text-zinc-400`} aria-live="polite">
+          Chargement de la file…
+        </div>
       ) : null}
 
       {!loading && filteredItems.length === 0 ? (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-          Aucun item en attente detecte pour ce filtre.
+        <div
+          className="rounded-xl border border-emerald-500/30 bg-emerald-950/25 px-4 py-3 text-sm text-emerald-200"
+          role="status"
+        >
+          {items.length === 0
+            ? "Rien en attente : toutes les files sont vides pour l'instant."
+            : "Aucune ligne pour ce filtre — élargis la priorité ou l'impact."}
         </div>
       ) : null}
 
       {!loading && filteredItems.length > 0 ? (
-        <div className={`${sectionCardClass} overflow-hidden`}>
-          <div className="grid grid-cols-[1.4fr_90px_80px_130px_90px_1fr_170px] gap-2 px-4 py-3 text-xs uppercase tracking-wide text-gray-400 border-b border-white/10">
-            <span>Action</span>
-            <span>Volume</span>
-            <span>Prio</span>
-            <span>Impact</span>
-            <span>Score</span>
-            <span>Source</span>
-            <span>Ouverture</span>
+        <section className={`${cockpitPanelClass} overflow-hidden`} aria-labelledby="actions-table-heading">
+          <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
+            <ListOrdered className="h-4 w-4 text-violet-300" aria-hidden />
+            <h2 id="actions-table-heading" className="text-sm font-semibold text-zinc-100">
+              Tableau de la file
+            </h2>
           </div>
-          {filteredItems.map((item) => (
-            <div key={item.id} className="grid grid-cols-[1.4fr_90px_80px_130px_90px_1fr_170px] gap-2 px-4 py-3 border-b border-white/5 items-center">
-              <div>
-                <p className="text-sm font-medium text-white">{item.title}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>
+          <div className="overflow-x-auto">
+            <div className="min-w-[820px]">
+              <div className="grid grid-cols-[minmax(0,1.4fr)_90px_90px_140px_90px_minmax(0,1fr)_170px] gap-2 border-b border-white/[0.06] px-4 py-3 text-xs uppercase tracking-wide text-zinc-500">
+                <span>Action</span>
+                <span>Volume</span>
+                <span>Prio</span>
+                <span>Impact</span>
+                <span>Score</span>
+                <span>Source</span>
+                <span>Ouverture</span>
               </div>
-              <p className="text-sm text-white">{item.count}</p>
-              <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs w-fit ${priorityClass(item.priority)}`}>{item.priority}</span>
-              <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs w-fit ${impactClass(item.impact)}`}>{impactLabel(item.impact)}</span>
-              <span className="inline-flex rounded-full border border-indigo-300/35 bg-indigo-300/10 px-2 py-0.5 text-xs w-fit text-indigo-100">
-                {Math.round(item.count * (item.priority === "P1" ? 3 : item.priority === "P2" ? 2 : 1))}
-              </span>
-              <p className="text-xs text-gray-400">{item.source}</p>
-              <Link href={item.href} className="inline-flex items-center gap-1 text-sm text-indigo-200 hover:text-indigo-100 transition-colors">
-                Ouvrir
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              {filteredItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-[minmax(0,1.4fr)_90px_90px_140px_90px_minmax(0,1fr)_170px] items-center gap-2 border-b border-white/[0.04] px-4 py-3 last:border-b-0"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-zinc-100">{item.title}</p>
+                    <p className="mt-0.5 text-xs text-zinc-500">{item.description}</p>
+                  </div>
+                  <p className="text-sm tabular-nums text-zinc-200">{item.count}</p>
+                  <span
+                    className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-xs ${priorityClass(item.priority)}`}
+                  >
+                    {item.priority}
+                  </span>
+                  <span
+                    className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-xs ${impactClass(item.impact)}`}
+                  >
+                    {IMPACT_LABELS[item.impact]}
+                  </span>
+                  <span className="inline-flex w-fit rounded-full border border-violet-400/35 bg-violet-500/10 px-2 py-0.5 text-xs tabular-nums text-violet-100">
+                    {getMembersOpsScore(item)}
+                  </span>
+                  <p className="truncate text-xs text-zinc-500" title={item.source}>
+                    {item.source}
+                  </p>
+                  <Link
+                    href={item.href}
+                    className={`inline-flex items-center gap-1 text-sm text-violet-200 transition hover:text-violet-50 ${hubFocusRingClass} rounded`}
+                  >
+                    Ouvrir
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                  </Link>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        </section>
       ) : null}
-    </div>
+    </MembersCockpitShell>
   );
 }
-

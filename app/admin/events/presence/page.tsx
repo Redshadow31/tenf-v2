@@ -4,18 +4,23 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { getDiscordUser } from "@/lib/discord";
 import {
+  ArrowRight,
   ArrowUpDown,
   BarChart3,
   Calendar,
+  CalendarCheck2,
   CalendarDays,
   Check,
   ChevronLeft,
+  Compass,
   Edit2,
   ExternalLink,
+  ListOrdered,
   Plus,
   RefreshCw,
   Save,
   Search,
+  Sparkles,
   Trash2,
   User,
   Users,
@@ -23,8 +28,12 @@ import {
 } from "lucide-react";
 import { useCommunauteEventsHub } from "@/lib/admin/CommunauteEventsHubContext";
 
-const panelClass =
+const eventCardPanelClass =
   "rounded-2xl border border-white/10 bg-[linear-gradient(155deg,rgba(28,28,36,0.95),rgba(17,17,24,0.96))] shadow-[0_16px_34px_rgba(0,0,0,0.3)]";
+const layoutPanelClass =
+  "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]";
+const heroVisualClass =
+  "relative isolate overflow-hidden rounded-2xl border border-violet-500/20 bg-zinc-950/70 ring-1 ring-inset ring-violet-500/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
 const glassCardClass =
   "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
 const sectionCardClass =
@@ -40,12 +49,28 @@ const tabBaseClass =
 const tabActiveClass =
   "bg-[linear-gradient(145deg,rgba(99,102,241,0.24),rgba(79,70,229,0.18))] border-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]";
 const tabInactiveClass = "text-gray-300 hover:text-white hover:bg-white/[0.06]";
-const hubHeroClass =
-  "relative overflow-hidden rounded-3xl border border-indigo-400/25 bg-[linear-gradient(155deg,rgba(99,102,241,0.14),rgba(14,15,23,0.92)_38%,rgba(11,13,20,0.97))] shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl";
 const hubSubtleBtnClass =
-  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45";
+  "inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-950/25 px-3 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-900/30";
 const focusRingClass =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0b10]";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";
+
+const participationAsideSteps = [
+  {
+    n: "1",
+    title: "Ouvrir le créneau",
+    body: "« Gérer les présences » ouvre la feuille : cochez, notez le contexte, puis validez pour alimenter récaps et suivi.",
+  },
+  {
+    n: "2",
+    title: "Vue par membre",
+    body: "L’onglet Parcours d’un membre agrège ses lignes ; utile pour arbitrer un doute sans refaire tout le mois.",
+  },
+  {
+    n: "3",
+    title: "Rattrapage",
+    body: "« Événement passé » sert à recréer un créneau manquant pour rattacher des présences déjà saisies hors calendrier.",
+  },
+];
 
 function normalizeCategoryKey(value?: string): string {
   return (value || "")
@@ -932,22 +957,48 @@ export default function EventPresencePage() {
   if (loading && !events.length) {
     if (hubLayout) {
       return (
-        <div className="min-h-[calc(100vh-4rem)] bg-[linear-gradient(165deg,#0a0a0f_0%,#12101c_48%,#0d1118_100%)] px-4 py-10 text-white sm:px-6">
-          <div className="mx-auto max-w-7xl space-y-4">
-            <div className={`h-40 animate-pulse rounded-3xl bg-indigo-500/10 ${sectionCardClass}`} />
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className={`h-24 animate-pulse rounded-2xl bg-slate-800/50 ${sectionCardClass}`} />
-              ))}
+        <div className="relative isolate min-h-[calc(100vh-4rem)] min-w-0 scroll-smooth pb-12 text-white selection:bg-violet-500/35 [--part-gap:clamp(1rem,1.55vw,1.85rem)]">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-[max(-4rem,calc(-6vw))] top-[-2.5rem] -z-10 h-[clamp(240px,32vw,440px)] overflow-hidden blur-3xl"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_24%_-8%,rgba(167,139,250,0.28),transparent_54%),radial-gradient(ellipse_at_86%_22%,rgba(244,114,182,0.12),transparent_48%),radial-gradient(ellipse_at_52%_100%,rgba(56,189,248,0.1),transparent_52%)]" />
+          </div>
+          <div className="mx-auto w-full max-w-[min(1720px,calc(100vw-2*clamp(0.6rem,1.75vw,1.75rem)))] px-[clamp(0.75rem,2vw,2.35rem)] pb-12 pt-2 sm:pt-3">
+            <div className="grid min-w-0 grid-cols-1 gap-6 [--sidebar:min(100%,clamp(17rem,24vw,25rem))] xl:grid-cols-[minmax(0,1fr)_var(--sidebar)] xl:items-start xl:gap-[clamp(1.35rem,2.6vw,2.85rem)]">
+              <div className="min-w-0 space-y-6 sm:space-y-8 xl:space-y-[var(--part-gap)]">
+                <div className={`grid min-w-0 gap-6 p-[clamp(1rem,2vw,1.6rem)] lg:grid-cols-2 lg:gap-8 ${layoutPanelClass}`}>
+                  <div className="space-y-4">
+                    <div className="h-4 w-40 animate-pulse rounded-lg bg-zinc-700/60" />
+                    <div className="h-9 max-w-md animate-pulse rounded-xl bg-zinc-800/70" />
+                    <div className="h-20 max-w-xl animate-pulse rounded-xl bg-zinc-800/50" />
+                    <div className="flex flex-wrap gap-2">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="h-10 w-28 animate-pulse rounded-xl bg-violet-950/40" />
+                      ))}
+                    </div>
+                  </div>
+                  <div className={`min-h-[11rem] animate-pulse rounded-2xl bg-zinc-900/60 ${heroVisualClass}`} />
+                </div>
+                <div className={`h-14 animate-pulse rounded-2xl bg-zinc-900/50 ${sectionCardClass}`} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className={`h-32 animate-pulse rounded-2xl bg-zinc-900/45 ${layoutPanelClass}`} />
+                  <div className={`h-32 animate-pulse rounded-2xl bg-zinc-900/45 ${layoutPanelClass}`} />
+                </div>
+              </div>
+              <div className="hidden min-w-0 space-y-4 xl:block">
+                <div className={`h-36 animate-pulse rounded-2xl bg-zinc-900/45 ${layoutPanelClass}`} />
+                <div className={`h-48 animate-pulse rounded-2xl bg-zinc-900/45 ${layoutPanelClass}`} />
+              </div>
             </div>
-            <p className="text-center text-sm text-slate-500">Chargement des présences et inscriptions…</p>
+            <p className="mt-6 text-center text-sm text-zinc-500">Chargement des présences et inscriptions…</p>
           </div>
         </div>
       );
     }
     return (
       <div className="min-h-screen bg-[#0e0e10] text-white flex items-center justify-center p-8">
-        <div className={`text-center p-8 ${panelClass}`}>
+        <div className={`text-center p-8 ${layoutPanelClass}`}>
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4f46e5] mx-auto mb-4"></div>
           <p className="text-gray-300">Chargement des données de participation...</p>
         </div>
@@ -970,118 +1021,201 @@ export default function EventPresencePage() {
     <div
       className={
         hubLayout
-          ? "min-h-[calc(100vh-4rem)] scroll-smooth bg-[linear-gradient(165deg,#0a0a0f_0%,#12101c_48%,#0d1118_100%)] pb-12 text-white selection:bg-indigo-500/35"
+          ? "relative isolate min-h-[calc(100vh-4rem)] min-w-0 scroll-smooth pb-12 text-white selection:bg-violet-500/35 [--part-gap:clamp(1rem,1.55vw,1.85rem)]"
           : "min-h-screen bg-[#0e0e10] text-white p-8"
       }
     >
-      <div className={hubLayout ? "mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8" : "space-y-6"}>
       {hubLayout ? (
-        <section className={`${hubHeroClass} p-6 md:p-8`}>
-          <div className="pointer-events-none absolute -right-20 top-0 h-48 w-48 rounded-full bg-fuchsia-600/14 blur-3xl" aria-hidden />
-          <div className="pointer-events-none absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-cyan-500/12 blur-3xl" aria-hidden />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl space-y-4">
-              <Link
-                href="/admin/communaute/evenements"
-                className={`inline-flex items-center gap-1 text-sm text-indigo-200/90 transition hover:text-white ${focusRingClass} rounded-lg`}
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden />
-                Retour pilotage événements
-              </Link>
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full border border-white/12 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-100/90">
-                  Ce que vivent les membres
-                </span>
-                <span className="rounded-full border border-emerald-400/28 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-100/90">
-                  Fiabilisation staff
-                </span>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Participation & présences</p>
-                <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-4xl">
-                  Feuilles de présence, au service des membres
-                </h1>
-                <p className="mt-3 text-sm leading-relaxed text-slate-300 md:text-[15px]">
-                  Chaque case cochée ou note saisie ici alimente la <strong className="text-slate-100">confiance</strong>{" "}
-                  dans les stats (suivi, évaluations, récaps). Pensez au ressenti côté vocal : un membre « présent » doit
-                  refléter une vraie participation au créneau.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => void loadData()}
-                  className={`${hubSubtleBtnClass} ${focusRingClass}`}
-                >
-                  <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
-                  Recharger le mois
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateEventModalOpen(true)}
-                  className={`${hubSubtleBtnClass} ${focusRingClass} border-fuchsia-400/25 bg-fuchsia-500/12 text-fuchsia-50`}
-                >
-                  <Plus className="h-4 w-4 shrink-0" aria-hidden />
-                  Événement passé (rattrapage)
-                </button>
-                <Link href="/admin/communaute/evenements/calendrier" className={`${hubSubtleBtnClass} ${focusRingClass}`}>
-                  <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
-                  Calendrier
-                </Link>
-                <Link
-                  href="/admin/communaute/evenements/suivi"
-                  className={`${hubSubtleBtnClass} ${focusRingClass} border-sky-400/25 bg-sky-500/10 text-sky-100`}
-                >
-                  <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
-                  Suivi par type
-                </Link>
-                <Link href="/member/evenements" target="_blank" rel="noopener noreferrer" className={`${hubSubtleBtnClass} ${focusRingClass}`}>
-                  <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
-                  Vue membre (événements)
-                </Link>
-              </div>
-            </div>
-            <div className="w-full max-w-sm shrink-0 rounded-2xl border border-white/10 bg-black/35 p-5 backdrop-blur-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">Interaction</p>
-              <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                Ouvrez un événement pour cocher les présents, annoter un contexte (retard, vocal coupé…) puis{" "}
-                <strong className="text-slate-200">valider et fermer</strong> pour enregistrer. L’onglet « par membre »
-                retrace l’historique individuel.
-              </p>
-            </div>
-          </div>
-        </section>
-      ) : (
-      <div className={`mb-1 p-6 ${glassCardClass}`}>
-        <Link
-          href="/admin/events"
-          className="text-gray-300 hover:text-white transition-colors mb-4 inline-block"
-        >
-          ← Retour au hub Événements
-        </Link>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-[#dbe4ff] to-[#93a0ff] bg-clip-text text-transparent">
-              Gestion des Participations
-            </h1>
-            <p className="text-gray-300">Pilote les présences, absences et ajouts manuels sur tous les événements du mois.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Cette page sert de tour de controle: qualifier la participation, fiabiliser les statistiques et garantir un suivi
-              propre de chaque session communautaire.
-            </p>
-          </div>
-          <button
-            onClick={() => setIsCreateEventModalOpen(true)}
-            className={`${actionPrimaryClass} flex items-center gap-2`}
+        <>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-[max(-4rem,calc(-6vw))] top-[-2.5rem] -z-10 h-[clamp(240px,32vw,440px)] overflow-hidden blur-3xl"
           >
-            <Plus className="w-5 h-5" />
-            Ajouter un événement passé
-          </button>
-        </div>
-      </div>
-      )}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_24%_-8%,rgba(167,139,250,0.28),transparent_54%),radial-gradient(ellipse_at_86%_22%,rgba(244,114,182,0.12),transparent_48%),radial-gradient(ellipse_at_52%_100%,rgba(56,189,248,0.1),transparent_52%)]" />
+          </div>
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-x-0 top-0 -z-20 h-[min(820px,100vh)]"
+            style={{
+              backgroundImage:
+                "linear-gradient(104deg,rgba(255,255,255,0.032) 0px,rgba(255,255,255,0.032) 1px,transparent 1px,transparent 74px)",
+              backgroundSize: "clamp(54px,4.2vw,72px) 100%",
+              opacity: 0.21,
+              maskImage: "linear-gradient(180deg,black 0%,transparent 78%)",
+            }}
+          />
+        </>
+      ) : null}
+      <div
+        className={
+          hubLayout
+            ? "mx-auto w-full max-w-[min(1720px,calc(100vw-2*clamp(0.6rem,1.75vw,1.75rem)))] px-[clamp(0.75rem,2vw,2.35rem)] pb-12 pt-2 sm:pt-3"
+            : "space-y-6"
+        }
+      >
+        <div
+          className={
+            hubLayout
+              ? "grid min-w-0 grid-cols-1 gap-6 [--sidebar:min(100%,clamp(17rem,24vw,25rem))] xl:grid-cols-[minmax(0,1fr)_var(--sidebar)] xl:items-start xl:gap-[clamp(1.35rem,2.6vw,2.85rem)]"
+              : "contents"
+          }
+        >
+          <div
+            className={
+              hubLayout
+                ? "min-w-0 space-y-6 sm:space-y-8 xl:space-y-[var(--part-gap)]"
+                : "space-y-6"
+            }
+          >
+            {hubLayout ? (
+              <header
+                className={`grid min-w-0 gap-6 p-[clamp(1rem,2vw,1.6rem)] lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,min(100%,0.94fr))] lg:gap-8 ${layoutPanelClass}`}
+              >
+                <div className="min-w-0 space-y-4">
+                  <Link
+                    href="/admin/communaute/evenements"
+                    className={`inline-flex items-center gap-1 text-[length:clamp(0.8rem,0.74rem+0.32vw,0.9375rem)] text-zinc-400 transition hover:text-white ${focusRingClass} rounded-lg`}
+                  >
+                    <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
+                    Retour pilotage événements
+                  </Link>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-violet-100/92">
+                      Ce que vivent les membres
+                    </span>
+                    <span className="rounded-full border border-emerald-400/28 bg-emerald-500/[0.08] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-emerald-100/90">
+                      Fiabilisation staff
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[length:clamp(0.6875rem,0.625rem+0.25vw,0.8125rem)] uppercase tracking-[0.12em] text-violet-200/95">
+                      Participation & présences
+                    </p>
+                    <h1 className="mt-2 text-[clamp(1.45rem,1.05rem+1.05vw,2.35rem)] font-semibold tracking-tight text-white">
+                      Feuilles de présence, au service des membres
+                    </h1>
+                    <p className="mt-3 max-w-3xl text-[length:clamp(0.8125rem,0.75rem+0.32vw,0.9625rem)] leading-[1.65] text-zinc-400">
+                      Chaque case cochée ou note saisie ici alimente la{" "}
+                      <strong className="font-semibold text-zinc-100">confiance</strong> dans les stats (suivi,
+                      évaluations, récaps). Pensez au ressenti côté vocal : un membre « présent » doit refléter une vraie
+                      participation au créneau.
+                    </p>
+                  </div>
+                  <div className="flex min-w-0 flex-wrap gap-[clamp(0.4rem,0.85vw,0.625rem)]">
+                    <button
+                      type="button"
+                      onClick={() => void loadData()}
+                      className={`${hubSubtleBtnClass} ${focusRingClass}`}
+                    >
+                      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+                      Recharger le mois
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateEventModalOpen(true)}
+                      className={`${hubSubtleBtnClass} ${focusRingClass} border-fuchsia-400/35 bg-fuchsia-950/[0.32] text-fuchsia-50 hover:border-fuchsia-300/45 hover:bg-fuchsia-900/[0.38]`}
+                    >
+                      <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                      Événement passé (rattrapage)
+                    </button>
+                    <Link href="/admin/communaute/evenements/calendrier" className={`${hubSubtleBtnClass} ${focusRingClass}`}>
+                      <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
+                      Calendrier
+                    </Link>
+                    <Link
+                      href="/admin/communaute/evenements/suivi"
+                      className={`${hubSubtleBtnClass} ${focusRingClass} border-sky-400/28 bg-sky-950/[0.35] text-sky-100`}
+                    >
+                      <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
+                      Suivi par type
+                    </Link>
+                    <Link
+                      href="/member/evenements"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`${hubSubtleBtnClass} ${focusRingClass}`}
+                    >
+                      <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
+                      Vue membre (événements)
+                    </Link>
+                  </div>
+                </div>
+                <div className={`relative min-h-[11rem] p-[clamp(0.875rem,1.5vw,1.2rem)] sm:min-h-[12rem] ${heroVisualClass}`}>
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-[conic-gradient(from_200deg_at_72%_-10%,rgba(167,139,250,0.16),transparent_42%,transparent_58%,rgba(244,114,182,0.1))]"
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.12),transparent_40%,transparent_65%,rgba(0,0,0,0.32))]"
+                  />
+                  <div className="relative flex h-full min-h-[10rem] flex-col justify-between gap-4">
+                    <span className="inline-flex w-fit items-center gap-2 rounded-xl border border-violet-400/26 bg-violet-500/[0.11] px-3 py-1.5 text-[length:clamp(0.65rem,0.55rem+0.35vw,0.7rem)] font-semibold uppercase tracking-[0.08em] text-violet-50/96">
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-200/92" aria-hidden />
+                      Synthèse présences
+                    </span>
+                    <dl className="grid min-w-0 grid-cols-3 gap-[clamp(0.45rem,0.9vw,0.65rem)] text-[length:clamp(0.65rem,0.58rem+0.22vw,0.775rem)]">
+                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                        <dt className="font-medium uppercase tracking-wide text-zinc-500">Créneaux</dt>
+                        <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-zinc-50">
+                          {dashboardStats.totalEvents}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                        <dt className="font-medium uppercase tracking-wide text-zinc-500">Inscriptions</dt>
+                        <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-zinc-50">
+                          {dashboardStats.registrations}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                        <dt className="font-medium uppercase tracking-wide text-zinc-500">Taux présence</dt>
+                        <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-emerald-200/95">
+                          {participationRate}%
+                        </dd>
+                      </div>
+                    </dl>
+                    <p className="text-[length:clamp(0.65rem,0.58rem+0.2vw,0.75rem)] leading-snug text-zinc-500">
+                      Absences sur inscrits :{" "}
+                      <span className="font-semibold tabular-nums text-rose-200/90">{absenceRate}%</span>
+                      <span className="mx-1.5 text-zinc-600">·</span>
+                      <span className="text-zinc-500">
+                        {dashboardStats.upcoming} à venir · {dashboardStats.past} passés
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </header>
+            ) : (
+              <div className={`mb-1 p-6 ${glassCardClass}`}>
+                <Link
+                  href="/admin/events"
+                  className="text-gray-300 hover:text-white transition-colors mb-4 inline-block"
+                >
+                  ← Retour au hub Événements
+                </Link>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-[#dbe4ff] to-[#93a0ff] bg-clip-text text-transparent">
+                      Gestion des Participations
+                    </h1>
+                    <p className="text-gray-300">Pilote les présences, absences et ajouts manuels sur tous les événements du mois.</p>
+                    <p className="mt-2 text-sm text-slate-300">
+                      Cette page sert de tour de controle: qualifier la participation, fiabiliser les statistiques et garantir un suivi
+                      propre de chaque session communautaire.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsCreateEventModalOpen(true)}
+                    className={`${actionPrimaryClass} flex items-center gap-2`}
+                  >
+                    <Plus className="w-5 h-5" />
+                    Ajouter un événement passé
+                  </button>
+                </div>
+              </div>
+            )}
 
-      <div className={`p-2 ${hubLayout ? `${sectionCardClass} border-indigo-400/15` : panelClass}`}>
+      <div className={`p-2 ${hubLayout ? `${sectionCardClass} border-indigo-400/15` : layoutPanelClass}`}>
         <div className={`inline-flex flex-wrap gap-1 rounded-2xl border p-1 ${hubLayout ? "border-white/10 bg-black/35" : "rounded-xl border border-white/10 bg-black/20"}`}>
           <button
             type="button"
@@ -1210,7 +1344,7 @@ export default function EventPresencePage() {
         </article>
       </section>
 
-      <div className={`p-2 ${panelClass}`}>
+      <div className={`p-2 ${layoutPanelClass}`}>
         <div className="inline-flex rounded-xl border border-white/10 bg-black/20 p-1">
           <button
             type="button"
@@ -1251,7 +1385,7 @@ export default function EventPresencePage() {
       {/* Liste des événements du mois */}
       <div className="space-y-6">
         {events.length === 0 ? (
-          <div className={`${panelClass} p-8 text-center`}>
+          <div className={`${layoutPanelClass} p-8 text-center`}>
             <p className="text-gray-400">Aucun événement pour ce mois</p>
           </div>
         ) : (() => {
@@ -1319,7 +1453,7 @@ export default function EventPresencePage() {
               return (
             <div
               key={event.id}
-              className={`${panelClass} p-6`}
+              className={`${eventCardPanelClass} p-6`}
               style={{
                 borderColor: tone.cardBorder,
                 background: `radial-gradient(circle at 100% 0%, ${tone.cardGlow}, rgba(0,0,0,0) 44%), linear-gradient(160deg, rgba(24,24,30,0.96), rgba(15,15,20,0.98))`,
@@ -1414,7 +1548,7 @@ export default function EventPresencePage() {
                         return (
                       <div
                         key={event.id}
-                        className={`${panelClass} p-6`}
+                        className={`${eventCardPanelClass} p-6`}
                         style={{
                           borderColor: tone.cardBorder,
                           background: `radial-gradient(circle at 100% 0%, ${tone.cardGlow}, rgba(0,0,0,0) 44%), linear-gradient(160deg, rgba(24,24,30,0.96), rgba(15,15,20,0.98))`,
@@ -1496,7 +1630,7 @@ export default function EventPresencePage() {
 
               {/* Message si aucune section n'a d'événements */}
               {!hasVisibleEvents && (
-                <div className={`${panelClass} p-8 text-center`}>
+                <div className={`${layoutPanelClass} p-8 text-center`}>
                   <p className="text-gray-400">
                     Aucun événement dans cet onglet pour ce mois.
                   </p>
@@ -1557,7 +1691,7 @@ export default function EventPresencePage() {
           </div>
 
           {memberPresenceMeta && (
-            <div className={`p-5 ${panelClass}`}>
+            <div className={`p-5 ${layoutPanelClass}`}>
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-slate-400">Membre</p>
@@ -1667,6 +1801,93 @@ export default function EventPresencePage() {
           )}
         </div>
       )}
+          </div>
+          {hubLayout ? (
+            <aside className="min-w-0 space-y-4 xl:sticky xl:top-5 xl:self-start" aria-label="Aide et raccourcis participation">
+              <div className={`${layoutPanelClass} space-y-3 p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+                <p className="flex items-center gap-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                  <Compass className="h-4 w-4 shrink-0 text-violet-300/85" aria-hidden />
+                  Astuce équipe
+                </p>
+                <p className="text-[length:clamp(0.75rem,0.68rem+0.28vw,0.8625rem)] leading-[1.6] text-zinc-400">
+                  Une note courte (retard, micro, vocal) évite les malentendus quand un membre conteste une absence ou
+                  qu’un autre staff reprend le dossier plus tard.
+                </p>
+              </div>
+
+              <div className={`${layoutPanelClass} p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+                <p className="flex items-center gap-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                  <ListOrdered className="h-4 w-4 shrink-0 text-violet-300/85" aria-hidden />
+                  En trois gestes
+                </p>
+                <ol className="mt-4 space-y-[0.65rem]">
+                  {participationAsideSteps.map((step) => (
+                    <li key={step.n} className="flex min-w-0 gap-3">
+                      <span
+                        aria-hidden
+                        className="flex h-[2.125em] min-w-[2.125em] items-center justify-center rounded-lg border border-violet-500/28 bg-violet-500/[0.09] text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] font-bold tabular-nums text-violet-50"
+                      >
+                        {step.n}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-semibold text-zinc-100">{step.title}</p>
+                        <p className="mt-1 text-[length:clamp(0.6875rem,0.62rem+0.2vw,0.8rem)] leading-[1.55] text-zinc-500">
+                          {step.body}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              <div className={`${layoutPanelClass} p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+                <p className="text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                  Modules proches
+                </p>
+                <nav className="mt-3 flex flex-col gap-2" aria-label="Liens pilier événements">
+                  <Link
+                    href="/admin/communaute/evenements/calendrier"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-violet-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    Calendrier
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements/suivi"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-emerald-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    Suivi par type
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements/recap"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-fuchsia-400/22 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    Récapitulatif
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements/liste"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-sky-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    Liste des événements
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-white/14 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    <span className="inline-flex min-w-0 items-center gap-2">
+                      <CalendarCheck2 className="h-4 w-4 shrink-0 opacity-85" aria-hidden />
+                      Hub événements
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                </nav>
+              </div>
+            </aside>
+          ) : null}
+        </div>
 
       {/* Modal de gestion des présences pour un événement */}
       {isEventModalOpen && selectedEvent && (
@@ -2204,7 +2425,7 @@ function EventPresenceModal({
           </div>
         </div>
         ) : (
-          <div className={`${panelClass} p-5`}>
+          <div className={`${layoutPanelClass} p-5`}>
             <h3 className="mb-4 text-lg font-semibold text-white">Synthèse de l'événement</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-[#0e0e10] border border-white/10 rounded-xl p-4">

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireSectionAccessAny } from '@/lib/requireAdmin';
+import { RAIDS_EVENTSUB_SECTION_HREFS } from '@/lib/admin/raidsFiabiliteRbac';
+import { logAction } from '@/lib/admin/logger';
 import { supabaseAdmin } from '@/lib/db/supabase';
 import { memberRepository } from '@/lib/repositories';
 
@@ -10,9 +12,9 @@ export async function PATCH(
   context: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSectionAccessAny(RAIDS_EVENTSUB_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: 'Acces refuse' }, { status: 403 });
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
     const { eventId } = await context.params;
@@ -111,6 +113,25 @@ export async function PATCH(
       return NextResponse.json({ error: 'Impossible de mettre a jour l event' }, { status: 500 });
     }
 
+    void logAction({
+      action: 'raids.eventsub.review.patch',
+      resourceType: 'raid_test_event',
+      resourceId: eventId,
+      newValue: {
+        processing_status: data?.processing_status,
+        error_reason: data?.error_reason,
+      },
+      metadata: {
+        sourcePage: '/admin/communaute/engagement/raids-eventsub',
+        invalidateAfterValidation,
+        forceMemberMatch,
+        previousStatus: currentStatus,
+        overrideFromLogin: overrideFromLogin || undefined,
+        overrideToLogin: overrideToLogin || undefined,
+        staffCommentPreview: staffComment ? `${staffComment.slice(0, 120)}${staffComment.length > 120 ? '…' : ''}` : undefined,
+      },
+    });
+
     return NextResponse.json({ success: true, event: data });
   } catch (error) {
     console.error('[admin/engagement/raids-sub/review/[eventId]] PATCH error:', error);
@@ -123,9 +144,9 @@ export async function DELETE(
   context: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSectionAccessAny(RAIDS_EVENTSUB_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: 'Acces refuse' }, { status: 403 });
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
     const { eventId } = await context.params;
@@ -147,6 +168,16 @@ export async function DELETE(
     if (!data?.id) {
       return NextResponse.json({ error: 'Event introuvable' }, { status: 404 });
     }
+
+    void logAction({
+      action: 'raids.eventsub.review.delete',
+      resourceType: 'raid_test_event',
+      resourceId: eventId,
+      metadata: {
+        sourcePage: '/admin/communaute/engagement/raids-eventsub',
+        deletedId: data.id,
+      },
+    });
 
     return NextResponse.json({ success: true, deletedId: data.id });
   } catch (error) {

@@ -1,5 +1,9 @@
-import AdminModerationDashboardPage from "../page";
+import { redirect } from "next/navigation";
 
-export default function AdminModerationDashboardRoutePage() {
-  return <AdminModerationDashboardPage />;
+/**
+ * Alias historique de /admin/moderation.
+ * Conservé pour rétrocompatibilité — l'URL canonique est /admin/moderation.
+ */
+export default function AdminModerationDashboardLegacyPage() {
+  redirect("/admin/moderation");
 }

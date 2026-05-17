@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSectionAccess } from "@/lib/requireAdmin";
+import { requireSectionAccessAny } from "@/lib/requireAdmin";
+import {
+  RAIDS_HISTORIQUE_FIABILITE_SECTION_HREFS,
+  RAIDS_SIGNALEMENTS_SECTION_HREFS,
+} from "@/lib/admin/raidsFiabiliteRbac";
 import { hasAdvancedAdminAccess } from "@/lib/advancedAccess";
+import { logAction } from "@/lib/admin/logger";
 import { supabaseAdmin } from "@/lib/db/supabase";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +23,9 @@ function isMissingRelationError(error: { code?: string; message?: string } | nul
 
 export async function PATCH(request: NextRequest, { params }: { params: { declarationId: string } }) {
   try {
-    const admin = await requireSectionAccess("/admin/engagement/raids-a-valider");
+    const admin = await requireSectionAccessAny(RAIDS_SIGNALEMENTS_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const declarationId = String(params.declarationId || "");
@@ -127,6 +132,21 @@ export async function PATCH(request: NextRequest, { params }: { params: { declar
       return NextResponse.json({ error: "Impossible de mettre a jour la declaration" }, { status: 500 });
     }
 
+    void logAction({
+      action: "raids.declaration.patch",
+      resourceType: "raid_declaration",
+      resourceId: declarationId,
+      newValue: {
+        status: data?.status,
+        target_twitch_login: data?.target_twitch_login,
+      },
+      metadata: {
+        sourcePage: "/admin/communaute/engagement/signalements-raids",
+        autoRejectedAlreadyCounted,
+        requestedStatus: status || undefined,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       declaration: data,
@@ -141,9 +161,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { declar
 
 export async function DELETE(_: NextRequest, { params }: { params: { declarationId: string } }) {
   try {
-    const admin = await requireSectionAccess("/admin/engagement/raids-a-valider");
+    const admin = await requireSectionAccessAny(RAIDS_HISTORIQUE_FIABILITE_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const canManage = await hasAdvancedAdminAccess(admin.discordId);
@@ -173,6 +193,15 @@ export async function DELETE(_: NextRequest, { params }: { params: { declaration
     if (error) {
       return NextResponse.json({ error: "Impossible de supprimer la declaration" }, { status: 500 });
     }
+
+    void logAction({
+      action: "raids.declaration.delete",
+      resourceType: "raid_declaration",
+      resourceId: declarationId,
+      metadata: {
+        sourcePage: "/admin/communaute/engagement/historique-raids",
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

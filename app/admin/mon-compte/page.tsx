@@ -828,7 +828,7 @@ export default function AdminMonComptePage() {
                 Liste membres
               </Link>
               <Link
-                href="/admin/gestion-acces"
+                href="/admin/gestion-acces/comptes"
                 className={`inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-xs font-semibold text-red-50 ${focusRingClass}`}
               >
                 Comptes admin
@@ -1036,7 +1036,7 @@ export default function AdminMonComptePage() {
               Ajouter / gérer un membre
             </Link>
             <Link
-              href="/admin/gestion-acces"
+              href="/admin/gestion-acces/comptes"
               className={`inline-flex items-center gap-2 rounded-xl border border-indigo-500/35 bg-indigo-500/10 px-4 py-2.5 text-sm font-semibold text-indigo-100 transition hover:bg-indigo-500/20 ${focusRingClass}`}
             >
               <Shield className="h-4 w-4" aria-hidden />

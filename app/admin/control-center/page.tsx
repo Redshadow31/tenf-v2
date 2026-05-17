@@ -48,7 +48,7 @@ const alertsConfig: Omit<AlertCard, 'count'>[] = [
     id: "errors",
     title: "Erreurs & incohérences",
     description: "Données incohérentes à vérifier",
-    href: "/admin/membres/erreurs",
+    href: "/admin/membres/incomplets?vue=erreurs",
     type: "warning",
   },
   {

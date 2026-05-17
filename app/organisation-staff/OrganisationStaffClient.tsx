@@ -4,157 +4,53 @@ import Link from "next/link";
 import {
   ArrowDown,
   ArrowRight,
-  BookOpen,
-  Bot,
-  CalendarHeart,
   ChevronDown,
   CircleDot,
-  Compass,
   HeartHandshake,
   LayoutDashboard,
-  Palette,
-  Shield,
-  ShieldCheck,
+  Lightbulb,
   Sparkles,
-  UserPlus,
   Users,
   Workflow,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  STAFF_NOMENCLATURE_EXPLAINER,
+  STAFF_POLES,
+  STAFF_ROLES,
+  STAFF_ROLE_FAMILIES,
+  type StaffRoleFamily,
+} from "@/lib/staff/staffNomenclature";
 
 type Audience = "public" | "member";
 
 const NAV = [
   { id: "staff-journey", label: "Parcours" },
-  { id: "staff-governance", label: "Gouvernance" },
-  { id: "staff-moderation", label: "Modération" },
-  { id: "staff-support", label: "Soutien" },
+  { id: "staff-roles", label: "Rôles" },
   { id: "staff-poles", label: "Pôles" },
-  { id: "staff-collaborate", label: "Ensemble" },
+  { id: "staff-logic", label: "Rôles & pôles" },
   { id: "staff-faq", label: "FAQ" },
 ] as const;
 
-const JOURNEY_STEPS = [
-  {
-    id: "staff-governance",
-    title: "Vision & cadre",
-    subtitle: "Direction",
-    icon: Compass,
-    accent: "rgba(59,130,246,0.9)",
-    blurb: "Fondateurs et admins posent le cap et coordonnent les projets.",
-  },
-  {
-    id: "staff-moderation",
-    title: "Sécurité & accueil",
-    subtitle: "Modération",
-    icon: ShieldCheck,
-    accent: "rgba(168,85,247,0.95)",
-    blurb: "Une équipe répartie entre actifs, formation et pause.",
-  },
-  {
-    id: "staff-poles",
-    title: "Projets & outils",
-    subtitle: "Pôles",
-    icon: Workflow,
-    accent: "rgba(234,179,8,0.95)",
-    blurb: "Six pôles portent animation, com, formations, tech…",
-  },
-  {
-    id: "staff-support",
-    title: "Élan communautaire",
-    subtitle: "Soutien TENF",
-    icon: HeartHandshake,
-    accent: "rgba(34,197,94,0.95)",
-    blurb: "Membres très engagés sans rôle de modération active.",
-  },
-] as const;
-
-const governanceCards = [
-  {
-    title: "Fondateurs",
-    text: "Les fondateurs définissent la vision globale de TENF, les orientations de la communauté et les projets à long terme. Ils assurent aussi la cohérence entre les pôles et veillent au développement de la communauté.",
-  },
-  {
-    title: "Administration & coordination",
-    text: "L'équipe d'administration coordonne les activités du serveur, assure le lien entre les pôles et suit le bon déroulement des projets communautaires.",
-  },
-];
-
-const moderationCards = [
-  {
-    title: "Modérateurs actifs",
-    text: "Les modérateurs actifs assurent le respect des règles, l'accompagnement des membres et le bon fonctionnement quotidien de la communauté.",
-  },
-  {
-    title: "Modérateurs en formation",
-    text: "Les modérateurs en formation sont accompagnés progressivement pour apprendre les bases de la modération et monter en compétence.",
-  },
-  {
-    title: "Modérateurs en pause",
-    text: "Les modérateurs en pause restent liés à la communauté, mais ne participent pas à la modération active pendant cette période. Ce statut reconnaît leur engagement tout en respectant leur disponibilité.",
-  },
-];
-
-const supportBullets = [
-  "à l'entraide entre streamers",
-  "au soutien des différents pôles",
-  "à l'organisation de projets et d'événements",
-  "à l'accompagnement des membres et des nouveaux arrivants",
-];
-
-const poles = [
-  {
-    title: "Pôle Animation & Événements",
-    Icon: CalendarHeart,
-    accent: "#ec4899",
-    text: "Ce pôle tient les plannings, coordonne les animations et organise les temps forts communautaires pour renforcer les liens entre les membres.",
-    memberTip: "Événements, présences, animations : ce pôle pilote le calendrier communautaire.",
-  },
-  {
-    title: "Pôle Communication & Visuels",
-    Icon: Palette,
-    accent: "#3b82f6",
-    text: "Ce pôle gère l'image de TENF sur Discord, le site, les réseaux sociaux et les contenus vidéo. Le design du site reste géré à part.",
-    memberTip: "Annonces visuelles et cohérence de la communication externe.",
-  },
-  {
-    title: "Pôle Formation & Coordination Membres",
-    Icon: BookOpen,
-    accent: "#eab308",
-    text: "Ce pôle organise les formations membres, coordonne les sessions d'apprentissage et suit les tickets liés à l'accompagnement communautaire.",
-    memberTip: "Parcours membres, montée en compétence et questions d'intégration.",
-  },
-  {
-    title: "Pôle Formation & Coordination Staff",
-    Icon: Shield,
-    accent: "#f59e0b",
-    text: "Ce pôle accompagne l'équipe de modération via les formations staff, le suivi des pratiques et le maintien du cadre de modération.",
-    memberTip: "Référent pour les pratiques de modération et la montée en charge du staff.",
-  },
-  {
-    title: "Pôle Technique & Bots",
-    Icon: Bot,
-    accent: "#a855f7",
-    text: "Ce pôle gère les permissions Discord, les bots, les automatisations et la maintenance du site web afin d'assurer la stabilité des outils.",
-    memberTip: "Bugs outils, bots, accès techniques : le bon interlocuteur côté tooling.",
-  },
-  {
-    title: "Pôle Accueil & Intégration",
-    Icon: UserPlus,
-    accent: "#f97316",
-    text: "Ce pôle organise l'accueil, les réunions d'intégration et l'accompagnement des nouveaux membres pour faciliter leur inclusion dans TENF.",
-    memberTip: "Premiers pas sur le serveur, parcours d'arrivée et inclusion.",
-  },
-] as const;
+const familyToSection: Record<StaffRoleFamily, string> = {
+  direction: "staff-roles",
+  coordination: "staff-roles",
+  moderation: "staff-roles",
+  appui: "staff-roles",
+};
 
 const faqItems = [
   {
     q: "Je suis nouveau : à qui m'adresser en premier ?",
-    a: "L'accueil et l'intégration sont portés par le pôle dédié ; la modération veille au respect du cadre. Pour une question précise, le salon adapté sur Discord reste le canal le plus rapide.",
+    a: "Le Pôle Parcours Membres pilote l'accueil et l'intégration ; les modérateurs veillent au cadre. Pour une question précise, le salon adapté sur Discord reste le canal le plus rapide.",
   },
   {
-    q: "Quelle différence entre modération active et Soutien TENF ?",
-    a: "La modération active encadre le serveur au quotidien. Le rôle Soutien TENF permet à des membres très investis d'aider les projets sans exercer cette fonction opérationnelle.",
+    q: "Quelle différence entre Modérateur TENF et Soutien TENF ?",
+    a: "Le Modérateur TENF est un membre confirmé du staff qui fait respecter le cadre et accompagne au quotidien. Le Soutien TENF aide ponctuellement ou régulièrement sur une mission précise, sans exercer de modération active.",
+  },
+  {
+    q: "Quelle différence entre un rôle staff et un pôle de mission ?",
+    a: "Le rôle indique ta place dans l'équipe (par exemple : Modérateur TENF). Le pôle indique où tu agis concrètement (par exemple : Pôle Parcours Membres). Une personne peut cumuler un rôle et un ou plusieurs pôles.",
   },
   {
     q: "Comment savoir qui fait quoi ?",
@@ -176,6 +72,7 @@ export default function OrganisationStaffClient() {
   const [audience, setAudience] = useState<Audience>("public");
   const [activeNav, setActiveNav] = useState<string>(NAV[0].id);
   const [openPole, setOpenPole] = useState<number | null>(0);
+  const [openRole, setOpenRole] = useState<number | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const skipSpyUntil = useRef(0);
 
@@ -215,9 +112,16 @@ export default function OrganisationStaffClient() {
     setOpenPole((prev) => (prev === i ? null : i));
   };
 
+  const toggleRole = (i: number) => {
+    setOpenRole((prev) => (prev === i ? null : i));
+  };
+
   const toggleFaq = (i: number) => {
     setOpenFaq((prev) => (prev === i ? null : i));
   };
+
+  const totalRoles = STAFF_ROLES.length;
+  const totalPoles = STAFF_POLES.length;
 
   return (
     <main className="relative min-h-screen overflow-hidden py-10 sm:py-12" style={{ backgroundColor: "var(--color-bg)" }}>
@@ -245,14 +149,14 @@ export default function OrganisationStaffClient() {
           <div className="relative grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-primary)" }}>
-                Organisation · Staff TENF
+                Rôles staff &amp; pôles de mission
               </p>
               <h1 className="mt-3 text-3xl font-bold md:text-5xl md:leading-tight" style={{ color: "var(--color-text)" }}>
-                Une communauté portée par des bénévoles structurés
+                Une équipe bénévole, structurée et bienveillante
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-relaxed md:text-lg" style={{ color: "var(--color-text-secondary)" }}>
-                Visiteur ou membre : comprends en un coup d&apos;œil comment TENF fonctionne — gouvernance, modération,
-                pôles projet et rôle de soutien — avant d&apos;approfondir avec l&apos;organigramme interactif.
+                Découvre comment l&apos;équipe de TENF est organisée : huit rôles principaux qui indiquent ta place dans l&apos;équipe
+                et neuf pôles de mission qui indiquent où tu agis. Une même personne peut cumuler un rôle et un ou plusieurs pôles.
               </p>
 
               <div
@@ -301,15 +205,14 @@ export default function OrganisationStaffClient() {
               >
                 {audience === "public" ? (
                   <p className="text-sm leading-relaxed md:text-base" style={{ color: "var(--color-text-secondary)" }}>
-                    <strong style={{ color: "var(--color-text)" }}>Pour le grand public :</strong> cette page résume les
-                    responsabilités sans entrer dans les détails internes. Pour voir les visages et rôles réels, ouvre
-                    l&apos;organigramme — il est filtrable par équipe et par pôle.
+                    <strong style={{ color: "var(--color-text)" }}>Pour le grand public :</strong> cette page présente la structure
+                    de TENF sans détails internes. Pour découvrir les visages et rôles réels, l&apos;organigramme est filtrable par
+                    famille de rôle et par pôle.
                   </p>
                 ) : (
                   <p className="text-sm leading-relaxed md:text-base" style={{ color: "var(--color-text-secondary)" }}>
-                    <strong style={{ color: "var(--color-text)" }}>Pour les membres :</strong> utilise les ancres ci-dessous
-                    pour retrouver rapidement qui porte quoi. Les cartes pôles incluent une ligne « repère » pour
-                    t&apos;orienter au quotidien sur Discord.
+                    <strong style={{ color: "var(--color-text)" }}>Pour les membres :</strong> retrouve rapidement qui porte quoi.
+                    Les fiches pôles incluent un repère quotidien pour t&apos;orienter sur Discord.
                   </p>
                 )}
               </div>
@@ -357,10 +260,10 @@ export default function OrganisationStaffClient() {
             {/* Mini stats visuelles */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               {[
-                { label: "Pôles actifs", value: "6", hint: "Animation à l'intégration" },
-                { label: "Familles de rôles", value: "4+", hint: "Direction, modération, soutien…" },
-                { label: "Carte live", value: "Organigramme", hint: "Filtres rôle & pôle", link: "/organisation-staff/organigramme" },
-                { label: "Esprit", value: "Bénévolat", hint: "Structure horizontale" },
+                { label: "Rôles principaux", value: String(totalRoles), hint: "De Fondateur à Contributeur invité" },
+                { label: "Pôles de mission", value: String(totalPoles), hint: "Vision, parcours, animations, outils…" },
+                { label: "Carte live", value: "Organigramme", hint: "Filtres rôle &amp; pôle", link: "/organisation-staff/organigramme" },
+                { label: "Esprit", value: "Bénévolat", hint: "Structure horizontale &amp; chaleureuse" },
               ].map((card) => (
                 <div
                   key={card.label}
@@ -383,9 +286,11 @@ export default function OrganisationStaffClient() {
                       {card.value}
                     </p>
                   )}
-                  <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                    {card.hint}
-                  </p>
+                  <p
+                    className="mt-1 text-xs"
+                    style={{ color: "var(--color-text-secondary)" }}
+                    dangerouslySetInnerHTML={{ __html: card.hint }}
+                  />
                 </div>
               ))}
             </div>
@@ -420,7 +325,7 @@ export default function OrganisationStaffClient() {
           </div>
         </nav>
 
-        {/* Parcours visuel */}
+        {/* Parcours visuel — familles de rôles */}
         <section id="staff-journey" className="scroll-mt-28 space-y-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -428,25 +333,26 @@ export default function OrganisationStaffClient() {
                 Lecture guidée
               </p>
               <h2 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
-                Du cadre aux projets : un flux simple
+                Quatre familles, une équipe alignée
               </h2>
               <p className="mt-2 max-w-2xl text-sm md:text-base" style={{ color: "var(--color-text-secondary)" }}>
-                Clique une étape pour sauter à la section correspondante. Sur mobile, fais défiler horizontalement les cartes.
+                Clique une famille pour découvrir les rôles correspondants. Sur mobile, fais défiler horizontalement les cartes.
               </p>
             </div>
           </div>
 
           <div className="relative">
             <div className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory md:grid md:grid-cols-4 md:gap-4 md:overflow-visible md:pb-0 md:snap-none">
-              {JOURNEY_STEPS.map((step, i) => {
-                const Icon = step.icon;
+              {STAFF_ROLE_FAMILIES.map((family, i) => {
+                const Icon = family.Icon;
+                const count = STAFF_ROLES.filter((r) => r.family === family.key).length;
                 return (
-                  <div key={step.id} className="relative min-w-[78%] snap-center sm:min-w-[260px] md:min-w-0">
-                    {i < JOURNEY_STEPS.length - 1 ? (
+                  <div key={family.key} className="relative min-w-[78%] snap-center sm:min-w-[260px] md:min-w-0">
+                    {i < STAFF_ROLE_FAMILIES.length - 1 ? (
                       <div
                         className="pointer-events-none absolute right-[-10px] top-[52px] z-0 hidden h-[2px] w-[calc(100%+10px)] md:block"
                         style={{
-                          background: `linear-gradient(90deg, ${step.accent}, transparent)`,
+                          background: `linear-gradient(90deg, ${family.accent}, transparent)`,
                           opacity: 0.45,
                         }}
                         aria-hidden
@@ -454,31 +360,31 @@ export default function OrganisationStaffClient() {
                     ) : null}
                     <button
                       type="button"
-                      onClick={() => goTo(step.id)}
+                      onClick={() => goTo(familyToSection[family.key])}
                       className="org-staff-step relative z-[1] flex h-full w-full flex-col rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
                       style={{
-                        borderColor: `${step.accent}55`,
-                        background: `linear-gradient(145deg, ${step.accent}22, rgba(15,23,42,0.92) 42%, rgba(2,6,23,0.96) 100%)`,
+                        borderColor: `${family.accent}55`,
+                        background: `linear-gradient(145deg, ${family.accent}22, rgba(15,23,42,0.92) 42%, rgba(2,6,23,0.96) 100%)`,
                         boxShadow: "0 16px 36px rgba(2,6,23,0.28)",
                       }}
                     >
                       <span
                         className="inline-flex h-11 w-11 items-center justify-center rounded-xl"
-                        style={{ backgroundColor: `${step.accent}33`, color: step.accent }}
+                        style={{ backgroundColor: `${family.accent}33`, color: family.accent }}
                       >
                         <Icon size={22} strokeWidth={2} aria-hidden />
                       </span>
-                      <span className="mt-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: step.accent }}>
-                        {step.subtitle}
+                      <span className="mt-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: family.accent }}>
+                        {count} rôle{count > 1 ? "s" : ""}
                       </span>
                       <span className="mt-1 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                        {step.title}
+                        {family.label}
                       </span>
                       <span className="mt-2 text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                        {step.blurb}
+                        {family.caption}
                       </span>
-                      <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold" style={{ color: step.accent }}>
-                        Voir la section
+                      <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold" style={{ color: family.accent }}>
+                        Voir les rôles
                         <ArrowRight size={14} aria-hidden />
                       </span>
                     </button>
@@ -489,125 +395,118 @@ export default function OrganisationStaffClient() {
           </div>
         </section>
 
-        {/* Gouvernance */}
-        <section id="staff-governance" className="scroll-mt-28 space-y-4">
+        {/* Rôles staff — 8 cartes en accordéon */}
+        <section id="staff-roles" className="scroll-mt-28 space-y-4">
           <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-            Gouvernance
+            Rôles principaux du staff
           </p>
           <h2 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
-            Direction de la communauté
-          </h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            {governanceCards.map((item) => (
-              <article
-                key={item.title}
-                className="rounded-2xl border p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
-              >
-                <h3 className="flex items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                  <CircleDot size={18} style={{ color: "var(--color-primary)" }} aria-hidden />
-                  {item.title}
-                </h3>
-                <p className="mt-3 leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                  {item.text}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* Modération */}
-        <section id="staff-moderation" className="scroll-mt-28 space-y-4">
-          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-            Encadrement
-          </p>
-          <h2 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
-            Équipe de modération
-          </h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            {moderationCards.map((item, idx) => (
-              <article
-                key={item.title}
-                className="org-staff-card rounded-2xl border p-6"
-                style={{
-                  borderColor: "var(--color-border)",
-                  backgroundColor: "var(--color-card)",
-                  animationDelay: `${idx * 70}ms`,
-                }}
-              >
-                <h3 className="flex items-center gap-2 text-base font-semibold" style={{ color: "var(--color-text)" }}>
-                  <ShieldCheck size={18} style={{ color: "var(--color-primary)" }} aria-hidden />
-                  {item.title}
-                </h3>
-                <p className="mt-3 leading-relaxed text-sm md:text-base" style={{ color: "var(--color-text-secondary)" }}>
-                  {item.text}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* Soutien */}
-        <section
-          id="staff-support"
-          className="scroll-mt-28 rounded-3xl border p-6 md:p-10"
-          style={{
-            borderColor: "rgba(34,197,94,0.35)",
-            background:
-              "linear-gradient(135deg, rgba(22,163,74,0.16), rgba(15,23,42,0.88) 38%, rgba(2,6,23,0.96) 100%)",
-          }}
-        >
-          <p
-            className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide"
-            style={{ borderColor: "rgba(34,197,94,0.45)", color: "#86efac", backgroundColor: "rgba(34,197,94,0.12)" }}
-          >
-            <HeartHandshake size={14} aria-hidden />
-            Soutien communautaire
-          </p>
-          <h2 className="mt-3 text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
-            Rôle « Soutien TENF »
-          </h2>
-          <p className="mt-3 max-w-3xl leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-            Le rôle regroupe des membres particulièrement impliqués : anciens modérateurs ou membres actifs qui souhaitent
-            continuer à soutenir TENF sans exercer une modération active au quotidien.
-          </p>
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-            {supportBullets.map((item) => (
-              <li
-                key={item}
-                className="flex items-start gap-3 rounded-xl border px-4 py-3"
-                style={{ borderColor: "rgba(34,197,94,0.25)", backgroundColor: "rgba(2,6,23,0.35)" }}
-              >
-                <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: "#86efac" }} aria-hidden />
-                <span style={{ color: "var(--color-text-secondary)" }}>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-6 leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-            Ce rôle est distinct de la modération active et représente un pilier important de la dynamique communautaire.
-          </p>
-        </section>
-
-        {/* Pôles accordéon */}
-        <section id="staff-poles" className="scroll-mt-28 space-y-4">
-          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-            Organisation interne
-          </p>
-          <h2 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
-            Les six pôles TENF
+            Huit rôles pour bien se situer dans l&apos;équipe
           </h2>
           <p className="max-w-3xl leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-            Chaque pôle est une équipe de bénévoles : ouvre une carte pour le détail.{" "}
+            Chaque rôle indique la <strong style={{ color: "var(--color-text)" }}>place</strong> d&apos;une personne dans l&apos;équipe
+            staff (direction, coordination, modération, appui). Ouvre une carte pour découvrir ses missions concrètes.
+          </p>
+
+          <div className="space-y-3">
+            {STAFF_ROLES.map((role, i) => {
+              const Icon = role.Icon;
+              const expanded = openRole === i;
+              return (
+                <div
+                  key={role.key}
+                  className="overflow-hidden rounded-2xl border transition-shadow duration-200"
+                  style={{
+                    borderColor: expanded ? `${role.accent}88` : `${role.accent}44`,
+                    background: expanded
+                      ? `linear-gradient(135deg, ${role.accent}28, rgba(15,23,42,0.95) 45%, rgba(2,6,23,0.98) 100%)`
+                      : `linear-gradient(135deg, ${role.accent}14, rgba(15,23,42,0.92) 50%, rgba(2,6,23,0.96) 100%)`,
+                    boxShadow: expanded ? `0 18px 40px ${role.accent}22` : undefined,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleRole(i)}
+                    className="flex w-full items-start gap-4 p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                    aria-expanded={expanded}
+                  >
+                    <span
+                      className="mt-0.5 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: `${role.accent}35`, color: role.accent }}
+                    >
+                      <Icon size={24} aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-lg font-semibold" style={{ color: "var(--color-text)" }}>
+                        {role.label}
+                      </span>
+                      <span className="mt-1 line-clamp-2 text-sm md:line-clamp-none" style={{ color: "var(--color-text-secondary)" }}>
+                        {role.short}
+                      </span>
+                    </span>
+                    <ChevronDown
+                      size={22}
+                      className="mt-1 shrink-0 transition-transform duration-200"
+                      style={{
+                        color: role.accent,
+                        transform: expanded ? "rotate(180deg)" : undefined,
+                      }}
+                      aria-hidden
+                    />
+                  </button>
+                  {expanded ? (
+                    <div className="border-t px-5 pb-5 pt-0" style={{ borderColor: `${role.accent}33` }}>
+                      <p className="pt-4 leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                        {role.description}
+                      </p>
+                      <p className="mt-4 text-xs font-semibold uppercase tracking-wide" style={{ color: role.accent }}>
+                        Missions clés
+                      </p>
+                      <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {role.missions.map((mission) => (
+                          <li
+                            key={mission}
+                            className="flex items-start gap-2 rounded-lg border px-3 py-2 text-sm"
+                            style={{
+                              borderColor: `${role.accent}33`,
+                              backgroundColor: "rgba(2,6,23,0.45)",
+                              color: "var(--color-text-secondary)",
+                            }}
+                          >
+                            <CircleDot size={14} className="mt-0.5 shrink-0" style={{ color: role.accent }} aria-hidden />
+                            <span>{mission}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Pôles de mission — 9 cartes en accordéon */}
+        <section id="staff-poles" className="scroll-mt-28 space-y-4">
+          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
+            Pôles de mission
+          </p>
+          <h2 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
+            Neuf pôles, neuf domaines d&apos;action
+          </h2>
+          <p className="max-w-3xl leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+            Chaque pôle est une équipe de bénévoles centrée sur un <strong style={{ color: "var(--color-text)" }}>domaine concret</strong> :
+            vision, coordination, vie staff, formation, parcours membres, animations, image, outils, situations sensibles.{" "}
             {audience === "member" ? "La ligne « Repère membre » résume l'usage au quotidien." : null}
           </p>
 
           <div className="space-y-3">
-            {poles.map((pole, i) => {
+            {STAFF_POLES.map((pole, i) => {
               const Icon = pole.Icon;
               const expanded = openPole === i;
               return (
                 <div
-                  key={pole.title}
+                  key={pole.key}
                   className="overflow-hidden rounded-2xl border transition-shadow duration-200"
                   style={{
                     borderColor: expanded ? `${pole.accent}88` : `${pole.accent}44`,
@@ -620,7 +519,7 @@ export default function OrganisationStaffClient() {
                   <button
                     type="button"
                     onClick={() => togglePole(i)}
-                    className="flex w-full items-start gap-4 p-5 text-left"
+                    className="flex w-full items-start gap-4 p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
                     aria-expanded={expanded}
                   >
                     <span
@@ -630,11 +529,19 @@ export default function OrganisationStaffClient() {
                       <Icon size={24} aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                        {pole.title}
+                      <span className="flex flex-wrap items-center gap-2 text-lg font-semibold" style={{ color: "var(--color-text)" }}>
+                        {pole.label}
+                        {pole.restricted ? (
+                          <span
+                            className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                            style={{ borderColor: `${pole.accent}88`, color: pole.accent, backgroundColor: `${pole.accent}1a` }}
+                          >
+                            Restreint
+                          </span>
+                        ) : null}
                       </span>
                       <span className="mt-1 line-clamp-2 text-sm md:line-clamp-none" style={{ color: "var(--color-text-secondary)" }}>
-                        {pole.text}
+                        {pole.tagline}
                       </span>
                     </span>
                     <ChevronDown
@@ -650,8 +557,27 @@ export default function OrganisationStaffClient() {
                   {expanded ? (
                     <div className="border-t px-5 pb-5 pt-0" style={{ borderColor: `${pole.accent}33` }}>
                       <p className="pt-4 leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                        {pole.text}
+                        {pole.description}
                       </p>
+                      <p className="mt-4 text-xs font-semibold uppercase tracking-wide" style={{ color: pole.accent }}>
+                        Missions du pôle
+                      </p>
+                      <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {pole.missions.map((mission) => (
+                          <li
+                            key={mission}
+                            className="flex items-start gap-2 rounded-lg border px-3 py-2 text-sm"
+                            style={{
+                              borderColor: `${pole.accent}33`,
+                              backgroundColor: "rgba(2,6,23,0.45)",
+                              color: "var(--color-text-secondary)",
+                            }}
+                          >
+                            <CircleDot size={14} className="mt-0.5 shrink-0" style={{ color: pole.accent }} aria-hidden />
+                            <span>{mission}</span>
+                          </li>
+                        ))}
+                      </ul>
                       {audience === "member" ? (
                         <div
                           className="mt-4 rounded-xl border px-4 py-3 text-sm"
@@ -671,23 +597,68 @@ export default function OrganisationStaffClient() {
           </div>
         </section>
 
-        {/* Collaboratif + CTA */}
+        {/* Section logique : rôle + pôle(s) */}
         <section
-          id="staff-collaborate"
+          id="staff-logic"
           className="scroll-mt-28 rounded-3xl border p-6 md:p-10"
           style={{
             borderColor: "var(--color-border)",
             background: "linear-gradient(120deg, rgba(59,130,246,0.18), rgba(2,6,23,0.92) 48%, rgba(124,58,237,0.2) 100%)",
           }}
         >
-          <h2 className="flex flex-wrap items-center gap-2 text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
+          <p
+            className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+            style={{ borderColor: "rgba(59,130,246,0.45)", color: "#93c5fd", backgroundColor: "rgba(59,130,246,0.12)" }}
+          >
+            <Lightbulb size={14} aria-hidden />
+            Comprendre la logique
+          </p>
+          <h2 className="mt-3 flex flex-wrap items-center gap-2 text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
             <Workflow size={26} className="shrink-0" style={{ color: "var(--color-primary)" }} aria-hidden />
-            Fonctionnement collaboratif
+            Un rôle principal + un ou plusieurs pôles
           </h2>
           <p className="mt-4 max-w-3xl leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-            Chaque pôle travaille en lien avec les autres pour garder une communauté dynamique, structurée et bienveillante.
-            Cette organisation permet à TENF de porter des projets collectifs tout en offrant un cadre stable aux créateurs et aux membres.
+            {STAFF_NOMENCLATURE_EXPLAINER.intro}
           </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div
+              className="rounded-2xl border p-5"
+              style={{ borderColor: "rgba(59,130,246,0.35)", backgroundColor: "rgba(15,23,42,0.55)" }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#93c5fd" }}>
+                Exemples concrets
+              </p>
+              <ul className="mt-3 space-y-2">
+                {STAFF_NOMENCLATURE_EXPLAINER.examples.map((example) => (
+                  <li
+                    key={example}
+                    className="flex items-start gap-2 text-sm leading-relaxed"
+                    style={{ color: "var(--color-text-secondary)" }}
+                  >
+                    <ArrowRight size={14} className="mt-1 shrink-0" style={{ color: "var(--color-primary)" }} aria-hidden />
+                    <span>{example}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div
+              className="rounded-2xl border p-5"
+              style={{ borderColor: "rgba(34,197,94,0.35)", backgroundColor: "rgba(15,23,42,0.55)" }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#86efac" }}>
+                Esprit TENF
+              </p>
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                {STAFF_NOMENCLATURE_EXPLAINER.philosophy}
+              </p>
+              <p className="mt-3 inline-flex items-center gap-2 text-sm" style={{ color: "#86efac" }}>
+                <HeartHandshake size={16} aria-hidden />
+                Entraide · Cadre sain · Bienveillance
+              </p>
+            </div>
+          </div>
+
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/organisation-staff/organigramme"
@@ -720,7 +691,7 @@ export default function OrganisationStaffClient() {
             Questions fréquentes
           </p>
           <h2 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
-            Membres & curieux : les bases
+            Membres &amp; curieux : les bases
           </h2>
           <div className="space-y-2">
             {faqItems.map((item, i) => {
@@ -734,7 +705,7 @@ export default function OrganisationStaffClient() {
                   <button
                     type="button"
                     onClick={() => toggleFaq(i)}
-                    className="flex w-full items-center justify-between gap-4 p-5 text-left"
+                    className="flex w-full items-center justify-between gap-4 p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
                     aria-expanded={open}
                   >
                     <span className="font-semibold" style={{ color: "var(--color-text)" }}>
@@ -810,20 +781,7 @@ export default function OrganisationStaffClient() {
           outline: none;
         }
 
-        .org-staff-card {
-          opacity: 0;
-          transform: translateY(10px);
-          animation: orgStaffCardIn 0.5s ease forwards;
-        }
-
         @keyframes orgStaffFadeUp {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes orgStaffCardIn {
           to {
             opacity: 1;
             transform: translateY(0);

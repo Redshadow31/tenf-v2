@@ -62,6 +62,11 @@ async function ensureSupabaseMemberForPending(pending: any, updatedBy: string) {
 
 /**
  * GET - Liste les demandes de modification de profil en attente
+ *
+ * Réponse enrichie : chaque demande embarque, quand le membre existe en base,
+ * un mini-objet `member` (rôle, nom affiché, statut actif, VIP) pour permettre
+ * à l'écran de validation d'afficher un badge rôle et un avertissement
+ * contextualisé sans devoir refaire un appel par ligne.
  */
 export async function GET() {
   try {
@@ -78,13 +83,67 @@ export async function GET() {
 
     if (error) throw error;
 
+    // Enrichit chaque demande avec le snapshot léger du membre associé
+    // (rôle, displayName, actif, VIP). Une seule requête batch pour limiter
+    // l'overhead, et tolérante aux logins absents (member = null).
+    const pending = data || [];
+    const uniqueLogins = Array.from(
+      new Set(
+        pending
+          .map((row: any) => String(row?.twitch_login || "").trim().toLowerCase())
+          .filter((login: string) => login.length > 0)
+      )
+    );
+
+    let membersByLogin = new Map<string, any>();
+    if (uniqueLogins.length > 0) {
+      const { data: memberRows, error: membersError } = await supabaseAdmin
+        .from("members")
+        .select(
+          "twitch_login, role, display_name, is_active, is_vip, is_archived, profile_validation_status, integration_date, twitch_status"
+        )
+        .in("twitch_login", uniqueLogins);
+      if (membersError) {
+        console.error("[profile-validation] members enrich error:", membersError);
+      }
+      membersByLogin = new Map(
+        (memberRows || []).map((m: any) => [String(m.twitch_login || "").toLowerCase(), m])
+      );
+    }
+
+    const enriched = pending.map((row: any) => {
+      const login = String(row?.twitch_login || "").trim().toLowerCase();
+      const m = login ? membersByLogin.get(login) : undefined;
+      const twitchStatus = m?.twitch_status && typeof m.twitch_status === "object" ? m.twitch_status : null;
+      const avatarFromStatus =
+        twitchStatus && typeof (twitchStatus as { profileImageUrl?: unknown }).profileImageUrl === "string"
+          ? String((twitchStatus as { profileImageUrl: string }).profileImageUrl).trim() || null
+          : null;
+      return {
+        ...row,
+        member: m
+          ? {
+              role: m.role ?? null,
+              displayName: m.display_name ?? null,
+              isActive: typeof m.is_active === "boolean" ? m.is_active : null,
+              isVip: typeof m.is_vip === "boolean" ? m.is_vip : null,
+              isArchived: typeof m.is_archived === "boolean" ? m.is_archived : null,
+              profileValidationStatus: m.profile_validation_status ?? null,
+              hasIntegrationDate: !!m.integration_date,
+              /** URL Twitch si synchronisée dans twitch_status (sinon null — pas d'invention). */
+              avatarUrl: avatarFromStatus,
+            }
+          : null,
+      };
+    });
+
     try {
       await syncProfileValidationNotification();
     } catch (notificationError) {
       console.error("[profile-validation] notification sync error (GET):", notificationError);
     }
 
-    return NextResponse.json({ pending: data || [] });
+    return NextResponse.json({ pending: enriched });
   } catch (error) {
     console.error("[profile-validation] GET error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
@@ -153,7 +212,15 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
-      const shouldStayInactive = ensuredMember.role === "Communauté";
+      // Règle métier TENF :
+      //  - rôle "Communauté"  → reste inactif après validation
+      //  - rôle "Nouveau"     → reste inactif après validation (attribution explicite
+      //    d'un rôle actif requise via la fiche membre)
+      //  - autres rôles       → activation automatique
+      // Le rôle "Nouveau" est un statut interne transitoire et ne doit pas devenir
+      // actif tant qu'un admin n'a pas attribué un vrai rôle communautaire.
+      const shouldStayInactive =
+        ensuredMember.role === "Communauté" || ensuredMember.role === "Nouveau";
       await memberRepository.update(pending.twitch_login, {
         description: pending.description || undefined,
         instagram: pending.instagram || undefined,
@@ -161,8 +228,6 @@ export async function POST(request: NextRequest) {
         twitter: pending.twitter || undefined,
         birthday: parseDateFromDb(pending.birthday),
         twitchAffiliateDate: parseDateFromDb(pending.twitch_affiliate_date),
-        // Après validation profil, le membre devient actif automatiquement.
-        // Exception métier: rôle Communauté => reste inactif.
         isActive: shouldStayInactive ? false : true,
         profileValidationStatus: "valide",
         updatedBy: admin.discordId,

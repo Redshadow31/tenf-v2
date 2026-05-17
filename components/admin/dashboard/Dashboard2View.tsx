@@ -291,7 +291,7 @@ const QUICK_ACTION_DEFS: Record<
   eval: { label: "Synthèse évaluation", href: "/admin/evaluation/d" },
   follow: { label: "Suivi follow", href: "/admin/follow" },
   audit: { label: "Audit", href: "/admin/founders/audit" },
-  sync: { label: "Sync Discord", href: "/admin/membres/synchronisation" },
+  sync: { label: "Sync Discord", href: "/admin/membres/qualite-data?onglet=sync" },
 };
 
 const QUICK_ACTION_ORDER: Record<Exclude<StaffPersona, "general">, string[]> = {
@@ -868,7 +868,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
         label: "Postulations staff",
         href: "/admin/membres/postulations",
         status: kpis.staffApplicationsPendingCount === 0 ? "done" : "todo",
-        helper: `${kpis.staffApplicationsPendingCount} à traiter${kpis.staffApplicationsRedFlagCount > 0 ? ` · ${kpis.staffApplicationsRedFlagCount} red flag` : ""}`,
+        helper: `${kpis.staffApplicationsPendingCount} à traiter${kpis.staffApplicationsRedFlagCount > 0 ? ` · ${kpis.staffApplicationsRedFlagCount} signalement(s) sensible(s)` : ""}`,
       },
       {
         id: "profile_validation",
@@ -1517,7 +1517,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
             {kpis.missingDiscord > 0 && <span>{kpis.missingDiscord} membre(s) sans ID Discord</span>}
             {kpis.missingTwitchId > 0 && <span>{kpis.missingTwitchId} membre(s) sans ID Twitch</span>}
             {kpis.staffApplicationsPendingCount > 0 && <span>{kpis.staffApplicationsPendingCount} postulation(s) staff en attente</span>}
-            {kpis.staffApplicationsRedFlagCount > 0 && <span>{kpis.staffApplicationsRedFlagCount} postulation(s) en red flag</span>}
+            {kpis.staffApplicationsRedFlagCount > 0 && <span>{kpis.staffApplicationsRedFlagCount} postulation(s) signalée(s) comme sensibles</span>}
             {kpis.profileValidationPendingCount > 0 && <span>{kpis.profileValidationPendingCount} validation(s) profil en attente</span>}
           </div>
         </div>

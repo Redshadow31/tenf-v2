@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireSectionAccessAny } from '@/lib/requireAdmin';
+import { RAIDS_EVENTSUB_SECTION_HREFS } from '@/lib/admin/raidsFiabiliteRbac';
 import { getActiveRaidTestRun } from '@/lib/raidEventsubTest';
 import { supabaseAdmin } from '@/lib/db/supabase';
 
@@ -9,9 +10,9 @@ const reviewCache = new Map<string, ReviewCacheEntry>();
 
 export async function GET(request: NextRequest) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSectionAccessAny(RAIDS_EVENTSUB_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: 'Acces refuse' }, { status: 403 });
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -15,6 +15,8 @@ import {
   CalendarClock,
 } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import AdminConfirmModal from "@/components/admin/AdminConfirmModal";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 
 interface AdvancedAccessEntry {
   discordId: string;
@@ -55,6 +57,10 @@ export default function AdminAvancePage() {
   const [renewExpiresAt, setRenewExpiresAt] = useState("");
   const [renewJustification, setRenewJustification] = useState("");
   const [renewSubmitting, setRenewSubmitting] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<AdvancedAccessEntry | null>(null);
+  const [removeReason, setRemoveReason] = useState("");
+  const [removeReasonError, setRemoveReasonError] = useState<string | null>(null);
+  const [removeSubmitting, setRemoveSubmitting] = useState(false);
 
   useEffect(() => {
     async function checkAccess() {
@@ -220,27 +226,46 @@ export default function AdminAvancePage() {
     }
   }
 
-  async function handleRemove(discordId: string) {
-    const reason = prompt("Motif du retrait (obligatoire) :");
-    if (!reason || !reason.trim()) {
-      setError("Le motif de retrait est obligatoire");
+  function openRemove(entry: AdvancedAccessEntry) {
+    setRemoveTarget(entry);
+    setRemoveReason("");
+    setRemoveReasonError(null);
+  }
+
+  function closeRemove() {
+    if (removeSubmitting) return;
+    setRemoveTarget(null);
+    setRemoveReason("");
+    setRemoveReasonError(null);
+  }
+
+  async function handleRemoveConfirm() {
+    if (!removeTarget) return;
+    const reason = removeReason.trim();
+    if (!reason) {
+      setRemoveReasonError("Le motif de retrait est obligatoire.");
       return;
     }
-    if (!confirm("Retirer l'accès admin avancé de cette personne ?")) return;
     try {
+      setRemoveSubmitting(true);
+      setRemoveReasonError(null);
       setError(null);
       const res = await fetch(
-        `/api/admin/advanced-access?discordId=${encodeURIComponent(discordId)}&reason=${encodeURIComponent(reason.trim())}`,
-        { method: "DELETE" }
+        `/api/admin/advanced-access?discordId=${encodeURIComponent(removeTarget.discordId)}&reason=${encodeURIComponent(reason)}`,
+        { method: "DELETE" },
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur suppression");
       await loadList();
+      setRemoveTarget(null);
+      setRemoveReason("");
       setSuccess("Accès retiré");
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message || "Erreur suppression");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur suppression");
       setSuccess(null);
+    } finally {
+      setRemoveSubmitting(false);
     }
   }
 
@@ -272,16 +297,7 @@ export default function AdminAvancePage() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_100%_45%_at_50%_-8%,rgba(124,58,237,0.12),transparent)]" />
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_bottom,transparent,rgba(9,9,11,0.55))]" />
 
-      <AdminHeader
-        title="Accès admin avancé"
-        navLinks={[
-          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
-          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
-          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
-          { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-          { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)", active: true },
-        ]}
-      />
+      <AdminHeader title="Accès admin avancé" navLinks={administrationSiteHubNav("/admin/gestion-acces/admin-avance")} />
 
       <div className="relative z-[1] mx-auto w-full max-w-[min(100%,1680px)] px-[clamp(0.75rem,2.5vw,1.75rem)] py-[clamp(0.75rem,2vw,1.5rem)]">
         {error && (
@@ -681,7 +697,7 @@ export default function AdminAvancePage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleRemove(entry.discordId)}
+                            onClick={() => openRemove(entry)}
                             className="inline-flex min-h-[2.5rem] items-center gap-1.5 rounded-xl border border-red-500/35 bg-red-950/25 px-3 py-2 text-[length:clamp(0.75rem,0.7rem+0.2vw,0.8125rem)] font-semibold text-red-300 transition hover:bg-red-950/40 active:scale-[0.98]"
                           >
                             <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
@@ -697,6 +713,42 @@ export default function AdminAvancePage() {
           )}
         </section>
       </div>
+
+      <AdminConfirmModal
+        open={removeTarget !== null}
+        tone="danger"
+        title="Retirer l’accès admin avancé"
+        description={
+          removeTarget ? (
+            <>
+              Cette action retire immédiatement l’accès admin avancé de{" "}
+              <strong className="text-rose-100">
+                {removeTarget.username || removeTarget.discordId}
+              </strong>
+              . Le motif est obligatoire et conservé dans les logs d’audit.
+            </>
+          ) : null
+        }
+        confirmLabel="Retirer l’accès"
+        cancelLabel="Annuler"
+        loading={removeSubmitting}
+        onCancel={closeRemove}
+        onConfirm={handleRemoveConfirm}
+        input={{
+          label: "Motif du retrait",
+          required: true,
+          multiline: true,
+          placeholder: "Ex. : fin de mission, demande du membre, sécurité…",
+          value: removeReason,
+          onChange: (v) => {
+            setRemoveReason(v);
+            if (removeReasonError) setRemoveReasonError(null);
+          },
+          error: removeReasonError,
+          helperText: "Sera enregistré dans la trace d’audit avec ton identifiant admin.",
+          maxLength: 500,
+        }}
+      />
     </div>
   );
 }

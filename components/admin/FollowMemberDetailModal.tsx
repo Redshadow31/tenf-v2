@@ -52,6 +52,10 @@ export type FollowMemberDetailModalProps = {
   onClose: () => void;
   /** Aligné sur le hub communauté (dégradés, glass, interactions riches). */
   variant?: "default" | "hub";
+  /** Message d'erreur à afficher si le chargement du détail a échoué. */
+  error?: string | null;
+  /** Callback optionnel pour relancer le chargement quand l'erreur est affichée. */
+  onRetry?: () => void;
 };
 
 function formatDate(value: string | null): string {
@@ -142,6 +146,8 @@ export default function FollowMemberDetailModal({
   detail,
   onClose,
   variant = "default",
+  error = null,
+  onRetry,
 }: FollowMemberDetailModalProps) {
   const hub = variant === "hub";
   const [tab, setTab] = useState<ListTab>("followed");
@@ -306,6 +312,31 @@ export default function FollowMemberDetailModal({
                 ))}
               </div>
               <div className={`h-40 animate-pulse rounded-xl ${hub ? "bg-white/5" : "bg-neutral-800/40"}`} />
+            </div>
+          ) : error ? (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className={`flex flex-col items-start gap-3 rounded-xl border px-4 py-4 text-sm leading-relaxed ${
+                hub ? "border-rose-500/35 bg-rose-950/30 text-rose-100" : "border-red-500/40 bg-red-500/10 text-red-100"
+              }`}
+            >
+              <div className="font-semibold">Impossible de charger le détail de ce membre.</div>
+              <p className="opacity-90">{error}</p>
+              <p className="opacity-80">Réessaie dans quelques instants ou ferme la fenêtre pour revenir au tableau.</p>
+              {onRetry ? (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className={`mt-1 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 ${
+                    hub
+                      ? "border-rose-300/40 bg-rose-500/15 text-rose-50 hover:bg-rose-500/25"
+                      : "border-red-300/40 bg-red-500/15 text-red-50 hover:bg-red-500/25"
+                  }`}
+                >
+                  Réessayer
+                </button>
+              ) : null}
             </div>
           ) : !detail ? (
             <div className="py-12 text-center text-sm" style={{ color: "var(--color-text-secondary)" }}>

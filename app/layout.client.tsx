@@ -9,15 +9,124 @@ import UserSidebar from "@/components/UserSidebar";
 import MemberGlobalNotificationHint from "@/components/MemberGlobalNotificationHint";
 import ConnectionTracker from "@/components/ConnectionTracker";
 import PwaSplashScreen from "@/components/PwaSplashScreen";
+import { MemberDesktopNavProvider, useMemberDesktopNav } from "@/contexts/MemberDesktopNavContext";
+import MemberSidebarExpandRail from "@/components/member/navigation/MemberSidebarExpandRail";
 
 type ClientLayoutProps = {
   children: ReactNode;
 };
 
+type MemberSiteLayoutProps = {
+  children: ReactNode;
+  isMobileViewport: boolean;
+  isMobileSidebarOpen: boolean;
+  setIsMobileSidebarOpen: (open: boolean) => void;
+};
+
+function MemberSiteLayout({
+  children,
+  isMobileViewport,
+  isMobileSidebarOpen,
+  setIsMobileSidebarOpen,
+}: MemberSiteLayoutProps) {
+  const pathname = usePathname();
+  const isMemberArea = Boolean(pathname?.startsWith("/member") || pathname?.startsWith("/membres"));
+  const shouldRenderDesktopSidebar = !isMobileViewport;
+  const shouldRenderMobileSidebarTrigger = isMobileViewport && isMemberArea;
+  const shouldRenderMobileSidebar = isMobileViewport && isMobileSidebarOpen;
+
+  const { effectiveDesktopCollapsed, prefersReducedMotion } = useMemberDesktopNav();
+
+  const FULL_WIDTH_PATHS = [
+    "/guides/tenf",
+    "/guides/partie-publique",
+    "/guides/espace-membre",
+    "/partenariats",
+    "/a-propos",
+    "/fonctionnement-tenf/comment-ca-marche",
+    "/changelog",
+  ] as const;
+  const FULL_WIDTH_EXACT_PATHS = [
+    "/membres",
+    "/lives",
+    "/lives/calendrier",
+    "/charte",
+    "/evenements",
+    "/evenements-communautaires",
+    "/new-family-aventura",
+    "/vip",
+    "/avis-tenf",
+    "/member/dashboard",
+    "/decouvrir-createurs",
+  ] as const;
+  /** Pages membres « inbox » / « profil » : pleine largeur du `<main>` (pas de max-w-7xl) pour utiliser l’espace quand la sidebar est visible ou repliée. */
+  const isMemberNotificationsPage = Boolean(pathname?.startsWith("/member/notifications"));
+  const isMemberProfilePage = pathname === "/member/profil";
+  const isFullWidthPage =
+    pathname === "/" ||
+    (!!pathname && FULL_WIDTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) ||
+    (!!pathname && FULL_WIDTH_EXACT_PATHS.some((p) => pathname === p)) ||
+    isMemberNotificationsPage ||
+    isMemberProfilePage;
+  const mainClassName = isFullWidthPage
+    ? "flex-1 min-w-0 w-full"
+    : "flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8";
+
+  const sidebarWrapperClass =
+    "relative z-20 min-w-0 shrink-0 overflow-hidden border-r " +
+    (effectiveDesktopCollapsed
+      ? "w-0 max-w-0 border-transparent opacity-0 xl:pointer-events-none"
+      : "w-[min(20rem,100%)] max-w-[22rem] opacity-100") +
+    (prefersReducedMotion ? "" : " xl:transition-[width,opacity] xl:duration-200 xl:ease-out");
+
+  return (
+    <div className="min-h-screen min-w-0 overflow-x-hidden" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
+      <Header
+        onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined}
+        memberAreaHref={isMobileViewport && !isMemberArea ? "/member/dashboard" : undefined}
+        showMemberMenuInBurger={isMemberArea}
+      />
+      <div className="flex min-w-0 overflow-x-hidden">
+        {shouldRenderDesktopSidebar ? (
+          <div
+            className={sidebarWrapperClass}
+            style={{
+              borderColor: effectiveDesktopCollapsed ? "transparent" : "var(--color-sidebar-border)",
+            }}
+          >
+            <div className="h-full min-h-0 w-[min(20rem,100%)] max-w-[22rem]">
+              <UserSidebar />
+            </div>
+          </div>
+        ) : null}
+        <main className={mainClassName}>{children}</main>
+      </div>
+      {shouldRenderMobileSidebar ? (
+        <div className="fixed inset-0 z-[70] flex xl:hidden" role="dialog" aria-modal="true" aria-label="Panneau membre">
+          <button
+            type="button"
+            className="absolute inset-0 h-full w-full animate-[member-sidebar-backdrop-fade_0.2s_ease-out]"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }}
+            onClick={() => setIsMobileSidebarOpen(false)}
+            aria-label="Fermer le panneau membre"
+          />
+          <UserSidebar
+            className="relative z-10 h-full w-[min(20rem,90vw)] max-w-[22rem] overflow-y-auto shadow-2xl animate-[member-sidebar-slide-in_0.25s_ease-out]"
+            onNavigate={() => setIsMobileSidebarOpen(false)}
+            onRequestClose={() => setIsMobileSidebarOpen(false)}
+            showMobileCloseButton={true}
+          />
+        </div>
+      ) : null}
+      <MemberSidebarExpandRail />
+      <MemberGlobalNotificationHint />
+    </div>
+  );
+}
+
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
-  const isMemberArea = pathname?.startsWith("/member") || pathname?.startsWith("/membres");
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 1279px)").matches;
@@ -80,44 +189,20 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     );
   }
 
-  const shouldRenderDesktopSidebar = !isMobileViewport;
-  const shouldRenderMobileSidebarTrigger = isMobileViewport && Boolean(isMemberArea);
-  const shouldRenderMobileSidebar = isMobileViewport && isMobileSidebarOpen;
-
   return (
     <SessionProvider>
       <ThemeProvider>
         <PwaSplashScreen />
         <ConnectionTracker />
-        <div className="min-h-screen min-w-0 overflow-x-hidden" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
-          <Header
-            onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined}
-            memberAreaHref={isMobileViewport && !isMemberArea ? "/member/dashboard" : undefined}
-            showMemberMenuInBurger={isMemberArea}
-          />
-          <div className="flex min-w-0 overflow-x-hidden">
-            {shouldRenderDesktopSidebar ? <UserSidebar /> : null}
-            <main className="flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8">{children}</main>
-          </div>
-          {shouldRenderMobileSidebar ? (
-            <div className="fixed inset-0 z-[70] xl:hidden flex" role="dialog" aria-modal="true" aria-label="Panneau membre">
-              <button
-                type="button"
-                className="absolute inset-0 h-full w-full animate-[member-sidebar-backdrop-fade_0.2s_ease-out]"
-                style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }}
-                onClick={() => setIsMobileSidebarOpen(false)}
-                aria-label="Fermer le panneau membre"
-              />
-              <UserSidebar
-                className="relative z-10 h-full w-[min(20rem,90vw)] max-w-[22rem] overflow-y-auto shadow-2xl animate-[member-sidebar-slide-in_0.25s_ease-out]"
-                onNavigate={() => setIsMobileSidebarOpen(false)}
-                onRequestClose={() => setIsMobileSidebarOpen(false)}
-                showMobileCloseButton={true}
-              />
-            </div>
-          ) : null}
-          <MemberGlobalNotificationHint />
-        </div>
+        <MemberDesktopNavProvider>
+          <MemberSiteLayout
+            isMobileViewport={isMobileViewport}
+            isMobileSidebarOpen={isMobileSidebarOpen}
+            setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+          >
+            {children}
+          </MemberSiteLayout>
+        </MemberDesktopNavProvider>
       </ThemeProvider>
     </SessionProvider>
   );

@@ -32,6 +32,7 @@ import {
   YAxis,
 } from "recharts";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 import DiscordSalonsImportModal from "@/components/admin/DiscordSalonsImportModal";
 import DiscordStaffSalonClusterCard from "@/components/admin/DiscordStaffSalonClusterCard";
 import type { SalonSplitDisplay } from "@/lib/discordActivityChannelsAggregate";
@@ -349,22 +350,7 @@ export default function DiscordActiviteMensuellePage() {
 
       <AdminHeader
         title="Discord TENF — pouls de la communauté"
-        navLinks={[
-          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
-          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
-          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
-          {
-            href: "/admin/gestion-acces/discord-activite-personnelle",
-            label: "Activité Discord personnelle",
-          },
-          {
-            href: "/admin/gestion-acces/discord-activite",
-            label: "Vue communauté & salons",
-            active: true,
-          },
-          { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-          { href: "/admin/gestion-acces/images", label: "Images profils Twitch" },
-        ]}
+        navLinks={administrationSiteHubNav("/admin/gestion-acces/discord-activite")}
       />
 
       <main className="relative mx-auto max-w-7xl space-y-8 px-4 pb-20 pt-4 md:px-6">

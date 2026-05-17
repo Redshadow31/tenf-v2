@@ -23,6 +23,8 @@ export interface MemberNotificationItem {
   /** Dérivé de metadata (annonces serveur) */
   imageUrl: string | null;
   bodyFormat: "markdown" | "plain";
+  /** Audience d’origine (`community_broadcast`, `member_direct`, `admin_access`) — utile pour le tri UI. */
+  audience: string;
 }
 
 type NotificationRow = {
@@ -217,6 +219,7 @@ export async function listMemberNotifications(
       metadata: notification.metadata || {},
       imageUrl,
       bodyFormat,
+      audience: notification.audience,
     };
   });
 

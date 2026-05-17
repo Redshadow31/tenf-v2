@@ -18,6 +18,7 @@ import {
   Upload,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import {
   Bar,
@@ -29,6 +30,8 @@ import {
   YAxis,
 } from "recharts";
 import AdminHeader from "@/components/admin/AdminHeader";
+import AdminConfirmModal from "@/components/admin/AdminConfirmModal";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 import DiscordMessagesImportModal from "@/components/admin/DiscordMessagesImportModal";
 import DiscordVocalsImportModal from "@/components/admin/DiscordVocalsImportModal";
 import {
@@ -281,6 +284,8 @@ export default function DiscordActivitePersonnellePage() {
   const [importing, setImporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [deleteMonthScope, setDeleteMonthScope] = useState<"all" | "messages" | "vocals" | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [siteLogins, setSiteLogins] = useState<string[]>([]);
   const [rosterLoading, setRosterLoading] = useState(true);
@@ -490,6 +495,7 @@ export default function DiscordActivitePersonnellePage() {
 
   async function handleImportMessages(data: Record<string, number>) {
     setImporting(true);
+    setPageError(null);
     try {
       const response = await fetch("/api/admin/discord-activity/import", {
         method: "POST",
@@ -504,36 +510,36 @@ export default function DiscordActivitePersonnellePage() {
       setShowMessagesImport(false);
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Erreur import messages");
+      setPageError(error instanceof Error ? error.message : "Erreur import messages");
     } finally {
       setImporting(false);
     }
   }
 
-  async function handleDeleteMonth(scope: "all" | "messages" | "vocals") {
-    const month = importMonth;
-    const text =
-      scope === "all"
-        ? `Supprimer toutes les données Discord (messages et vocaux) pour le mois ${month} ? Cette action est irréversible.`
-        : scope === "messages"
-          ? `Supprimer uniquement les messages pour ${month} ? Les données vocales du même mois seront conservées.`
-          : `Supprimer uniquement les vocaux pour ${month} ? Les messages du même mois seront conservés.`;
-    if (!window.confirm(text)) return;
+  function openDeleteMonthModal(scope: "all" | "messages" | "vocals") {
+    setDeleteMonthScope(scope);
+  }
 
+  async function executeDeleteMonth() {
+    if (!deleteMonthScope) return;
+    const month = importMonth;
+    const scope = deleteMonthScope;
     setDeleting(true);
+    setPageError(null);
     try {
       const res = await fetch(
         `/api/admin/discord-activity/month?month=${encodeURIComponent(month)}&scope=${encodeURIComponent(scope)}`,
-        { method: "DELETE" }
+        { method: "DELETE" },
       );
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(typeof json.error === "string" ? json.error : "Échec de la suppression");
       }
       await refreshData();
+      setDeleteMonthScope(null);
     } catch (e) {
       console.error(e);
-      alert(e instanceof Error ? e.message : "Erreur lors de la suppression");
+      setPageError(e instanceof Error ? e.message : "Erreur lors de la suppression");
     } finally {
       setDeleting(false);
     }
@@ -541,6 +547,7 @@ export default function DiscordActivitePersonnellePage() {
 
   async function handleImportVocals(data: Record<string, VocalEntry>) {
     setImporting(true);
+    setPageError(null);
     try {
       const response = await fetch("/api/admin/discord-activity/import", {
         method: "POST",
@@ -555,11 +562,38 @@ export default function DiscordActivitePersonnellePage() {
       setShowVocalsImport(false);
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Erreur import vocaux");
+      setPageError(error instanceof Error ? error.message : "Erreur import vocaux");
     } finally {
       setImporting(false);
     }
   }
+
+  const deleteMonthModalDesc = useMemo(() => {
+    if (!deleteMonthScope) return null;
+    const month = importMonth;
+    if (deleteMonthScope === "all") {
+      return (
+        <>
+          Supprimer toutes les données Discord (messages <strong className="text-rose-100">et</strong> vocaux) pour le
+          mois <strong className="text-rose-100">{month}</strong> ? Cette action est irréversible.
+        </>
+      );
+    }
+    if (deleteMonthScope === "messages") {
+      return (
+        <>
+          Supprimer uniquement les messages pour <strong className="text-amber-100">{month}</strong> ? Les données
+          vocales du même mois seront conservées.
+        </>
+      );
+    }
+    return (
+      <>
+        Supprimer uniquement les vocaux pour <strong className="text-amber-100">{month}</strong> ? Les messages du même
+        mois seront conservés.
+      </>
+    );
+  }, [deleteMonthScope, importMonth]);
 
   const scopeSummary =
     scopeMode === "month"
@@ -586,25 +620,26 @@ export default function DiscordActivitePersonnellePage() {
     <div className="min-h-screen bg-[#0b0d12] text-white">
       <AdminHeader
         title="Activité Discord — communauté TENF"
-        navLinks={[
-          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
-          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
-          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
-          {
-            href: "/admin/gestion-acces/discord-activite-personnelle",
-            label: "Activité Discord personnelle",
-            active: true,
-          },
-          {
-            href: "/admin/gestion-acces/discord-activite",
-            label: "Activité Discord (mois & salons)",
-          },
-          { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-          { href: "/admin/gestion-acces/images", label: "Images profils Twitch" },
-        ]}
+        navLinks={administrationSiteHubNav("/admin/gestion-acces/discord-activite-personnelle")}
       />
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 pb-16 pt-2">
+        {pageError ? (
+          <div
+            role="alert"
+            className="flex items-start justify-between gap-3 rounded-xl border border-red-500/40 bg-red-950/35 px-4 py-3 text-sm text-red-100"
+          >
+            <span className="min-w-0 flex-1 leading-relaxed">{pageError}</span>
+            <button
+              type="button"
+              onClick={() => setPageError(null)}
+              className="shrink-0 rounded-lg p-1 text-red-300 transition hover:bg-red-950/60 hover:text-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50"
+              aria-label="Fermer le message d’erreur"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        ) : null}
         {/* Hero */}
         <section className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-[#151a2a] via-[#10131c] to-[#0b0d12] p-6 shadow-2xl md:p-8">
           <div
@@ -761,7 +796,7 @@ export default function DiscordActivitePersonnellePage() {
           </div>
           <p className="text-sm text-gray-400">
             Un fichier = <strong className="text-gray-200">un mois</strong>. Même procédure que sur{' '}
-            <strong className="text-gray-200">Paramètres dashboard</strong> : tu charges les CSV, TENF agrège par
+            <strong className="text-gray-200">Dashboard membre</strong> : tu charges les CSV, TENF agrège par
             pseudo Twitch.
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-4">
@@ -809,7 +844,7 @@ export default function DiscordActivitePersonnellePage() {
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => void handleDeleteMonth("messages")}
+                onClick={() => openDeleteMonthModal("messages")}
                 disabled={importing || deleting}
                 className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
               >
@@ -817,7 +852,7 @@ export default function DiscordActivitePersonnellePage() {
               </button>
               <button
                 type="button"
-                onClick={() => void handleDeleteMonth("vocals")}
+                onClick={() => openDeleteMonthModal("vocals")}
                 disabled={importing || deleting}
                 className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
               >
@@ -825,7 +860,7 @@ export default function DiscordActivitePersonnellePage() {
               </button>
               <button
                 type="button"
-                onClick={() => void handleDeleteMonth("all")}
+                onClick={() => openDeleteMonthModal("all")}
                 disabled={importing || deleting}
                 className="rounded-xl border border-red-600/60 bg-red-600/15 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-600/25 disabled:opacity-50"
               >
@@ -1381,6 +1416,17 @@ export default function DiscordActivitePersonnellePage() {
           )}
         </div>
       </main>
+
+      <AdminConfirmModal
+        open={deleteMonthScope !== null}
+        tone={deleteMonthScope === "all" ? "danger" : "warning"}
+        title="Confirmer la suppression"
+        description={deleteMonthModalDesc}
+        confirmLabel="Supprimer"
+        loading={deleting}
+        onCancel={() => !deleting && setDeleteMonthScope(null)}
+        onConfirm={() => void executeDeleteMonth()}
+      />
 
       <DiscordMessagesImportModal
         isOpen={showMessagesImport}

@@ -968,7 +968,7 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
               <Compass className="h-4 w-4 shrink-0" aria-hidden />
               Fonctionnement
             </Link>
-            <Link href="/events2" className={fnStyles.fnBtnGhost}>
+            <Link href="/evenements" className={fnStyles.fnBtnGhost}>
               <Calendar className="h-4 w-4 shrink-0" aria-hidden />
               Événements
             </Link>
@@ -1023,8 +1023,8 @@ export default function UpaEventLandingClient({ initialContent }: { initialConte
                 ? "Tu tombes sur cette page après coup : le bilan et la FAQ au passé expliquent ce qu’a été l’édition ; les prochaines actions UPA sont sur upa-event.fr."
                 : "Tu découvres le partenariat caritatif : dates, FAQ et formulaires UPA sont accessibles sans être membre Discord."
               : eventEnded
-                ? "Membre TENF : cette page sert d’archive pour l’édition terminée ; la vie du serveur continue sur Discord et /events2."
-                : "Tu es dans TENF : utilise aussi le calendrier /events2 et Discord pour les annonces staff ; cette page centralise UPA × TENF."}
+                ? "Membre TENF : cette page sert d’archive pour l’édition terminée ; la vie du serveur continue sur Discord et /evenements."
+                : "Tu es dans TENF : utilise aussi le calendrier /evenements et Discord pour les annonces staff ; cette page centralise UPA × TENF."}
           </p>
 
           <header id="upa-hero" className="upa-hero scroll-mt-28">

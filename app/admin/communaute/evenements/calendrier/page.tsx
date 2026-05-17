@@ -7,11 +7,13 @@ import { formatInTimeZone } from "date-fns-tz";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
+  CalendarCheck2,
   CalendarDays,
   Check,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Compass,
   Eye,
   ExternalLink,
   Film,
@@ -19,6 +21,7 @@ import {
   GraduationCap,
   LayoutGrid,
   List,
+  ListOrdered,
   PartyPopper,
   Pencil,
   Plus,
@@ -92,14 +95,32 @@ const DEFAULT_FORM: EventForm = {
   seriesName: "",
 };
 
-const glassCardClass =
-  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
-const sectionCardClass =
-  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const panelClass =
+  "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]";
+const heroVisualClass =
+  "relative isolate overflow-hidden rounded-2xl border border-violet-500/20 bg-zinc-950/70 ring-1 ring-inset ring-violet-500/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
 const subtleButtonClass =
-  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
+  "inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-950/25 px-3 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-900/30";
 const focusRingClass =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0b10]";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";
+
+const calendarAsideSteps = [
+  {
+    n: "1",
+    title: "Friser, puis affiner",
+    body: "Cliquez un jour dans la frise pour isoler les créneaux avant d’annoncer sur Discord ou en vocal.",
+  },
+  {
+    n: "2",
+    title: "Brouillon d’abord",
+    body: "Ne publiez que lorsque le visuel et le texte reflètent exactement ce que verront les membres.",
+  },
+  {
+    n: "3",
+    title: "Responsable visible",
+    body: "Spotlight affiche le streamer mis en avant ; les autres types s’appuient sur l’auteur staff — anticipez les relances.",
+  },
+];
 
 const CATEGORY_CHIPS: { value: string; label: string; icon: LucideIcon; ring: string }[] = [
   { value: "Spotlight", label: "Spotlight", icon: Sparkles, ring: "ring-violet-400/50" },
@@ -508,81 +529,135 @@ export default function CommunauteEvenementsCalendrierPage() {
   const clearTimelineFilter = useCallback(() => setTimelineDayKey(null), []);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] scroll-smooth bg-[linear-gradient(165deg,#0a0a0f_0%,#12101c_48%,#0d1118_100%)] pb-10 text-white selection:bg-indigo-500/35">
-      <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 sm:py-8">
-      <section className={`${glassCardClass} relative overflow-hidden p-5 md:p-8`}>
-        <div className="pointer-events-none absolute -right-20 top-0 h-48 w-48 rounded-full bg-fuchsia-600/18 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-cyan-500/14 blur-3xl" aria-hidden />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl space-y-4">
-            <Link
-              href="/admin/communaute/evenements"
-              className={`inline-flex items-center gap-1 text-sm text-indigo-200/90 transition hover:text-white ${focusRingClass} rounded-lg`}
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden />
-              Retour pilotage événements
-            </Link>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-white/12 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-100/90">
-                Ce que les membres voient
-              </span>
-              <span className="rounded-full border border-emerald-400/28 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-100/90">
-                Staff & animation
-              </span>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Calendrier — animation & engagement</p>
-              <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-4xl">
-                Vos prochains rendez-vous, en un coup d’œil
-              </h1>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300 md:text-[15px]">
-                Anticipez ce qui s’affiche sur l’agenda public et dans l’espace membre : chaque ligne rappelle le{" "}
-                <strong className="font-semibold text-slate-100">responsable</strong>, l’état de publication et la catégorie.
-                Créez ou ajustez un créneau sans quitter cette page — ou passez en mode édition avancée si besoin.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={openCreateModal} className={`${subtleButtonClass} ${focusRingClass} border-fuchsia-400/25 bg-fuchsia-500/12 text-fuchsia-50`}>
-                <Plus className="h-4 w-4 shrink-0" aria-hidden />
-                Nouvel événement
-              </button>
-              <button type="button" onClick={() => void loadEvents()} className={`${subtleButtonClass} ${focusRingClass}`}>
-                <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
-                Actualiser
-              </button>
-              <Link href="/events2" target="_blank" rel="noopener noreferrer" className={`${subtleButtonClass} ${focusRingClass} border-sky-400/25 bg-sky-500/10 text-sky-100`}>
-                <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
-                Aperçu public (/events2)
-              </Link>
-              <Link href="/admin/events/planification" className={`${subtleButtonClass} ${focusRingClass}`}>
-                Édition complète
-                <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
-              </Link>
-              <Link href="/admin/communaute/evenements/spotlight/gestion" className={`${subtleButtonClass} ${focusRingClass}`}>
-                Spotlight — secours manuel
-                <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
-              </Link>
-            </div>
-          </div>
-          <div className="w-full max-w-sm shrink-0 rounded-2xl border border-white/10 bg-black/35 p-5 backdrop-blur-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">Astuce équipe</p>
-            <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              Publiez seulement quand le visuel et le texte sont prêts côté membre : un brouillon visible nulle part évite les
-              questions « c’est quand ? » sur Discord.
-            </p>
-            <div className="mt-4 flex items-center gap-2 rounded-xl border border-indigo-400/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-100">
-              <Clock className="h-4 w-4 shrink-0 text-indigo-300" aria-hidden />
-              Fuseau : Europe/Paris (dates affichées pour le staff).
-            </div>
-          </div>
-        </div>
-      </section>
+    <div className="relative isolate min-h-[calc(100vh-4rem)] min-w-0 scroll-smooth pb-10 text-white selection:bg-violet-500/35 [--cal-gap:clamp(1rem,1.55vw,1.85rem)]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-[max(-4rem,calc(-6vw))] top-[-2.5rem] -z-10 h-[clamp(240px,32vw,440px)] overflow-hidden blur-3xl"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_24%_-8%,rgba(167,139,250,0.28),transparent_54%),radial-gradient(ellipse_at_86%_22%,rgba(244,114,182,0.12),transparent_48%),radial-gradient(ellipse_at_52%_100%,rgba(56,189,248,0.1),transparent_52%)]" />
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 -z-20 h-[min(820px,100vh)]"
+        style={{
+          backgroundImage:
+            "linear-gradient(104deg,rgba(255,255,255,0.032) 0px,rgba(255,255,255,0.032) 1px,transparent 1px,transparent 74px)",
+          backgroundSize: "clamp(54px,4.2vw,72px) 100%",
+          opacity: 0.21,
+          maskImage: "linear-gradient(180deg,black 0%,transparent 78%)",
+        }}
+      />
+
+      <div className="mx-auto w-full max-w-[min(1720px,calc(100vw-2*clamp(0.6rem,1.75vw,1.75rem)))] px-[clamp(0.75rem,2vw,2.35rem)] pb-10 pt-2 sm:pb-12 sm:pt-3">
+        <div className="grid min-w-0 grid-cols-1 gap-6 [--sidebar:min(100%,clamp(17rem,24vw,25rem))] xl:grid-cols-[minmax(0,1fr)_var(--sidebar)] xl:items-start xl:gap-[clamp(1.35rem,2.6vw,2.85rem)]">
+          <main className="min-w-0 space-y-6 sm:space-y-8 xl:space-y-[var(--cal-gap)]">
+            <header className={`grid min-w-0 gap-6 p-[clamp(1rem,2vw,1.6rem)] lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,min(100%,0.94fr))] lg:gap-8 ${panelClass}`}>
+              <div className="min-w-0 space-y-4">
+                <Link
+                  href="/admin/communaute/evenements"
+                  className={`inline-flex items-center gap-1 text-[length:clamp(0.8rem,0.74rem+0.32vw,0.9375rem)] text-zinc-400 transition hover:text-white ${focusRingClass} rounded-lg`}
+                >
+                  <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
+                  Retour pilotage événements
+                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-violet-100/92">
+                    Ce que les membres voient
+                  </span>
+                  <span className="rounded-full border border-emerald-400/28 bg-emerald-500/[0.08] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-emerald-100/90">
+                    Staff & animation
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[length:clamp(0.6875rem,0.625rem+0.25vw,0.8125rem)] uppercase tracking-[0.12em] text-violet-200/95">
+                    Calendrier — animation & engagement
+                  </p>
+                  <h1 className="mt-2 text-[clamp(1.45rem,1.05rem+1.05vw,2.35rem)] font-semibold tracking-tight text-white">
+                    Vos prochains rendez-vous, en un coup d’œil
+                  </h1>
+                  <p className="mt-3 max-w-3xl text-[length:clamp(0.8125rem,0.75rem+0.32vw,0.9625rem)] leading-[1.65] text-zinc-400">
+                    Anticipez ce qui s’affiche sur l’agenda public et dans l’espace membre : chaque ligne rappelle le{" "}
+                    <strong className="font-semibold text-zinc-100">responsable</strong>, l’état de publication et la
+                    catégorie. Large écran&nbsp;: grille principale et colonne d’aide absorbent le vide latéral ; zoom navigateur&nbsp;: typo et gaps suivent avec des clamp.
+                  </p>
+                </div>
+                <div className="flex min-w-0 flex-wrap gap-[clamp(0.4rem,0.85vw,0.625rem)]">
+                  <button
+                    type="button"
+                    onClick={openCreateModal}
+                    className={`${subtleButtonClass} ${focusRingClass} border-fuchsia-400/35 bg-fuchsia-950/[0.32] text-fuchsia-50 hover:border-fuchsia-300/45 hover:bg-fuchsia-900/[0.38]`}
+                  >
+                    <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                    Nouvel événement
+                  </button>
+                  <button type="button" onClick={() => void loadEvents()} className={`${subtleButtonClass} ${focusRingClass}`}>
+                    <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+                    Actualiser
+                  </button>
+                  <Link
+                    href="/evenements"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${subtleButtonClass} ${focusRingClass} border-sky-400/28 bg-sky-950/[0.35] text-sky-100`}
+                  >
+                    <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
+                    Aperçu public (/evenements)
+                  </Link>
+                  <Link href="/admin/events/planification" className={`${subtleButtonClass} ${focusRingClass}`}>
+                    Édition complète
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                  </Link>
+                  <Link href="/admin/communaute/evenements/spotlight/gestion" className={`${subtleButtonClass} ${focusRingClass}`}>
+                    Spotlight — secours manuel
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                  </Link>
+                </div>
+              </div>
+              <div className={`relative min-h-[11rem] p-[clamp(0.875rem,1.5vw,1.2rem)] sm:min-h-[12rem] ${heroVisualClass}`}>
+                <div
+                  aria-hidden
+                  className="absolute inset-0 bg-[conic-gradient(from_200deg_at_72%_-10%,rgba(167,139,250,0.16),transparent_42%,transparent_58%,rgba(244,114,182,0.1))]"
+                />
+                <div aria-hidden className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.12),transparent_40%,transparent_65%,rgba(0,0,0,0.32))]" />
+                <div className="relative flex h-full min-h-[10rem] flex-col justify-between gap-4">
+                  <span className="inline-flex w-fit items-center gap-2 rounded-xl border border-violet-400/26 bg-violet-500/[0.11] px-3 py-1.5 text-[length:clamp(0.65rem,0.55rem+0.35vw,0.7rem)] font-semibold uppercase tracking-[0.08em] text-violet-50/96">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-200/92" aria-hidden />
+                    Synthèse calendrier
+                  </span>
+                  <dl className="grid min-w-0 grid-cols-3 gap-[clamp(0.45rem,0.9vw,0.65rem)] text-[length:clamp(0.65rem,0.58rem+0.22vw,0.775rem)]">
+                    <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                      <dt className="font-medium uppercase tracking-wide text-zinc-500">Créneaux</dt>
+                      <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-zinc-50">
+                        {loading ? "…" : events.length}
+                      </dd>
+                    </div>
+                    <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                      <dt className="font-medium uppercase tracking-wide text-emerald-500/90">Publiés</dt>
+                      <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-emerald-200/96">
+                        {loading ? "…" : stats.published}
+                      </dd>
+                    </div>
+                    <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                      <dt className="font-medium uppercase tracking-wide text-amber-500/90">Brouillons</dt>
+                      <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-amber-100/94">
+                        {loading ? "…" : stats.draft}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[length:clamp(0.65rem,0.56rem+0.26vw,0.78rem)] text-zinc-500">
+                    <Compass className="h-3.5 w-3.5 shrink-0 text-violet-400/75" aria-hidden />
+                    Fuseau&nbsp;: Europe/Paris · données sur la fenêtre chargée&nbsp;:{" "}
+                    {loading ? "chargement…" : `${events.length} créneau${events.length !== 1 ? "x" : ""}`}.
+                  </p>
+                </div>
+              </div>
+            </header>
 
       {error ? (
         <section className="rounded-2xl border border-rose-400/35 bg-rose-400/10 p-4 text-sm text-rose-100">{error}</section>
       ) : null}
 
-      <section className={`${sectionCardClass} p-5 sm:p-6`}>
+      <section className={`${panelClass} p-5 sm:p-6`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-white">Frise des 14 prochains jours</h2>
@@ -610,8 +685,8 @@ export default function CommunauteEvenementsCalendrierPage() {
                 onClick={() => setTimelineDayKey((k) => (k === day.key ? null : day.key))}
                 className={`relative flex min-w-[4.5rem] shrink-0 flex-col items-center rounded-2xl border px-2.5 py-3 text-center transition ${
                   active
-                    ? "border-indigo-400/60 bg-indigo-500/25 shadow-[0_0_24px_rgba(99,102,241,0.35)]"
-                    : "border-[#353a50] bg-[#121623]/80 hover:border-indigo-400/35 hover:bg-[#151a2e]"
+                    ? "border-violet-400/58 bg-violet-500/[0.26] shadow-[0_0_24px_rgba(139,92,246,0.32)]"
+                    : "border-zinc-600/85 bg-zinc-900/72 hover:border-violet-400/35 hover:bg-zinc-900/92"
                 } ${focusRingClass}`}
               >
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{day.weekday}</span>
@@ -630,22 +705,22 @@ export default function CommunauteEvenementsCalendrierPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <article className={`${sectionCardClass} group p-4 transition hover:border-indigo-400/30`}>
+        <article className={`${panelClass} group min-w-0 p-4 transition hover:border-violet-400/30`}>
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">À venir (fenêtre chargée)</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums transition group-hover:text-indigo-100">{events.length}</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums transition group-hover:text-violet-100">{events.length}</p>
           <p className="mt-1 text-xs text-slate-400">Créneaux triés par date</p>
         </article>
-        <article className={`${sectionCardClass} group border-emerald-500/15 p-4 transition hover:border-emerald-400/30`}>
+        <article className={`${panelClass} group border-emerald-500/15 p-4 transition hover:border-emerald-400/30`}>
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Publiés</p>
           <p className="mt-2 text-3xl font-semibold tabular-nums text-emerald-300 transition group-hover:text-emerald-200">{stats.published}</p>
           <p className="mt-1 text-xs text-slate-400">Visibles côté membres / public</p>
         </article>
-        <article className={`${sectionCardClass} group border-amber-500/15 p-4 transition hover:border-amber-400/30`}>
+        <article className={`${panelClass} group border-amber-500/15 p-4 transition hover:border-amber-400/30`}>
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Brouillons</p>
           <p className="mt-2 text-3xl font-semibold tabular-nums text-amber-300 transition group-hover:text-amber-200">{stats.draft}</p>
           <p className="mt-1 text-xs text-slate-400">À finaliser avant diffusion</p>
         </article>
-        <article className={`${sectionCardClass} group border-sky-500/15 p-4 transition hover:border-sky-400/30`}>
+        <article className={`${panelClass} group border-sky-500/15 p-4 transition hover:border-sky-400/30`}>
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Responsables</p>
           <p className="mt-2 text-3xl font-semibold tabular-nums text-sky-300 transition group-hover:text-sky-200">{stats.responsibleCount}</p>
           <p className="mt-1 text-xs text-slate-400">Contacts pour relances staff</p>
@@ -653,7 +728,7 @@ export default function CommunauteEvenementsCalendrierPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
-        <article className={`${sectionCardClass} p-5 sm:p-6`}>
+        <article className={`${panelClass} p-5 sm:p-6`}>
           <h2 className="text-lg font-bold text-slate-100">Répartition par catégorie</h2>
           <p className="mt-1 text-sm text-slate-400">Proportion sur les créneaux à venir affichés ci-dessus.</p>
           <div className="mt-4 space-y-3">
@@ -694,7 +769,7 @@ export default function CommunauteEvenementsCalendrierPage() {
           </div>
         </article>
 
-        <article className={`${sectionCardClass} p-5 sm:p-6`}>
+        <article className={`${panelClass} p-5 sm:p-6`}>
           <h2 className="text-lg font-bold text-slate-100">Check-list rapide</h2>
           <div className="mt-4 space-y-2 text-sm text-slate-300">
             <p className="rounded-lg border border-indigo-300/30 bg-indigo-300/10 px-3 py-2.5 text-indigo-100">
@@ -717,7 +792,7 @@ export default function CommunauteEvenementsCalendrierPage() {
         </article>
       </section>
 
-      <section className={`${sectionCardClass} flex flex-col gap-4 p-4 sm:flex-row sm:flex-wrap sm:items-center`}>
+      <section className={`${panelClass} flex flex-col gap-4 p-4 sm:flex-row sm:flex-wrap sm:items-center`}>
         <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
           <input
@@ -737,7 +812,7 @@ export default function CommunauteEvenementsCalendrierPage() {
               onClick={() => setFilterStatus(key)}
               className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${focusRingClass} ${
                 filterStatus === key
-                  ? "border-indigo-400/50 bg-indigo-500/25 text-indigo-50"
+                  ? "border-violet-400/48 bg-violet-500/[0.28] text-violet-50"
                   : "border-white/10 bg-black/30 text-slate-400 hover:border-white/20"
               }`}
             >
@@ -749,7 +824,7 @@ export default function CommunauteEvenementsCalendrierPage() {
           <button
             type="button"
             onClick={() => setViewMode("cards")}
-            className={`rounded-lg p-2 transition ${focusRingClass} ${viewMode === "cards" ? "bg-indigo-500/30 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`rounded-lg p-2 transition ${focusRingClass} ${viewMode === "cards" ? "bg-violet-500/[0.32] text-white" : "text-slate-400 hover:text-white"}`}
             aria-pressed={viewMode === "cards"}
             aria-label="Vue cartes"
           >
@@ -758,7 +833,7 @@ export default function CommunauteEvenementsCalendrierPage() {
           <button
             type="button"
             onClick={() => setViewMode("list")}
-            className={`rounded-lg p-2 transition ${focusRingClass} ${viewMode === "list" ? "bg-indigo-500/30 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`rounded-lg p-2 transition ${focusRingClass} ${viewMode === "list" ? "bg-violet-500/[0.32] text-white" : "text-slate-400 hover:text-white"}`}
             aria-pressed={viewMode === "list"}
             aria-label="Vue liste"
           >
@@ -802,7 +877,7 @@ export default function CommunauteEvenementsCalendrierPage() {
         })}
       </div>
 
-      <section className={sectionCardClass}>
+      <section className={panelClass}>
         <div className="flex flex-col gap-2 border-b border-[#2f3244] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-base font-bold text-slate-100">Créneaux à venir</h2>
           <p className="text-xs text-slate-500">
@@ -974,6 +1049,97 @@ export default function CommunauteEvenementsCalendrierPage() {
           </div>
         </div>
       </section>
+          </main>
+
+          <aside className="min-w-0 space-y-4 xl:sticky xl:top-5 xl:self-start" aria-label="Aide et raccourcis calendrier">
+            <div className={`${panelClass} space-y-3 p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+              <p className="text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                Astuce équipe
+              </p>
+              <p className="text-[length:clamp(0.75rem,0.68rem+0.28vw,0.8625rem)] leading-[1.6] text-zinc-400">
+                Publiez seulement quand le visuel et le texte sont prêts côté membre&nbsp;: un brouillon évite les questions «{" "}
+                c’est quand&nbsp;? » sur Discord avant l’heure.
+              </p>
+              <div className="flex items-start gap-2 rounded-xl border border-violet-400/22 bg-violet-500/[0.09] px-3 py-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] text-violet-100/94">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" aria-hidden />
+                <span>
+                  Fuseau <strong className="font-semibold text-white">Europe/Paris</strong> pour toutes les dates affichées ici et dans le modal.
+                </span>
+              </div>
+            </div>
+
+            <div className={`${panelClass} p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+              <p className="flex items-center gap-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                <ListOrdered className="h-4 w-4 shrink-0 text-violet-300/85" aria-hidden />
+                En trois gestes
+              </p>
+              <ol className="mt-4 space-y-[0.65rem]">
+                {calendarAsideSteps.map((step) => (
+                  <li key={step.n} className="flex min-w-0 gap-3">
+                    <span
+                      aria-hidden
+                      className="flex h-[2.125em] min-w-[2.125em] items-center justify-center rounded-lg border border-violet-500/28 bg-violet-500/[0.09] text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] font-bold tabular-nums text-violet-50"
+                    >
+                      {step.n}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-semibold text-zinc-100">{step.title}</p>
+                      <p className="mt-1 text-[length:clamp(0.6875rem,0.62rem+0.2vw,0.8rem)] leading-[1.55] text-zinc-500">
+                        {step.body}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div className={`${panelClass} p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+              <p className="text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                Modules proches
+              </p>
+              <nav className="mt-3 flex flex-col gap-2" aria-label="Liens pilier événements">
+                <Link
+                  href="/admin/communaute/evenements/participation"
+                  className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-sky-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                >
+                  Présences
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </Link>
+                <Link
+                  href="/admin/communaute/evenements/suivi"
+                  className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-emerald-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                >
+                  Suivi par type
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </Link>
+                <Link
+                  href="/admin/communaute/evenements/recap"
+                  className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-fuchsia-400/22 hover:bg-zinc-900/72 ${focusRingClass}`}
+                >
+                  Récapitulatif
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </Link>
+                <Link
+                  href="/admin/communaute/evenements/liste"
+                  className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-violet-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                >
+                  Liste des événements
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </Link>
+                <Link
+                  href="/admin/communaute/evenements"
+                  className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-white/14 hover:bg-zinc-900/72 ${focusRingClass}`}
+                >
+                  <span className="inline-flex min-w-0 items-center gap-2">
+                    <CalendarCheck2 className="h-4 w-4 shrink-0 opacity-85" aria-hidden />
+                    Hub événements
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </Link>
+              </nav>
+            </div>
+          </aside>
+        </div>
 
       {modalOpen ? (
         <div
@@ -1339,7 +1505,7 @@ export default function CommunauteEvenementsCalendrierPage() {
                     <span>
                       <span className="block text-base font-semibold text-white">Publier sur l’agenda public</span>
                       <span className="mt-1 block text-sm text-slate-400">
-                        Les membres et visiteurs voient le créneau sur la partie événements du site (ex. /events2) lorsque cette option est activée.
+                        Les membres et visiteurs voient le créneau sur la partie événements du site (ex. /evenements) lorsque cette option est activée.
                       </span>
                     </span>
                   </button>
@@ -1356,7 +1522,7 @@ export default function CommunauteEvenementsCalendrierPage() {
                     </div>
                   </div>
                   <Link
-                    href="/events2"
+                    href="/evenements"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`inline-flex items-center gap-2 text-sm text-cyan-300 underline-offset-2 hover:underline ${focusRingClass} rounded-lg`}

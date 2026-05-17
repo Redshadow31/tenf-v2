@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Save, Plus, Trash2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 import DiscordGrowthImportModal from "@/components/admin/DiscordGrowthImportModal";
 import DiscordDailyActivityImportModal from "@/components/admin/DiscordDailyActivityImportModal";
 import DiscordMessagesImportModal from "@/components/admin/DiscordMessagesImportModal";
@@ -390,16 +391,7 @@ export default function DashboardManagementPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <AdminHeader
-        title="Paramètres dashboard"
-        navLinks={[
-          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
-          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
-          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard", active: true },
-          { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-          { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)" },
-        ]}
-      />
+      <AdminHeader title="Dashboard membre" navLinks={administrationSiteHubNav("/admin/gestion-acces/dashboard")} />
 
       <div className="max-w-7xl mx-auto px-8 py-6">
         {/* Messages d'erreur et de succès */}
@@ -579,9 +571,9 @@ export default function DashboardManagementPage() {
               Applique automatiquement les règles demandées pour les modules clés.
             </p>
             <ul className="mb-4 space-y-2 text-sm" style={{ color: 'var(--color-text)' }}>
-              <li>• Validation staff: Admin avancé (Fondateur + Admin Coordinateur)</li>
-              <li>• Validation profils: tous les rôles admin</li>
-              <li>• Validation points: tous sauf Modérateur / Modérateur en formation / Soutien TENF</li>
+              <li>• Validation staff : accès admin avancé (Fondateurs TENF + Coordinateurs TENF)</li>
+              <li>• Validation profils : tous les rôles admin</li>
+              <li>• Validation points : tous sauf paliers modération en cours, Soutien TENF et Contributeur invité</li>
             </ul>
             <button
               type="button"
@@ -912,7 +904,7 @@ function MonthlyWorkflowSection() {
             label: "Postulations staff",
             href: "/admin/membres/postulations",
             status: staffApplicationsPendingCount === 0 ? "done" : "todo",
-            helper: `${staffApplicationsPendingCount} à traiter${staffApplicationsRedFlagCount > 0 ? ` · ${staffApplicationsRedFlagCount} red flag` : ""}`,
+            helper: `${staffApplicationsPendingCount} à traiter${staffApplicationsRedFlagCount > 0 ? ` · ${staffApplicationsRedFlagCount} signalement(s) sensible(s)` : ""}`,
           },
           {
             id: "profile_validation",

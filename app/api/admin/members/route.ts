@@ -918,7 +918,7 @@ export async function PUT(request: NextRequest) {
       typeof updates.role === "string" ? toCanonicalMemberRole(updates.role) : undefined;
     const targetRoleAfterUpdate = requestedRole ?? currentCanonicalRole;
 
-    // Garde-fou métier: le rôle "Communauté" reste toujours inactif.
+    // Garde-fou métier : le rôle "Communauté" reste toujours inactif.
     // Réactivation autorisée uniquement après un changement de rôle vers autre chose.
     if (targetRoleAfterUpdate === "Communauté") {
       if (updates.isActive === true) {
@@ -931,6 +931,36 @@ export async function PUT(request: NextRequest) {
         );
       }
       updates.isActive = false;
+    }
+
+    // Garde-fou métier : le rôle "Nouveau" est un statut interne transitoire.
+    // Il ne doit pas devenir actif sans changement de rôle explicite vers un rôle
+    // communautaire (Affilié, Développement, etc.). Cela évite qu'une validation
+    // de profil ou un toggle d'activation rapide n'expose un compte encore en
+    // attente d'attribution.
+    if (targetRoleAfterUpdate === "Nouveau") {
+      if (updates.isActive === true) {
+        return NextResponse.json(
+          {
+            error:
+              "Impossible d'activer un membre avec le rôle Nouveau. Attribue d'abord un rôle communautaire (Affilié, Développement…) pour permettre l'activation.",
+          },
+          { status: 400 }
+        );
+      }
+      updates.isActive = false;
+    }
+
+    // Préservation de la date d'intégration : elle doit représenter le réel
+    // ajout du membre à TENF. Si une valeur existe déjà en base, on ne l'écrase
+    // jamais avec une nouvelle valeur fournie par le client (ex. attribution
+    // rapide qui repassait `new Date()` à chaque promotion).
+    if (
+      updates.integrationDate !== undefined &&
+      existingMember.integrationDate !== null &&
+      existingMember.integrationDate !== undefined
+    ) {
+      delete updates.integrationDate;
     }
 
     const sensitiveFieldsChanged: string[] = [];

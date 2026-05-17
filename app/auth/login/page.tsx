@@ -193,10 +193,10 @@ export default function LoginPage() {
                   onChange={(e) => setDevRole(e.target.value)}
                   className="w-full rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2 text-sm text-white"
                 >
-                  <option value="FONDATEUR">Fondateur</option>
-                  <option value="ADMIN_COORDINATEUR">Admin Coordinateur</option>
-                  <option value="MODERATEUR">Modérateur</option>
-                  <option value="MODERATEUR_EN_FORMATION">Modérateur en formation</option>
+                  <option value="FONDATEUR">Fondateurs TENF</option>
+                  <option value="ADMIN_COORDINATEUR">Coordinateurs TENF</option>
+                  <option value="MODERATEUR">Modérateur TENF</option>
+                  <option value="MODERATEUR_EN_FORMATION">Modérateur en Accompagnement (accès)</option>
                   <option value="MODERATEUR_EN_PAUSE">Modérateur en pause</option>
                   <option value="SOUTIEN_TENF">Soutien TENF</option>
                 </select>

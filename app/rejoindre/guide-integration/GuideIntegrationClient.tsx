@@ -274,6 +274,13 @@ export default function GuideIntegrationClient() {
       />
 
       <div className="relative mx-auto max-w-5xl px-4 py-10 sm:py-14">
+        <Link
+          href="/rejoindre"
+          className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold transition hover:opacity-80 sm:text-sm"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
+          ← Retour à « Rejoindre TENF »
+        </Link>
         {/* Hero */}
         <section
           id="top"

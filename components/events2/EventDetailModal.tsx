@@ -147,7 +147,7 @@ export default function EventDetailModal({
 
   const shareText = useCallback(async () => {
     const line1 = `Événement TENF : ${event.title}`;
-    const line2 = typeof window !== "undefined" ? `${window.location.origin}/events2` : "/events2";
+    const line2 = typeof window !== "undefined" ? `${window.location.origin}/evenements` : "/evenements";
     const text = `${line1}\n${line2}`;
     try {
       if (navigator.share) {

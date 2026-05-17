@@ -15,7 +15,7 @@ export async function POST() {
   try {
     const admin = await requireAdvancedAdminAccess();
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const started = await startFollowEngagementSnapshotJob(admin.discordId || null);
@@ -71,7 +71,7 @@ export async function POST() {
         return NextResponse.json(
           {
             error:
-              "Impossible de lancer le snapshot en arriere-plan. Consulter les logs Netlify (fonction follow-engagement-snapshot-background).",
+              "Impossible de lancer le snapshot en arrière-plan. Consulter les logs Netlify (fonction follow-engagement-snapshot-background).",
           },
           { status: 502 }
         );
@@ -92,7 +92,7 @@ export async function POST() {
       return NextResponse.json(
         {
           error:
-            "Configuration Netlify manquante : definir NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET (secret partage) et s'assurer que URL ou NEXT_PUBLIC_BASE_URL est disponible pour declencher la fonction background.",
+            "Configuration Netlify manquante : définir NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET (secret partagé) et s'assurer que URL ou NEXT_PUBLIC_BASE_URL est disponible pour déclencher la fonction background.",
         },
         { status: 503 }
       );
@@ -113,7 +113,7 @@ export async function POST() {
   } catch (error) {
     console.error("[Admin Follow Snapshot Run] Erreur:", error);
     return NextResponse.json(
-      { error: "Erreur interne lors de la generation du snapshot follow" },
+      { error: "Erreur interne lors de la génération du snapshot follow" },
       { status: 500 }
     );
   }

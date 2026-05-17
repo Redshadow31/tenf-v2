@@ -11,9 +11,13 @@ export type MemberRole =
   | "Admin Coordinateur"
   | "Modérateur"
   | "Modérateur en formation"
+  | "Modérateur en Découverte"
+  | "Modérateur en Accompagnement"
+  | "Modérateur en Autonomie"
   | "Modérateur en activité réduite"
   | "Modérateur en pause"
   | "Soutien TENF"
+  | "Contributeur Invité TENF"
   | "Contributeur TENF du Mois"
   | "Créateur Junior"
   | "Les P'tits Jeunes"
@@ -29,13 +33,13 @@ export type LegacyMemberRole = "Admin Adjoint" | "Mentor" | "Modérateur Junior"
 const LEGACY_ROLE_TO_CANONICAL: Record<LegacyMemberRole, MemberRole> = {
   "Admin Adjoint": "Admin Coordinateur",
   Mentor: "Modérateur",
-  "Modérateur Junior": "Modérateur en formation",
+  "Modérateur Junior": "Modérateur en Accompagnement",
 };
 
 const LEGACY_BADGE_TO_CANONICAL: Record<LegacyMemberRole, string> = {
   "Admin Adjoint": "Admin Coordinateur",
   Mentor: "Modérateur",
-  "Modérateur Junior": "Modérateur en formation",
+  "Modérateur Junior": "Modérateur en Accompagnement",
 };
 
 export function isLegacyMemberRole(role: string): role is LegacyMemberRole {
@@ -50,9 +54,13 @@ const CANONICAL_MEMBER_ROLES: MemberRole[] = [
   "Admin Coordinateur",
   "Modérateur",
   "Modérateur en formation",
+  "Modérateur en Découverte",
+  "Modérateur en Accompagnement",
+  "Modérateur en Autonomie",
   "Modérateur en activité réduite",
   "Modérateur en pause",
   "Soutien TENF",
+  "Contributeur Invité TENF",
   "Contributeur TENF du Mois",
   "Créateur Junior",
   "Les P'tits Jeunes",
@@ -149,7 +157,7 @@ function getRoleForMember(login: string): MemberRole {
     return "Modérateur";
   }
   if (MODOS_JUNIORS.includes(lowerLogin)) {
-    return "Modérateur en formation";
+    return "Modérateur en Accompagnement";
   }
   
   return "Affilié";
@@ -168,7 +176,7 @@ export function getBadgesForMember(login: string): string[] {
   
   // Modérateur en formation est toujours un badge pour les membres dans cette liste
   if (MODOS_JUNIORS.includes(lowerLogin)) {
-    badges.push("Modérateur en formation");
+    badges.push("Modérateur en Accompagnement");
   }
   
   // Modérateur est toujours un badge pour les membres dans cette liste

@@ -26,6 +26,8 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import AdminHeader from "@/components/admin/AdminHeader";
+import AdminConfirmModal from "@/components/admin/AdminConfirmModal";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 import type {
   StaffMeetingDiscoursItem,
   StaffMeetingDiscoursSection,
@@ -33,15 +35,6 @@ import type {
 } from "@/lib/staff/monthlyMeetingTypes";
 import { generateMeetingCrMarkdown } from "@/lib/staff/generateMeetingCrMarkdown";
 import { extractMeetingPlainTextForExternal } from "@/lib/staff/extractMeetingPlainText";
-
-const navLinks = [
-  { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
-  { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
-  { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
-  { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-  { href: "/admin/gestion-acces/reunions-staff-mensuelles", label: "Réunions mensuelles staff", active: true },
-  { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)" },
-];
 
 function emptySection(): StaffMeetingDiscoursSection {
   return { id: `section-${crypto.randomUUID()}`, tabTitle: "", corps: "", conseil: "" };
@@ -148,6 +141,8 @@ export default function ReunionsStaffMensuellesPage() {
   const [sendSaving, setSendSaving] = useState(false);
   const [sendBodyPreview, setSendBodyPreview] = useState("");
   const [sendPreviewOpen, setSendPreviewOpen] = useState(false);
+  const [meetingDeleteTarget, setMeetingDeleteTarget] = useState<{ id: string; summary: string } | null>(null);
+  const [deleteMeetingSubmitting, setDeleteMeetingSubmitting] = useState(false);
 
   const isEditing = editingId !== null;
 
@@ -540,21 +535,33 @@ export default function ReunionsStaffMensuellesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm("Supprimer cette réunion et tous ses discours ?")) return;
+  function openDeleteMeeting(m: StaffMonthlyMeeting) {
+    setMeetingDeleteTarget({
+      id: m.id,
+      summary: `${formatFrDate(m.meetingDate)}${m.title ? ` · ${m.title}` : ""}`,
+    });
+  }
+
+  async function confirmDeleteMeeting() {
+    if (!meetingDeleteTarget) return;
     try {
       setSaving(true);
+      setDeleteMeetingSubmitting(true);
       setFeedback("");
-      const res = await fetch(`/api/admin/staff/monthly-meetings/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/staff/monthly-meetings/${encodeURIComponent(meetingDeleteTarget.id)}`, {
+        method: "DELETE",
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Erreur suppression");
-      if (editingId === id) resetForm();
+      if (editingId === meetingDeleteTarget.id) resetForm();
+      setMeetingDeleteTarget(null);
       await load();
       setFeedback("Réunion supprimée.");
     } catch (e) {
       setFeedback(e instanceof Error ? e.message : "Erreur suppression");
     } finally {
       setSaving(false);
+      setDeleteMeetingSubmitting(false);
     }
   }
 
@@ -677,7 +684,10 @@ export default function ReunionsStaffMensuellesPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
-      <AdminHeader title="Réunions mensuelles staff" navLinks={navLinks} />
+      <AdminHeader
+        title="Réunions mensuelles staff"
+        navLinks={administrationSiteHubNav("/admin/gestion-acces/reunions-staff-mensuelles")}
+      />
 
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 md:px-8">
         {feedback ? (
@@ -1089,7 +1099,7 @@ export default function ReunionsStaffMensuellesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => void handleDelete(m.id)}
+                        onClick={() => openDeleteMeeting(m)}
                         disabled={saving}
                         className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-sm text-red-200 hover:bg-red-500/10 disabled:opacity-50"
                       >
@@ -1104,6 +1114,24 @@ export default function ReunionsStaffMensuellesPage() {
           )}
         </section>
       </div>
+
+      <AdminConfirmModal
+        open={meetingDeleteTarget !== null}
+        tone="danger"
+        title="Supprimer cette réunion ?"
+        description={
+          meetingDeleteTarget ? (
+            <>
+              La réunion <strong className="text-rose-100">{meetingDeleteTarget.summary}</strong> et{" "}
+              <strong className="text-rose-100">tous ses discours</strong> seront supprimés définitivement.
+            </>
+          ) : null
+        }
+        confirmLabel="Supprimer"
+        loading={deleteMeetingSubmitting}
+        onCancel={() => !deleteMeetingSubmitting && setMeetingDeleteTarget(null)}
+        onConfirm={() => void confirmDeleteMeeting()}
+      />
 
       {modalDiscoursIndex !== null && discours[modalDiscoursIndex] ? (
         <div

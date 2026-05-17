@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireSectionAccessAny } from "@/lib/requireAdmin";
+import { RAIDS_EVENTSUB_SECTION_HREFS } from "@/lib/admin/raidsFiabiliteRbac";
+import { logAction } from "@/lib/admin/logger";
 import { supabaseAdmin } from "@/lib/db/supabase";
 
 export async function DELETE(request: NextRequest) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSectionAccessAny(RAIDS_EVENTSUB_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -27,6 +29,15 @@ export async function DELETE(request: NextRequest) {
     }
 
     const deletedIds = (data || []).map((row: { id: string }) => row.id);
+    void logAction({
+      action: "raids.eventsub.review.bulk_delete",
+      resourceType: "raid_test_event",
+      resourceId: `bulk:${deletedIds.length}`,
+      newValue: { deletedIds, requestedCount: ids.length, deletedCount: deletedIds.length },
+      metadata: {
+        sourcePage: "/admin/communaute/engagement/raids-eventsub",
+      },
+    });
     return NextResponse.json({ success: true, deletedIds, requestedCount: ids.length, deletedCount: deletedIds.length });
   } catch (error) {
     console.error("[admin/engagement/raids-sub/review/bulk] DELETE error:", error);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSectionAccess } from "@/lib/requireAdmin";
+import { requireSectionAccessAny } from "@/lib/requireAdmin";
+import { RAIDS_HISTORIQUE_FIABILITE_SECTION_HREFS } from "@/lib/admin/raidsFiabiliteRbac";
 import { hasAdvancedAdminAccess } from "@/lib/advancedAccess";
+import { logAction } from "@/lib/admin/logger";
 import { memberRepository } from "@/lib/repositories";
 import { getCurrentMonthKey, getMonthKey, removeRaidFait } from "@/lib/raidStorage";
 import { cacheDelete, cacheKey } from "@/lib/cache";
@@ -27,9 +29,9 @@ async function resolveDiscordId(loginOrId: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireSectionAccess("/admin/engagement/raids-a-valider");
+    const admin = await requireSectionAccessAny(RAIDS_HISTORIQUE_FIABILITE_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse." }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
     }
     const canManage = await hasAdvancedAdminAccess(admin.discordId);
     if (!canManage) {
@@ -56,6 +58,18 @@ export async function POST(request: NextRequest) {
     }
 
     await cacheDelete(cacheKey("api", "discord", "raids", "data-v2", monthKey, "v1"));
+    void logAction({
+      action: "raids.management.delete_raid",
+      resourceType: "raid_fait",
+      resourceId: `${monthKey}:${raiderId}:${targetId}:${date}`,
+      metadata: {
+        sourcePage: "/admin/communaute/engagement/historique-raids",
+        monthKey,
+        raider,
+        target,
+        date,
+      },
+    });
     return NextResponse.json({ success: true, message: "Raid supprime." });
   } catch (error) {
     console.error("[API Admin Engagement Raids Management Delete] Erreur:", error);

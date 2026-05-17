@@ -6,12 +6,14 @@ import {
   ArrowRight,
   BarChart3,
   Calendar,
+  CalendarCheck2,
   ChevronLeft,
+  Compass,
   ExternalLink,
   Film,
   Gamepad2,
   GraduationCap,
-  Lightbulb,
+  ListOrdered,
   Minus,
   PartyPopper,
   RefreshCw,
@@ -35,14 +37,14 @@ import {
 } from "recharts";
 import type { LucideIcon } from "lucide-react";
 
-const glassHeroClass =
-  "relative overflow-hidden rounded-3xl border border-indigo-400/25 bg-[linear-gradient(155deg,rgba(99,102,241,0.14),rgba(14,15,23,0.92)_38%,rgba(11,13,20,0.97))] shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl";
-const sectionCardClass =
-  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const panelClass =
+  "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]";
+const heroVisualClass =
+  "relative isolate overflow-hidden rounded-2xl border border-violet-500/20 bg-zinc-950/70 ring-1 ring-inset ring-violet-500/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
 const subtleButtonClass =
-  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45";
+  "inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-950/25 px-3 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-900/30";
 const focusRingClass =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0b10]";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";
 
 const CHART_COLORS = [
   "#6366f1",
@@ -59,10 +61,28 @@ const CHART_COLORS = [
 ];
 
 const tooltipStyle = {
-  backgroundColor: "#121218",
-  border: "1px solid #2a2a2d",
+  backgroundColor: "rgba(9,9,11,0.94)",
+  border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 8,
 };
+
+const lectureSteps = [
+  {
+    n: "1",
+    title: "Vérifier le volume",
+    body: "Un écart peut venir du nombre d’événements, pas seulement de l’ambiance vocal.",
+  },
+  {
+    n: "2",
+    title: "Croiser les sources",
+    body: "Quand une moyenne chute ou un bar est à zéro, ouvrir les feuilles de présence pour le détail réel.",
+  },
+  {
+    n: "3",
+    title: "Prioriser les types faibles",
+    body: "Concentrez l’animation publique sur les créneaux qui tirent peu la communauté, sans extrapoler sur un mois trop court.",
+  },
+];
 
 type CatMonthRow = {
   category: string;
@@ -237,16 +257,16 @@ export default function CommunauteEvenementsSuiviPage() {
     const p = payload[0]?.payload as { avgDisplay?: number | null; eventCount?: number; totalPresent?: number } | undefined;
     if (p?.eventCount != null) {
       return (
-        <div className="rounded-md border border-[#2a2a2d] bg-[#121218] px-3 py-2 text-xs text-slate-200">
-          <div className="font-medium text-slate-100">{label}</div>
+        <div className="rounded-md border border-zinc-700/90 bg-zinc-950 px-3 py-2 text-[length:clamp(0.6875rem,0.625rem+0.28vw,0.8125rem)] text-zinc-200">
+          <div className="font-medium text-zinc-50">{label}</div>
           <div>
-            Moyenne : <span className="text-indigo-200">{fmtAvg(p.avgDisplay ?? null)}</span> présents / événement
+            Moyenne : <span className="text-violet-200">{fmtAvg(p.avgDisplay ?? null)}</span> présents / événement
           </div>
-          <div className="text-slate-400">
+          <div className="text-zinc-400">
             {p.totalPresent} présent{(p.totalPresent ?? 0) > 1 ? "s" : ""} sur {p.eventCount} événement
             {(p.eventCount ?? 0) > 1 ? "s" : ""}
           </div>
-          <p className="mt-1 border-t border-white/10 pt-1 text-[10px] text-slate-500">Clic sur la barre : surligner dans le tableau</p>
+          <p className="mt-1 border-t border-white/10 pt-1 text-[10px] text-zinc-500">Clic sur la barre : surligner dans le tableau</p>
         </div>
       );
     }
@@ -260,255 +280,335 @@ export default function CommunauteEvenementsSuiviPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] scroll-smooth bg-[linear-gradient(165deg,#0a0a0f_0%,#12101c_48%,#0d1118_100%)] pb-12 text-white selection:bg-indigo-500/35">
-      <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 sm:py-8">
-        <section className={`${glassHeroClass} p-6 md:p-8`}>
-          <div className="pointer-events-none absolute -right-24 top-0 h-52 w-52 rounded-full bg-violet-600/16 blur-3xl" aria-hidden />
-          <div className="pointer-events-none absolute -left-16 bottom-0 h-44 w-44 rounded-full bg-cyan-500/12 blur-3xl" aria-hidden />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl space-y-4">
-              <Link
-                href="/admin/communaute/evenements"
-                className={`inline-flex items-center gap-1 text-sm text-indigo-200/90 transition hover:text-white ${focusRingClass} rounded-lg`}
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden />
-                Retour pilotage événements
-              </Link>
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full border border-white/12 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-100/90">
-                  Impact côté membres
-                </span>
-                <span className="rounded-full border border-emerald-400/28 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-100/90">
-                  Pilotage staff
-                </span>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Suivi par type de créneau</p>
-                <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-4xl">
-                  Présences : où ça rassemble le plus ?
-                </h1>
-                <p className="mt-3 text-sm leading-relaxed text-slate-300 md:text-[15px]">
-                  Ces chiffres traduisent l’<strong className="text-slate-100">expérience réelle</strong> des membres sur les
-                  vocaux et événements : moyenne de personnes présentes <em>par événement</em>, par type (Spotlight, film,
-                  formation…). Utilisez-les pour équilibrer l’agenda public et les annonces Discord — pas comme un simple
-                  tableau interne.
-                </p>
-                {data?.metricDescription ? (
-                  <p className="mt-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs leading-relaxed text-slate-400">
-                    {data.metricDescription}
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void load()} className={`${subtleButtonClass} ${focusRingClass}`}>
-                  <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
-                  Actualiser les données
-                </button>
-                <Link href="/admin/communaute/evenements/calendrier" className={`${subtleButtonClass} ${focusRingClass}`}>
-                  <Calendar className="h-4 w-4 shrink-0" aria-hidden />
-                  Calendrier créneaux
-                </Link>
+    <div className="relative isolate min-h-[calc(100vh-4rem)] min-w-0 scroll-smooth pb-10 text-white selection:bg-violet-500/35 [--suivi-gap:clamp(1rem,1.55vw,1.85rem)]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-[max(-4rem,calc(-6vw))] top-[-2.5rem] -z-10 h-[clamp(240px,32vw,440px)] overflow-hidden blur-3xl"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_22%_-8%,rgba(167,139,250,0.28),transparent_54%),radial-gradient(ellipse_at_88%_18%,rgba(56,189,248,0.14),transparent_48%),radial-gradient(ellipse_at_52%_100%,rgba(244,114,182,0.08),transparent_52%)]" />
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 -z-20 h-[min(820px,100vh)] max-h-none"
+        style={{
+          backgroundImage:
+            "linear-gradient(104deg,rgba(255,255,255,0.035) 0px,rgba(255,255,255,0.035) 1px,transparent 1px,transparent 74px)",
+          backgroundSize: "clamp(54px,4.2vw,72px) 100%",
+          opacity: 0.22,
+          maskImage: "linear-gradient(180deg,black 0%,transparent 78%)",
+        }}
+      />
+
+      <div className="mx-auto w-full max-w-[min(1720px,calc(100vw-2*clamp(0.6rem,1.75vw,1.75rem)))] px-[clamp(0.75rem,2vw,2.35rem)] pt-2 pb-6 sm:pt-3 md:pb-10">
+        <div className="grid min-w-0 grid-cols-1 gap-6 [--sidebar:min(100%,clamp(17rem,24vw,25rem))] xl:grid-cols-[minmax(0,1fr)_var(--sidebar)] xl:items-start xl:gap-[clamp(1.35rem,2.6vw,2.85rem)]">
+          <main className="min-w-0 space-y-6 xl:space-y-[var(--suivi-gap)] sm:space-y-8">
+            <header
+              className={`grid min-w-0 gap-6 p-[clamp(1rem,2vw,1.6rem)] lg:gap-8 lg:grid-cols-[minmax(0,1.42fr)_minmax(260px,min(100%,0.94fr))] ${panelClass}`}
+            >
+              <div className="min-w-0 space-y-4">
                 <Link
-                  href="/admin/communaute/evenements/participation"
-                  className={`${subtleButtonClass} ${focusRingClass} border-sky-400/25 bg-sky-500/10 text-sky-100`}
+                  href="/admin/communaute/evenements"
+                  className={`inline-flex items-center gap-1 text-[length:clamp(0.8rem,0.74rem+0.32vw,0.9375rem)] text-zinc-400 transition hover:text-white ${focusRingClass} rounded-lg`}
                 >
-                  Feuilles de présence
-                  <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                  <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
+                  Retour pilotage événements
                 </Link>
-                <Link href="/events2" target="_blank" rel="noopener noreferrer" className={`${subtleButtonClass} ${focusRingClass}`}>
-                  <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
-                  Aperçu agenda public
-                </Link>
-              </div>
-            </div>
-            <div className="w-full max-w-sm shrink-0 space-y-3 rounded-2xl border border-white/10 bg-black/35 p-5 backdrop-blur-sm">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">
-                <Lightbulb className="h-4 w-4 text-amber-300" aria-hidden />
-                Lecture rapide
-              </div>
-              <p className="text-xs leading-relaxed text-slate-400">
-                Une moyenne qui baisse peut signifier moins de monde dans le vocal <em>ou</em> plus d’événements plus courts :
-                croisez avec le nombre d’événements du mois avant de conclure.
-              </p>
-              <p className="text-xs text-slate-500">
-                Fuseau : <span className="text-slate-300">{data?.timezone ?? "Europe/Paris"}</span> · mois civil.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {loading ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className={`${sectionCardClass} h-28 animate-pulse bg-slate-800/40`} />
-              ))}
-            </div>
-            <div className={`${sectionCardClass} h-72 animate-pulse bg-slate-800/30`} />
-            <div className={`${sectionCardClass} h-96 animate-pulse bg-slate-800/30`} />
-            <p className="text-center text-sm text-slate-500">Chargement des statistiques de présence…</p>
-          </div>
-        ) : error ? (
-          <section className="rounded-2xl border border-rose-400/35 bg-rose-500/10 p-5 text-sm text-rose-100">{error}</section>
-        ) : data ? (
-          <>
-            {focusedCategory ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-400/35 bg-indigo-500/15 px-4 py-3 text-sm text-indigo-100">
-                <span>
-                  Filtre visuel : <strong className="text-white">{focusedCategory}</strong> — ligne surlignée dans le tableau
-                  ci-dessous.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setFocusedCategory(null)}
-                  className={`inline-flex items-center gap-1 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs font-medium text-white transition hover:bg-white/10 ${focusRingClass}`}
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden />
-                  Réinitialiser
-                </button>
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <article className={`${sectionCardClass} group p-5 transition hover:border-indigo-400/30`}>
-                <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Mois de référence</p>
-                <p className="mt-2 text-lg font-bold text-white">{data.monthLabels[data.referenceMonth]}</p>
-                <p className="text-xs text-slate-500">{data.referenceMonth}</p>
-              </article>
-              <article className={`${sectionCardClass} group border-emerald-500/15 p-5 transition hover:border-emerald-400/30`}>
-                <p className="flex items-center gap-2 text-xs uppercase tracking-[0.1em] text-slate-400">
-                  <Users className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
-                  Moyenne globale
-                </p>
-                <p className="mt-2 text-3xl font-bold tabular-nums text-emerald-300 transition group-hover:text-emerald-200">
-                  {fmtAvg(data.globalCurrentMonth.avgPresent)}
-                </p>
-                <p className="mt-1 text-xs leading-snug text-slate-500">
-                  présents / événement · {data.globalCurrentMonth.totalPresent} présence(s) sur{" "}
-                  {data.globalCurrentMonth.eventCount} événement(s)
-                </p>
-              </article>
-              <article className={`${sectionCardClass} group border-sky-500/15 p-5 transition hover:border-sky-400/30`}>
-                <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Événements (mois ref.)</p>
-                <p className="mt-2 text-3xl font-bold tabular-nums text-sky-300">{data.eventsReferenceMonth}</p>
-                <p className="mt-1 text-xs text-slate-500">Tous types — date de l’événement</p>
-              </article>
-              <article className={`${sectionCardClass} group border-violet-500/15 p-5 transition hover:border-violet-400/30`}>
-                <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Fenêtre d’analyse</p>
-                <p className="mt-2 text-3xl font-bold tabular-nums text-violet-200">{data.eventsInWindow}</p>
-                <p className="mt-1 text-xs text-slate-500">{data.eventCount} événements fusionnés (sources)</p>
-              </article>
-            </div>
-
-            {comparisonInsights ? (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div
-                  className={`rounded-2xl border p-4 ${
-                    comparisonInsights.best.delta >= 0
-                      ? "border-emerald-400/25 bg-emerald-500/10"
-                      : "border-slate-500/30 bg-slate-800/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-200/90">
-                    <TrendingUp className="h-4 w-4" aria-hidden />
-                    Écart le plus favorable (vs mois précédent)
-                  </div>
-                  <p className="mt-2 text-lg font-bold text-white">{comparisonInsights.best.cat}</p>
-                  <p className="text-sm text-slate-200">
-                    {comparisonInsights.best.delta > 0 ? "+" : ""}
-                    {fmtAvg(comparisonInsights.best.delta)} sur la moyenne présents / événement
-                  </p>
-                </div>
-                <div
-                  className={`rounded-2xl border p-4 ${
-                    comparisonInsights.worst.delta < 0
-                      ? "border-rose-400/25 bg-rose-500/10"
-                      : "border-slate-500/30 bg-slate-800/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-rose-200/90">
-                    <TrendingDown className="h-4 w-4" aria-hidden />
-                    Écart le moins favorable (vs mois précédent)
-                  </div>
-                  <p className="mt-2 text-lg font-bold text-white">{comparisonInsights.worst.cat}</p>
-                  <p className="text-sm text-slate-200">
-                    {comparisonInsights.worst.delta > 0 ? "+" : ""}
-                    {fmtAvg(comparisonInsights.worst.delta)} sur la moyenne présents / événement
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
-            <section className={`${sectionCardClass} p-5 sm:p-6`}>
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/25 text-indigo-200">
-                    <Users className="h-5 w-5" aria-hidden />
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-[0.625em] py-[0.35em] text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.1em] text-violet-100/92">
+                    Impact côté membres
                   </span>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">Moyenne de présents par événement</h2>
-                    <p className="mt-1 text-sm text-slate-400">
-                      Mois affiché : <strong className="text-slate-200">{data.monthLabels[data.referenceMonth]}</strong> — cliquez une
-                      barre pour surligner le type dans le tableau.
+                  <span className="rounded-full border border-emerald-400/26 bg-emerald-500/[0.08] px-[0.625em] py-[0.35em] text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.1em] text-emerald-100/90">
+                    Pilotage staff
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[length:clamp(0.6875rem,0.625rem+0.25vw,0.8125rem)] uppercase tracking-[0.12em] text-violet-200/95">
+                    Suivi par type de créneau
+                  </p>
+                  <h1 className="mt-2 text-[clamp(1.45rem,1.05rem+1.05vw,2.35rem)] font-semibold tracking-tight text-white">
+                    Présences : où ça rassemble le plus ?
+                  </h1>
+                  <p className="mt-3 max-w-3xl text-[length:clamp(0.8125rem,0.75rem+0.32vw,0.9625rem)] leading-[1.65] text-zinc-400">
+                    Ces graphiques reflètent l’expérience réelle sur les créneaux : moyenne de personnes présentes{" "}
+                    <strong className="font-semibold text-zinc-100">par événement</strong>, segmentée par type. Idéal pour
+                    équilibrer l’agenda et les annonces — les grilles et la typo suivent votre zoom comme sur le hub
+                    événements.
+                  </p>
+                  {data?.metricDescription ? (
+                    <p className="mt-3 rounded-xl border border-white/[0.08] bg-zinc-900/55 px-[clamp(0.65rem,1.25vw,0.875rem)] py-[0.625rem] text-[length:clamp(0.6875rem,0.625rem+0.22vw,0.8125rem)] leading-relaxed text-zinc-500">
+                      {data.metricDescription}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex min-w-0 flex-wrap gap-[clamp(0.4rem,0.85vw,0.625rem)]">
+                  <button type="button" onClick={() => void load()} className={`${subtleButtonClass} ${focusRingClass}`}>
+                    <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+                    Actualiser les données
+                  </button>
+                  <Link href="/admin/communaute/evenements/calendrier" className={`${subtleButtonClass} ${focusRingClass}`}>
+                    <Calendar className="h-4 w-4 shrink-0" aria-hidden />
+                    Calendrier créneaux
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements/participation"
+                    className={`${subtleButtonClass} ${focusRingClass} border-sky-400/28 bg-sky-950/[0.35] text-sky-100`}
+                  >
+                    Feuilles de présence
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/evenements"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${subtleButtonClass} ${focusRingClass}`}
+                  >
+                    <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
+                    Aperçu agenda public
+                  </Link>
+                </div>
+              </div>
+              <div className={`relative min-h-[10.75rem] p-[clamp(0.875rem,1.5vw,1.2rem)] sm:min-h-[12rem] ${heroVisualClass}`}>
+                <div
+                  aria-hidden
+                  className="absolute inset-0 bg-[conic-gradient(from_195deg_at_72%_-12%,rgba(167,139,250,0.16),transparent_40%,transparent_60%,rgba(56,189,248,0.1))]"
+                />
+                <div aria-hidden className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.12),transparent_40%,transparent_65%,rgba(0,0,0,0.32))]" />
+                <div className="relative flex h-full min-h-[9.75rem] flex-col justify-between gap-4">
+                  <span className="inline-flex w-fit items-center gap-2 rounded-xl border border-violet-400/26 bg-violet-500/[0.11] px-3 py-1.5 text-[length:clamp(0.65rem,0.55rem+0.35vw,0.7rem)] font-semibold uppercase tracking-[0.08em] text-violet-50/96">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-200/92" aria-hidden />
+                    Synthèse live
+                  </span>
+                  {data ? (
+                    <dl className="grid min-w-0 grid-cols-2 gap-[clamp(0.5rem,1vw,0.875rem)] text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8rem)]">
+                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/50 p-[clamp(0.5rem,1vw,0.65rem)]">
+                        <dt className="font-medium uppercase tracking-wide text-zinc-500">Moyenne globale</dt>
+                        <dd className="mt-1 text-[clamp(1.15rem,0.92rem+0.55vw,1.65rem)] font-semibold tabular-nums text-emerald-300/95">
+                          {fmtAvg(data.globalCurrentMonth.avgPresent)}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/50 p-[clamp(0.5rem,1vw,0.65rem)]">
+                        <dt className="font-medium uppercase tracking-wide text-zinc-500">Créneaux (mois ref.)</dt>
+                        <dd className="mt-1 text-[clamp(1.15rem,0.92rem+0.55vw,1.65rem)] font-semibold tabular-nums text-sky-200/96">
+                          {data.eventsReferenceMonth}
+                        </dd>
+                      </div>
+                      <div className="col-span-2 rounded-xl border border-white/[0.08] bg-zinc-900/45 p-[clamp(0.45rem,0.9vw,0.55rem)] text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] leading-snug text-zinc-500">
+                        Fuseau&nbsp;: <span className="text-zinc-300">{data.timezone}</span> · étiquette mois&nbsp;{" "}
+                        <span className="tabular-nums text-zinc-300">{data.referenceMonth}</span>
+                      </div>
+                    </dl>
+                  ) : (
+                    <p className="text-[length:clamp(0.75rem,0.68rem+0.25vw,0.875rem)] leading-snug text-zinc-500">
+                      {loading
+                        ? "Chargement des agrégats de présence…"
+                        : "Les indicateurs synthétiques s’affichent dès réception du serveur."}
+                    </p>
+                  )}
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[length:clamp(0.65rem,0.56rem+0.28vw,0.775rem)] text-zinc-500">
+                    <Compass className="h-3.5 w-3.5 shrink-0 text-violet-400/72" aria-hidden />
+                    Défilement du graphique : min-hauteur en <span className="tabular-nums">rem</span> pour rester lisible au
+                    zoom.
+                  </p>
+                </div>
+              </div>
+            </header>
+
+            {loading ? (
+              <div className="space-y-[var(--suivi-gap)]">
+                <div className="grid min-w-0 grid-cols-1 gap-[var(--suivi-gap)] sm:grid-cols-2 xl:grid-cols-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className={`${panelClass} h-[clamp(7rem,9vw,7.75rem)] animate-pulse bg-zinc-800/35`} />
+                  ))}
+                </div>
+                <div className={`${panelClass} h-[clamp(16rem,32vw,20rem)] animate-pulse bg-zinc-800/30`} />
+                <div className={`${panelClass} h-[clamp(22rem,40vw,28rem)] animate-pulse bg-zinc-800/28`} />
+                <p className="text-center text-[length:clamp(0.8125rem,0.75rem+0.25vw,0.9375rem)] text-zinc-500">
+                  Chargement des statistiques de présence…
+                </p>
+              </div>
+            ) : error ? (
+              <section className="rounded-2xl border border-rose-400/32 bg-rose-500/[0.12] px-[clamp(1rem,2vw,1.35rem)] py-5 text-[length:clamp(0.8125rem,0.75rem+0.28vw,0.9375rem)] text-rose-100">
+                {error}
+              </section>
+            ) : data ? (
+              <>
+                {focusedCategory ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-400/34 bg-violet-500/[0.12] px-[clamp(0.85rem,1.6vw,1.1rem)] py-3 text-[length:clamp(0.8125rem,0.75rem+0.25vw,0.9375rem)] text-violet-50">
+                    <span>
+                      Filtre visuel : <strong className="text-white">{focusedCategory}</strong> — ligne surlignée dans le
+                      tableau ci-dessous.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setFocusedCategory(null)}
+                      className={`inline-flex min-h-[2.25rem] items-center gap-1 rounded-lg border border-white/[0.12] bg-zinc-950/60 px-[0.55rem] py-1 text-xs font-medium text-white transition hover:bg-zinc-900/85 ${focusRingClass}`}
+                    >
+                      <X className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      Réinitialiser
+                    </button>
+                  </div>
+                ) : null}
+
+                <div className="grid min-w-0 grid-cols-1 gap-[var(--suivi-gap)] sm:grid-cols-2 2xl:grid-cols-4">
+                  <article className={`${panelClass} group min-w-0 p-[clamp(1rem,1.9vw,1.35rem)] transition hover:border-violet-400/22`}>
+                    <p className="text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] uppercase tracking-[0.1em] text-zinc-500">
+                      Mois de référence
+                    </p>
+                    <p className="mt-2 text-[length:clamp(1.0625rem,0.92rem+0.45vw,1.3125rem)] font-semibold text-white">
+                      {data.monthLabels[data.referenceMonth]}
+                    </p>
+                    <p className="text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] tabular-nums text-zinc-600">{data.referenceMonth}</p>
+                  </article>
+                  <article className={`${panelClass} group min-w-0 border-emerald-500/18 p-[clamp(1rem,1.9vw,1.35rem)] transition hover:border-emerald-400/32`}>
+                    <p className="flex flex-wrap items-center gap-2 text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] uppercase tracking-[0.1em] text-zinc-500">
+                      <Users className="h-3.5 w-3.5 shrink-0 text-emerald-400" aria-hidden />
+                      Moyenne globale
+                    </p>
+                    <p className="mt-2 text-[clamp(1.65rem,1.35rem+0.95vw,2.125rem)] font-semibold tabular-nums text-emerald-300/98 transition group-hover:text-emerald-200">
+                      {fmtAvg(data.globalCurrentMonth.avgPresent)}
+                    </p>
+                    <p className="mt-1 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.7875rem)] leading-snug text-zinc-500">
+                      présents / événement · {data.globalCurrentMonth.totalPresent} présence(s) sur{" "}
+                      {data.globalCurrentMonth.eventCount} événement(s)
+                    </p>
+                  </article>
+                  <article className={`${panelClass} group min-w-0 border-sky-500/18 p-[clamp(1rem,1.9vw,1.35rem)] transition hover:border-sky-400/32`}>
+                    <p className="text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] uppercase tracking-[0.1em] text-zinc-500">
+                      Événements (mois ref.)
+                    </p>
+                    <p className="mt-2 text-[clamp(1.65rem,1.35rem+0.95vw,2.125rem)] font-semibold tabular-nums text-sky-200/96">
+                      {data.eventsReferenceMonth}
+                    </p>
+                    <p className="mt-1 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.7875rem)] text-zinc-500">Tous types — date de l’événement</p>
+                  </article>
+                  <article className={`${panelClass} group min-w-0 border-violet-500/18 p-[clamp(1rem,1.9vw,1.35rem)] transition hover:border-violet-400/32`}>
+                    <p className="text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] uppercase tracking-[0.1em] text-zinc-500">
+                      Fenêtre d’analyse
+                    </p>
+                    <p className="mt-2 text-[clamp(1.65rem,1.35rem+0.95vw,2.125rem)] font-semibold tabular-nums text-violet-200/98">
+                      {data.eventsInWindow}
+                    </p>
+                    <p className="mt-1 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.7875rem)] text-zinc-500">
+                      {data.eventCount} événements fusionnés (sources)
+                    </p>
+                  </article>
+                </div>
+
+                {comparisonInsights ? (
+                  <div className="grid min-w-0 grid-cols-1 gap-[var(--suivi-gap)] md:grid-cols-2">
+                    <div
+                      className={`rounded-2xl border p-[clamp(1rem,1.85vw,1.25rem)] ${
+                        comparisonInsights.best.delta >= 0 ? "border-emerald-400/26 bg-emerald-500/[0.1]" : "border-zinc-600/55 bg-zinc-900/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.78rem)] font-semibold uppercase tracking-wide text-emerald-100/94">
+                        <TrendingUp className="h-4 w-4 shrink-0" aria-hidden />
+                        Écart le plus favorable (vs mois précédent)
+                      </div>
+                      <p className="mt-2 text-[length:clamp(1.0625rem,0.95rem+0.35vw,1.25rem)] font-semibold text-white">
+                        {comparisonInsights.best.cat}
+                      </p>
+                      <p className="text-[length:clamp(0.8125rem,0.75rem+0.28vw,0.9375rem)] text-zinc-200">
+                        {comparisonInsights.best.delta > 0 ? "+" : ""}
+                        {fmtAvg(comparisonInsights.best.delta)} sur la moyenne présents / événement
+                      </p>
+                    </div>
+                    <div
+                      className={`rounded-2xl border p-[clamp(1rem,1.85vw,1.25rem)] ${
+                        comparisonInsights.worst.delta < 0 ? "border-rose-400/26 bg-rose-500/[0.1]" : "border-zinc-600/55 bg-zinc-900/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.78rem)] font-semibold uppercase tracking-wide text-rose-100/93">
+                        <TrendingDown className="h-4 w-4 shrink-0" aria-hidden />
+                        Écart le moins favorable (vs mois précédent)
+                      </div>
+                      <p className="mt-2 text-[length:clamp(1.0625rem,0.95rem+0.35vw,1.25rem)] font-semibold text-white">
+                        {comparisonInsights.worst.cat}
+                      </p>
+                      <p className="text-[length:clamp(0.8125rem,0.75rem+0.28vw,0.9375rem)] text-zinc-200">
+                        {comparisonInsights.worst.delta > 0 ? "+" : ""}
+                        {fmtAvg(comparisonInsights.worst.delta)} sur la moyenne présents / événement
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                <section className={`${panelClass} min-w-0 p-[clamp(1.1rem,2vw,1.6rem)]`}>
+                  <div className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="flex h-[2.5rem] w-[2.5rem] shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-violet-500/18 text-violet-100">
+                        <Users className="h-[1.15rem] w-[1.15rem]" aria-hidden />
+                      </span>
+                      <div className="min-w-0">
+                        <h2 className="text-[length:clamp(1rem,0.875rem+0.45vw,1.175rem)] font-semibold text-white">
+                          Moyenne de présents par événement
+                        </h2>
+                        <p className="mt-1 text-[length:clamp(0.8125rem,0.75rem+0.22vw,0.9rem)] text-zinc-500">
+                          Mois affiché : <strong className="font-medium text-zinc-300">{data.monthLabels[data.referenceMonth]}</strong>{" "}
+                          — cliquez une barre pour surligner le type dans le tableau.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {currentBarData.length === 0 ? (
+                    <p className="text-[length:clamp(0.8125rem,0.75rem+0.25vw,0.9375rem)] text-zinc-500">Aucun événement sur le mois de référence.</p>
+                  ) : (
+                    <div className="w-full min-h-[clamp(280px,35vw,640px)] min-w-0" style={{ height: Math.min(640, 140 + currentBarData.length * 44) }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart layout="vertical" data={currentBarData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#32323a" horizontal={false} />
+                          <XAxis type="number" domain={[0, yMaxCurrent]} stroke="#9ca3af" tickLine={false} allowDecimals />
+                          <YAxis type="category" dataKey="category" stroke="#9ca3af" tickLine={false} width={120} tick={{ fontSize: 11 }} />
+                          <Tooltip
+                            content={({ label, payload }) =>
+                              avgTooltip(String(label ?? ""), (payload || []) as { payload?: Record<string, unknown> }[])
+                            }
+                            cursor={{ fill: "rgba(99,102,241,0.08)" }}
+                          />
+                          <Bar dataKey="avg" name="Présents / événement" fill="#6366f1" radius={[0, 4, 4, 0]} maxBarSize={24}>
+                            {currentBarData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${entry.category}-${index}`}
+                                fill="#6366f1"
+                                opacity={focusedCategory && entry.category !== focusedCategory ? 0.38 : 1}
+                                cursor="pointer"
+                                onClick={() => handleBarClick(entry)}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {data.currentMonthByCategory.length > 7 ? (
+                    <p className="mt-3 text-[length:clamp(0.6875rem,0.625rem+0.18vw,0.78rem)] text-zinc-600">
+                      Plus de sept types sur le mois : les types les moins représentés sont regroupés sous « Autres ».
+                    </p>
+                  ) : null}
+                </section>
+
+                <section className={`${panelClass} min-w-0 p-[clamp(1.1rem,2vw,1.6rem)] sm:p-[clamp(1.125rem,2.2vw,1.75rem)]`}>
+              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-cyan-500/14 text-cyan-200">
+                    <BarChart3 className="h-5 w-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-[length:clamp(1rem,0.875rem+0.45vw,1.175rem)] font-semibold text-white">Comparer dans le temps</h2>
+                    <p className="mt-1 text-[length:clamp(0.8125rem,0.75rem+0.22vw,0.905rem)] text-zinc-500">
+                      Même métrique (présents / événement), autre échelle temporelle.
                     </p>
                   </div>
                 </div>
-              </div>
-              {currentBarData.length === 0 ? (
-                <p className="text-sm text-slate-400">Aucun événement sur le mois de référence.</p>
-              ) : (
-                <div
-                  className="w-full min-h-[280px]"
-                  style={{ height: Math.min(640, 140 + currentBarData.length * 44) }}
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart layout="vertical" data={currentBarData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#32323a" horizontal={false} />
-                      <XAxis type="number" domain={[0, yMaxCurrent]} stroke="#9ca3af" tickLine={false} allowDecimals />
-                      <YAxis type="category" dataKey="category" stroke="#9ca3af" tickLine={false} width={120} tick={{ fontSize: 11 }} />
-                      <Tooltip
-                        content={({ label, payload }) => avgTooltip(String(label ?? ""), (payload || []) as { payload?: Record<string, unknown> }[])}
-                        cursor={{ fill: "rgba(99,102,241,0.08)" }}
-                      />
-                      <Bar dataKey="avg" name="Présents / événement" fill="#6366f1" radius={[0, 4, 4, 0]} maxBarSize={24}>
-                        {currentBarData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${entry.category}-${index}`}
-                            fill="#6366f1"
-                            opacity={focusedCategory && entry.category !== focusedCategory ? 0.38 : 1}
-                            cursor="pointer"
-                            onClick={() => handleBarClick(entry)}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-              {data.currentMonthByCategory.length > 7 ? (
-                <p className="mt-3 text-xs text-slate-500">
-                  Plus de sept types sur le mois : les types les moins représentés sont regroupés sous « Autres ».
-                </p>
-              ) : null}
-            </section>
-
-            <section className={`${sectionCardClass} p-5 sm:p-6`}>
-              <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-200">
-                    <BarChart3 className="h-5 w-5" aria-hidden />
-                  </span>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">Comparer dans le temps</h2>
-                    <p className="mt-1 text-sm text-slate-400">Même métrique (présents / événement), autre échelle temporelle.</p>
-                  </div>
-                </div>
-                <div className="flex w-full rounded-2xl border border-[#353a50] bg-[#0f1424] p-1 sm:w-auto">
+                <div className="flex w-full rounded-2xl border border-white/[0.09] bg-zinc-950/85 p-[0.1875rem] shadow-inner shadow-black/20 sm:w-auto">
                   <button
                     type="button"
                     onClick={() => setCompareMode("prev")}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${focusRingClass} ${
-                      compareMode === "prev" ? "bg-indigo-500/35 text-white shadow-inner" : "text-slate-400 hover:text-white"
+                    aria-pressed={compareMode === "prev"}
+                    className={`flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-[0.8rem] px-4 py-2 text-[length:clamp(0.8125rem,0.74rem+0.28vw,0.9375rem)] font-medium transition ${focusRingClass} ${
+                      compareMode === "prev"
+                        ? "bg-violet-500/[0.34] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                        : "text-zinc-500 hover:bg-white/[0.04] hover:text-white"
                     }`}
                   >
                     <Calendar className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
@@ -517,8 +617,11 @@ export default function CommunauteEvenementsSuiviPage() {
                   <button
                     type="button"
                     onClick={() => setCompareMode("last3")}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${focusRingClass} ${
-                      compareMode === "last3" ? "bg-indigo-500/35 text-white shadow-inner" : "text-slate-400 hover:text-white"
+                    aria-pressed={compareMode === "last3"}
+                    className={`flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-[0.8rem] px-4 py-2 text-[length:clamp(0.8125rem,0.74rem+0.28vw,0.9375rem)] font-medium transition ${focusRingClass} ${
+                      compareMode === "last3"
+                        ? "bg-violet-500/[0.34] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                        : "text-zinc-500 hover:bg-white/[0.04] hover:text-white"
                     }`}
                   >
                     <BarChart3 className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
@@ -527,7 +630,7 @@ export default function CommunauteEvenementsSuiviPage() {
                 </div>
               </div>
 
-              <div className="h-[420px] w-full">
+              <div className="h-[clamp(22rem,min(72vw),32.5rem)] w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   {compareMode === "prev" ? (
                     <BarChart data={barPrevData} margin={{ top: 8, right: 8, left: 0, bottom: 64 }}>
@@ -564,21 +667,23 @@ export default function CommunauteEvenementsSuiviPage() {
                   )}
                 </ResponsiveContainer>
               </div>
-              <p className="mt-4 rounded-xl border border-white/8 bg-black/25 px-3 py-2 text-xs leading-relaxed text-slate-500">
-                Au plus dix types par graphique ; le reste sous « Autres ». Une barre à <strong className="text-slate-400">0</strong> signifie
+              <p className="mt-4 rounded-xl border border-white/[0.07] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.6875rem,0.625rem+0.18vw,0.8rem)] leading-relaxed text-zinc-500">
+                Au plus dix types par graphique ; le reste sous « Autres ». Une barre à <strong className="font-semibold text-zinc-400">0</strong> signifie
                 qu’aucune présence validée n’a été enregistrée sur la période pour ce type — à recouper avec les feuilles de présence.
               </p>
             </section>
 
-            <section className={`${sectionCardClass} overflow-hidden`}>
-              <div className="flex flex-col gap-1 border-b border-[#2f3244] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-base font-bold text-white">Tableau détaillé</h2>
-                <p className="text-xs text-slate-500">Cliquez une ligne pour la mettre en avant (ou recliquez pour tout afficher)</p>
+            <section className={`${panelClass} overflow-hidden min-w-0`}>
+              <div className="flex flex-col gap-1 border-b border-white/[0.07] px-[clamp(1rem,2vw,1.35rem)] py-4 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-[length:clamp(0.9625rem,0.865rem+0.35vw,1.1rem)] font-semibold text-white">Tableau détaillé</h2>
+                <p className="text-[length:clamp(0.6875rem,0.625rem+0.18vw,0.78rem)] text-zinc-500">
+                  Cliquez une ligne pour la mettre en avant (ou recliquez pour tout afficher)
+                </p>
               </div>
-              <div className="overflow-x-auto p-4 sm:p-5">
-                <table className="w-full min-w-[640px] text-sm">
+              <div className="overflow-x-auto p-4 sm:p-[clamp(1rem,2vw,1.35rem)]">
+                <table className="w-full min-w-[min(640px,100%)] text-[length:clamp(0.8125rem,0.75rem+0.22vw,0.9375rem)]">
                   <thead>
-                    <tr className="border-b border-[#353a50] text-left text-xs uppercase tracking-[0.08em] text-slate-400">
+                    <tr className="border-b border-zinc-700/85 text-left text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] uppercase tracking-[0.08em] text-zinc-500">
                       <th className="px-3 py-3">Type</th>
                       <th className="px-3 py-3">Moyenne {data.monthLabels[data.referenceMonth]}</th>
                       <th className="px-3 py-3">Moyenne {data.monthLabels[data.previousMonth]}</th>
@@ -597,30 +702,30 @@ export default function CommunauteEvenementsSuiviPage() {
                         <tr
                           key={row.category}
                           onClick={() => setFocusedCategory((prev) => (prev === row.category ? null : row.category))}
-                          className={`cursor-pointer border-b border-white/5 transition hover:bg-white/[0.04] ${
-                            isFocused ? "bg-indigo-500/15 ring-1 ring-inset ring-indigo-400/40" : ""
+                          className={`cursor-pointer border-b border-white/[0.05] transition hover:bg-white/[0.04] ${
+                            isFocused ? "bg-violet-500/12 ring-1 ring-inset ring-violet-400/45" : ""
                           }`}
                         >
                           <td className="px-3 py-3">
-                            <span className="inline-flex items-center gap-2 font-medium text-slate-100">
+                            <span className="inline-flex items-center gap-2 font-medium text-zinc-100">
                               <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${gradient}`}>
                                 <Icon className="h-4 w-4 text-white" aria-hidden />
                               </span>
                               {row.category}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-slate-300">{fmtAvg(c)}</td>
-                          <td className="px-3 py-3 text-slate-300">{fmtAvg(p)}</td>
+                          <td className="px-3 py-3 text-zinc-400">{fmtAvg(c)}</td>
+                          <td className="px-3 py-3 text-zinc-400">{fmtAvg(p)}</td>
                           <td className="px-3 py-3">
                             {delta === null ? (
-                              <span className="inline-flex items-center gap-1 text-slate-500">
+                              <span className="inline-flex items-center gap-1 text-zinc-600">
                                 <Minus className="h-3.5 w-3.5" aria-hidden />
                                 —
                               </span>
                             ) : (
                               <span
                                 className={`inline-flex items-center gap-1 font-semibold ${
-                                  delta > 0 ? "text-emerald-300" : delta < 0 ? "text-rose-300" : "text-slate-300"
+                                  delta > 0 ? "text-emerald-300" : delta < 0 ? "text-rose-300" : "text-zinc-400"
                                 }`}
                               >
                                 {delta > 0 ? <TrendingUp className="h-3.5 w-3.5" aria-hidden /> : null}
@@ -630,7 +735,7 @@ export default function CommunauteEvenementsSuiviPage() {
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-3 text-slate-400">{row.currentEventCount > 0 ? row.currentEventCount : "—"}</td>
+                          <td className="px-3 py-3 text-zinc-500">{row.currentEventCount > 0 ? row.currentEventCount : "—"}</td>
                         </tr>
                       );
                     })}
@@ -638,8 +743,94 @@ export default function CommunauteEvenementsSuiviPage() {
                 </table>
               </div>
             </section>
-          </>
-        ) : null}
+              </>
+            ) : null}
+          </main>
+
+          <aside
+            aria-label="Aide lecture suivi événements"
+            className="min-w-0 space-y-4 xl:sticky xl:top-5 xl:self-start"
+          >
+            <div className={`${panelClass} space-y-3 p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+              <p className="flex items-center gap-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                <Sparkles className="h-4 w-4 text-amber-200/85" aria-hidden />
+                Lecture rapide
+              </p>
+              <p className="text-[length:clamp(0.75rem,0.68rem+0.28vw,0.8625rem)] leading-[1.6] text-zinc-400">
+                Une moyenne qui baisse peut refléter moins de monde dans le vocal <em className="not-italic text-zinc-300">ou</em>{" "}
+                davantage de créneaux plus courts : croisez avec le volume d’événements avant de tirer une conclusion forte.
+              </p>
+              <p className="text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8rem)] text-zinc-500">
+                Fuseau : <span className="tabular-nums text-zinc-300">{data?.timezone ?? "Europe/Paris"}</span>
+                {!loading ? " · mois civil" : null}.
+              </p>
+            </div>
+
+            <div className={`${panelClass} p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+              <p className="flex items-center gap-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                <ListOrdered className="h-4 w-4 shrink-0 text-violet-300/85" aria-hidden />
+                Lire ce tableau comme le staff
+              </p>
+              <ol className="mt-4 space-y-[0.65rem]">
+                {lectureSteps.map((step) => (
+                  <li key={step.n} className="flex min-w-0 gap-3">
+                    <span
+                      aria-hidden
+                      className="flex h-[2.125em] min-w-[2.125em] items-center justify-center rounded-lg border border-violet-500/28 bg-violet-500/[0.09] text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] font-bold tabular-nums text-violet-50"
+                    >
+                      {step.n}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-semibold text-zinc-100">{step.title}</p>
+                      <p className="mt-1 text-[length:clamp(0.6875rem,0.62rem+0.2vw,0.8rem)] leading-[1.55] text-zinc-500">
+                        {step.body}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div className={`${panelClass} p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+              <p className="text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                Actions liées
+              </p>
+              <nav className="mt-3 flex flex-col gap-2" aria-label="Raccourcis suivi">
+                <Link
+                  href="/admin/communaute/evenements/participation"
+                  className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-sky-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                >
+                  Feuilles de présence
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </Link>
+                <Link
+                  href="/admin/communaute/evenements/liste"
+                  className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-violet-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                >
+                  Liste des événements
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </Link>
+                <Link
+                  href="/admin/communaute/evenements/recap"
+                  className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-emerald-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                >
+                  Récapitulatifs
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </Link>
+                <Link
+                  href="/admin/communaute/evenements/calendrier"
+                  className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-white/15 hover:bg-zinc-900/72 ${focusRingClass}`}
+                >
+                  <span className="inline-flex items-center gap-2 min-w-0">
+                    <CalendarCheck2 className="h-4 w-4 shrink-0 opacity-85" aria-hidden />
+                    Calendrier staff
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </Link>
+              </nav>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

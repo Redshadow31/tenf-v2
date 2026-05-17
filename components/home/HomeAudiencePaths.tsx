@@ -12,8 +12,9 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
 
-const DISCORD_URL = "https://discord.gg/WnpazgcZHk";
+const DISCORD_URL = DISCORD_INVITE_URL;
 
 type PathId = "discover" | "join" | "member";
 
@@ -38,7 +39,7 @@ const PATHS: {
       { href: "/a-propos", label: "À propos de la communauté" },
       { href: "/lives", label: "Qui est en live" },
       { href: "/membres", label: "Annuaire des créateurs" },
-      { href: "/events2", label: "Événements communautaires" },
+      { href: "/evenements", label: "Événements communautaires" },
     ],
   },
   {

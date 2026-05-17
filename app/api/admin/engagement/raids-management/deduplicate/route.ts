@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSectionAccess } from "@/lib/requireAdmin";
+import { requireSectionAccessAny } from "@/lib/requireAdmin";
+import { RAIDS_HISTORIQUE_FIABILITE_SECTION_HREFS } from "@/lib/admin/raidsFiabiliteRbac";
 import { hasAdvancedAdminAccess } from "@/lib/advancedAccess";
+import { logAction } from "@/lib/admin/logger";
 import {
   loadRaidsFaits,
   loadRaidsRecus,
@@ -29,9 +31,9 @@ function resolveMonthKey(month?: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireSectionAccess("/admin/engagement/raids-a-valider");
+    const admin = await requireSectionAccessAny(RAIDS_HISTORIQUE_FIABILITE_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse." }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
     }
     const canManage = await hasAdvancedAdminAccess(admin.discordId);
     if (!canManage) {
@@ -75,6 +77,16 @@ export async function POST(request: NextRequest) {
       await recalculateAlerts(monthKey);
       await cacheDelete(cacheKey("api", "discord", "raids", "data-v2", monthKey, "v1"));
     }
+
+    void logAction({
+      action: "raids.management.deduplicate",
+      resourceType: "raid_storage_month",
+      resourceId: monthKey,
+      newValue: { removed: { total: totalRemoved, raidsFaits: removedFaits, raidsRecus: removedRecus } },
+      metadata: {
+        sourcePage: "/admin/communaute/engagement/historique-raids",
+      },
+    });
 
     return NextResponse.json({
       message: totalRemoved > 0 ? "Doublons supprimes." : "Aucun doublon a supprimer.",

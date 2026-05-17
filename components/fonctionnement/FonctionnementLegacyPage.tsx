@@ -9,6 +9,7 @@ import {
 } from "@/lib/fonctionnement/guidance";
 import styles from "@/app/fonctionnement-tenf/fonctionnement.module.css";
 import { IntegrationTabContent } from "@/components/fonctionnement/integration-sections";
+import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
 
 export { type TabId, tabs, tabUiMeta, tabGuidance };
 
@@ -2269,7 +2270,7 @@ export default function FonctionnementParcoursComplet() {
               Retour en haut
             </button>
             <a
-              href="https://discord.gg/WnpazgcZHk"
+              href={DISCORD_INVITE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-2 rounded-lg text-sm font-semibold border transition-colors"
@@ -2289,7 +2290,7 @@ export default function FonctionnementParcoursComplet() {
             Rejoins une communauté active qui avance sur l&apos;entraide, la progression et des actions concrètes.
           </p>
           <a
-            href="https://discord.gg/WnpazgcZHk"
+            href={DISCORD_INVITE_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block px-6 py-3 rounded-lg font-semibold text-white transition-transform hover:-translate-y-0.5"

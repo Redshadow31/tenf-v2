@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSectionAccess } from "@/lib/requireAdmin";
+import { requireSectionAccessAny } from "@/lib/requireAdmin";
+import {
+  RAIDS_DECLARATIONS_READ_SECTION_HREFS,
+} from "@/lib/admin/raidsFiabiliteRbac";
 import { supabaseAdmin } from "@/lib/db/supabase";
 
 function isMissingRelationError(error: { code?: string; message?: string } | null | undefined): boolean {
@@ -13,9 +16,9 @@ export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   try {
-    const admin = await requireSectionAccess("/admin/engagement/raids-a-valider");
+    const admin = await requireSectionAccessAny(RAIDS_DECLARATIONS_READ_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -23,6 +26,7 @@ export async function GET(request: NextRequest) {
     const search = String(searchParams.get("search") || "").trim().toLowerCase();
     const month = String(searchParams.get("month") || "").trim();
 
+    /** Même fenêtre que la liste : derniers enregistrements, sans filtre statut (les compteurs sont calculés dessus). */
     let query = supabaseAdmin
       .from("raid_declarations")
       .select(
@@ -31,9 +35,6 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(300);
 
-    if (status !== "all") {
-      query = query.eq("status", status);
-    }
     if (/^\d{4}-\d{2}$/.test(month)) {
       const [yearStr, monthStr] = month.split("-");
       const year = Number(yearStr);
@@ -46,12 +47,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) {
       if (isMissingRelationError(error)) {
-        return NextResponse.json({ declarations: [], backendReady: false }, { status: 200 });
+        const emptyCounts = { total: 0, processing: 0, to_study: 0, validated: 0, rejected: 0 };
+        return NextResponse.json({ declarations: [], counts: emptyCounts, backendReady: false }, { status: 200 });
       }
       return NextResponse.json({ error: "Impossible de charger les declarations" }, { status: 500 });
     }
 
-    const declarations = (data || []).filter((row) => {
+    const searchFiltered = (data || []).filter((row) => {
       if (!search) return true;
       const haystack = [
         row.member_display_name,
@@ -64,7 +66,18 @@ export async function GET(request: NextRequest) {
       return haystack.includes(search);
     });
 
-    return NextResponse.json({ declarations, backendReady: true });
+    const counts = {
+      total: searchFiltered.length,
+      processing: searchFiltered.filter((row) => row.status === "processing").length,
+      to_study: searchFiltered.filter((row) => row.status === "to_study").length,
+      validated: searchFiltered.filter((row) => row.status === "validated").length,
+      rejected: searchFiltered.filter((row) => row.status === "rejected").length,
+    };
+
+    const declarations =
+      status === "all" ? searchFiltered : searchFiltered.filter((row) => String(row.status) === status);
+
+    return NextResponse.json({ declarations, counts, backendReady: true });
   } catch (error) {
     console.error("[api/admin/engagement/raids-declarations] GET error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

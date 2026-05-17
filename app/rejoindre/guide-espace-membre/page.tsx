@@ -133,6 +133,13 @@ export default function GuideEspaceMembrePage() {
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
       <div className="mx-auto max-w-6xl px-4 py-10 sm:py-12">
+        <Link
+          href="/rejoindre"
+          className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold transition hover:opacity-80 sm:text-sm"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
+          ← Retour à « Rejoindre TENF »
+        </Link>
         <section
           className="relative overflow-hidden rounded-3xl border p-6 sm:p-8 md:p-10"
           style={{

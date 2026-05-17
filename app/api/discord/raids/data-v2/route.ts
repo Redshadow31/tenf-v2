@@ -9,10 +9,25 @@ import {
 import { memberRepository } from '@/lib/repositories';
 import { cacheGet, cacheSet, cacheKey } from '@/lib/cache';
 import { mergeMatchedRaidTestEventsForMonth } from '@/lib/raidEventsubMerge';
+import { requireAuthenticatedDiscordUser } from '@/lib/requireAdmin';
 
 export const dynamic = 'force-dynamic';
 const RAIDS_CURRENT_MONTH_TTL_SECONDS = 45;
 const RAIDS_HISTORICAL_MONTH_TTL_SECONDS = 300;
+
+/**
+ * Sécurité — décision produit (PR raids-fiabilité) :
+ * Cette route n’est **pas** publique. Elle exige une session NextAuth avec
+ * `user.discordId` (membre ou staff admin connecté au même provider Discord).
+ *
+ * Cas d’usage conservés : `/member/dashboard`, `/member/activite`, pages admin
+ * qui appellent cette API avec les cookies de session ; appels serveur internes
+ * (ex. `/api/admin/dashboard/aggregate`) qui repassent le header `Cookie`.
+ *
+ * Les visiteurs anonymes reçoivent 401. Les pages publiques qui agrègent des
+ * stats raids sans session (ex. `/lives`) retombent sur un corps vide / défaut
+ * côté client (déjà géré si `response.ok` est faux).
+ */
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
@@ -35,6 +50,14 @@ async function fetchAllMembersForRaidsDataV2() {
  */
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuthenticatedDiscordUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentification requise pour consulter les données de raids.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const monthParam = searchParams.get('month');
 

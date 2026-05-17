@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, RefreshCw } from "lucide-react";
+import {
+  computeMembersQualityScore,
+  getMembersQualityTier,
+  MEMBERS_QUALITY_SCORE_EXPLAINER,
+} from "@/lib/admin/members/membersQualityScore";
 
 type TabId = "diagnostic" | "discord" | "sync" | "reconciliation";
 
@@ -43,8 +49,29 @@ const sectionCardClass =
 const subtleButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
 
+const VALID_TAB_IDS: TabId[] = ["diagnostic", "discord", "sync", "reconciliation"];
+
+function isTabId(value: string | null | undefined): value is TabId {
+  return value != null && (VALID_TAB_IDS as string[]).includes(value);
+}
+
 export default function MembersDataQualityPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("diagnostic");
+  const searchParams = useSearchParams();
+  const initialTab: TabId = (() => {
+    const fromQuery = searchParams?.get("onglet");
+    return isTabId(fromQuery) ? fromQuery : "diagnostic";
+  })();
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+
+  useEffect(() => {
+    const fromQuery = searchParams?.get("onglet");
+    if (fromQuery === null || fromQuery === undefined) {
+      // Pas de param : on respecte la dernière sélection utilisateur.
+      return;
+    }
+    // Param fourni : valide → on bascule ; invalide → on retombe sur diagnostic.
+    setActiveTab(isTabId(fromQuery) ? fromQuery : "diagnostic");
+  }, [searchParams]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,10 +146,24 @@ export default function MembersDataQualityPage() {
     void loadData();
   }, [loadData]);
 
-  const healthScore = useMemo(() => {
-    const penalty = snapshot.errors * 3 + snapshot.syncMissingInSupabase * 2 + snapshot.discordMissingUsername;
-    return Math.max(0, 100 - penalty);
-  }, [snapshot]);
+  // Score qualité officiel — partagé avec le hub /admin/membres et le helper
+  // computeMembersQualityScore. Garde une seule source de vérité.
+  const healthScore = useMemo(
+    () =>
+      computeMembersQualityScore({
+        errors: snapshot.errors,
+        warnings: snapshot.technicalWarnings,
+        syncMissingCount: snapshot.syncMissingInSupabase,
+        discordMissingUsername: snapshot.discordMissingUsername,
+      }),
+    [
+      snapshot.errors,
+      snapshot.technicalWarnings,
+      snapshot.syncMissingInSupabase,
+      snapshot.discordMissingUsername,
+    ]
+  );
+  const healthTier = useMemo(() => getMembersQualityTier(healthScore), [healthScore]);
 
   const qualityProgress = useMemo(() => {
     const discordCoverage =
@@ -141,7 +182,7 @@ export default function MembersDataQualityPage() {
         id: "errors",
         label: "Corriger les incohérences membres",
         count: snapshot.errors,
-        href: "/admin/membres/erreurs",
+        href: "/admin/membres/incomplets?vue=erreurs",
         severity: snapshot.errors > 15 ? "critical" : snapshot.errors > 0 ? "important" : "ok",
       },
       {
@@ -156,7 +197,7 @@ export default function MembersDataQualityPage() {
         id: "discord-missing",
         label: "Compléter les pseudos Discord",
         count: snapshot.discordMissingUsername,
-        href: "/admin/membres/donnee-discord",
+        href: "/admin/membres/gestion",
         severity: snapshot.discordMissingUsername > 30 ? "critical" : snapshot.discordMissingUsername > 0 ? "important" : "ok",
       },
       {
@@ -249,10 +290,12 @@ export default function MembersDataQualityPage() {
       ) : null}
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <article className={`${sectionCardClass} p-4`}>
-          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Score santé data</p>
-          <p className="mt-2 text-3xl font-bold">{healthScore}</p>
-          <p className="mt-1 text-xs text-slate-400">Indice global consolidé</p>
+        <article className={`${sectionCardClass} p-4`} title={MEMBERS_QUALITY_SCORE_EXPLAINER}>
+          <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Score qualité data</p>
+          <p className="mt-2 text-3xl font-bold">{healthScore}<span className="text-base font-medium text-slate-400">/100</span></p>
+          <p className="mt-1 text-[11px] text-slate-400">
+            Tier : <span className="font-medium text-slate-200">{healthTier}</span> · score officiel partagé avec le hub /admin/membres
+          </p>
         </article>
         <article className={`${sectionCardClass} p-4`}>
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Incohérences</p>
@@ -392,7 +435,7 @@ export default function MembersDataQualityPage() {
             <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-4">
               <p className="text-slate-400">Avertissements techniques</p>
               <p className="mt-2 text-2xl font-semibold">{snapshot.technicalWarnings}</p>
-              <Link href="/admin/membres/erreurs" className="mt-3 inline-flex items-center gap-1 text-indigo-200 hover:text-indigo-100">
+              <Link href="/admin/membres/incomplets?vue=erreurs" className="mt-3 inline-flex items-center gap-1 text-indigo-200 hover:text-indigo-100">
                 Vérifier <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -402,9 +445,9 @@ export default function MembersDataQualityPage() {
               <p className="mt-2 text-xs text-slate-400">Incohérences + absents Supabase</p>
             </div>
             <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-4">
-              <p className="text-slate-400">Indice de fiabilité</p>
+              <p className="text-slate-400">Sous-score · fiabilité technique</p>
               <p className="mt-2 text-2xl font-semibold text-cyan-300">{Math.round((healthScore + qualityProgress.technicalStability) / 2)}%</p>
-              <p className="mt-2 text-xs text-slate-400">Synthèse score global + stabilité</p>
+              <p className="mt-2 text-xs text-slate-400">Moyenne locale score officiel + stabilité technique (indicatif).</p>
             </div>
           </div>
         </section>
@@ -429,8 +472,8 @@ export default function MembersDataQualityPage() {
               </p>
             </div>
             <div className="rounded-xl border border-[#353a50] bg-[#121623]/80 p-4 flex items-end">
-              <Link href="/admin/membres/donnee-discord" className="inline-flex items-center gap-1 text-indigo-200 hover:text-indigo-100">
-                Ouvrir le module Discord <ArrowRight className="h-4 w-4" />
+              <Link href="/admin/membres/gestion" className="inline-flex items-center gap-1 text-indigo-200 hover:text-indigo-100">
+                Ouvrir la gestion Discord <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>
@@ -474,7 +517,7 @@ export default function MembersDataQualityPage() {
             <Link href="/admin/membres/reconciliation" className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-4 py-3 text-sm text-slate-100 hover:border-indigo-300/45">
               Détection publique
             </Link>
-            <Link href="/admin/membres/erreurs" className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-4 py-3 text-sm text-slate-100 hover:border-indigo-300/45">
+            <Link href="/admin/membres/incomplets?vue=erreurs" className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-4 py-3 text-sm text-slate-100 hover:border-indigo-300/45">
               Incohérences membres
             </Link>
             <Link href="/admin/membres/historique" className="rounded-lg border border-[#353a50] bg-[#121623]/80 px-4 py-3 text-sm text-slate-100 hover:border-indigo-300/45">

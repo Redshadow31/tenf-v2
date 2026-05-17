@@ -6,6 +6,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: '/admin/gestion-acces/accueil',
+        destination: '/admin/gestion-acces',
+        permanent: false,
+      },
+      {
         source: '/communaute/partenaires',
         destination: '/partenaire-tenf',
         permanent: true,
@@ -13,6 +18,35 @@ const nextConfig = {
       {
         source: '/upa-event',
         destination: '/partenaire-tenf',
+        permanent: true,
+      },
+      // Migration douce /events → /events2 → /evenements (audit 2026-05).
+      // /evenements est désormais l'URL officielle publique de l'agenda.
+      // /events2 reste un redirect permanent pour absorber les liens Google
+      // Calendar persistés chez les membres et les anciens backlinks SEO.
+      {
+        source: '/events',
+        destination: '/evenements',
+        permanent: true,
+      },
+      {
+        source: '/events2',
+        destination: '/evenements',
+        permanent: true,
+      },
+      {
+        source: '/admin-secure',
+        destination: '/auth/login',
+        permanent: true,
+      },
+      {
+        source: '/evaluation',
+        destination: '/member/dashboard',
+        permanent: true,
+      },
+      {
+        source: '/fonctionnement-tenf2',
+        destination: '/fonctionnement-tenf/decouvrir',
         permanent: true,
       },
       {

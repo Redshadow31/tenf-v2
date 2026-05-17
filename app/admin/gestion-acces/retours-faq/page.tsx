@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AdminHeader from "@/components/admin/AdminHeader";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 
 type FaqContactStatus = "new" | "in_progress" | "resolved" | "archived";
 
@@ -30,10 +32,10 @@ type Stats = {
 const EMPTY_STATS: Stats = { total: 0, new: 0, inProgress: 0, resolved: 0, archived: 0 };
 
 const topicLabel: Record<string, string> = {
-  integration: "Integration",
-  roles: "Roles",
+  integration: "Intégration",
+  roles: "Rôles",
   points: "Points",
-  activite: "Activite",
+  activite: "Activité",
   staff: "Staff",
   autre: "Autre",
 };
@@ -83,11 +85,11 @@ export default function AdminFaqFeedbackPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data?.error || "Erreur mise a jour");
+        throw new Error(data?.error || "Erreur mise à jour");
       }
       await load();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Erreur mise a jour");
+      setFeedback(error instanceof Error ? error.message : "Erreur mise à jour");
     } finally {
       setSavingId(null);
     }
@@ -95,26 +97,37 @@ export default function AdminFaqFeedbackPage() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-[#141824] p-6 text-white">
-        Chargement des retours FAQ...
+      <div className="min-h-screen bg-[#0a0b10] px-4 py-8 text-white md:px-8">
+        <div className="mx-auto max-w-5xl space-y-6">
+          <AdminHeader
+            title="Retours FAQ rejoindre"
+            navLinks={administrationSiteHubNav("/admin/gestion-acces/retours-faq")}
+          />
+          <div className="rounded-2xl border border-white/10 bg-[#141824] p-6">Chargement des retours FAQ…</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 text-white">
-      <section className="rounded-2xl border border-white/10 bg-[#141824] p-6">
-        <h1 className="text-2xl font-semibold">Retours FAQ Rejoindre</h1>
-        <p className="mt-1 text-sm text-gray-300">
-          Messages recus depuis le bouton de contact de la page publique `rejoindre/faq`.
-        </p>
-      </section>
+    <div className="min-h-screen bg-[#0a0b10] px-4 py-8 text-white md:px-8">
+      <div className="mx-auto max-w-5xl space-y-5">
+        <AdminHeader
+          title="Retours FAQ rejoindre"
+          navLinks={administrationSiteHubNav("/admin/gestion-acces/retours-faq")}
+        />
+        <section className="rounded-2xl border border-white/10 bg-[#141824] p-6">
+          <h2 className="text-lg font-semibold text-white">Messages entrants</h2>
+          <p className="mt-1 text-sm text-gray-300">
+            Messages reçus depuis le bouton de contact de la page publique <code className="text-violet-200">rejoindre/faq</code>.
+          </p>
+        </section>
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Total" value={stats.total} />
         <StatCard label="Nouveaux" value={stats.new} highlight="violet" />
         <StatCard label="En cours" value={stats.inProgress} highlight="amber" />
-        <StatCard label="Resolus" value={stats.resolved} highlight="green" />
+        <StatCard label="Résolus" value={stats.resolved} highlight="green" />
         <StatCard label="Archives" value={stats.archived} />
       </section>
 
@@ -129,7 +142,7 @@ export default function AdminFaqFeedbackPage() {
             <option value="all">Tous</option>
             <option value="new">Nouveaux</option>
             <option value="in_progress">En cours</option>
-            <option value="resolved">Resolus</option>
+            <option value="resolved">Résolus</option>
             <option value="archived">Archives</option>
           </select>
         </div>
@@ -155,6 +168,7 @@ export default function AdminFaqFeedbackPage() {
           ))
         )}
       </section>
+      </div>
     </div>
   );
 }
@@ -195,7 +209,7 @@ function statusBadgeClass(status: FaqContactStatus): string {
 function statusLabel(status: FaqContactStatus): string {
   if (status === "new") return "Nouveau";
   if (status === "in_progress") return "En cours";
-  if (status === "resolved") return "Resolu";
+  if (status === "resolved") return "Résolu";
   return "Archive";
 }
 
@@ -244,7 +258,7 @@ function FaqMessageCard({
         >
           <option value="new">Nouveau</option>
           <option value="in_progress">En cours</option>
-          <option value="resolved">Resolu</option>
+          <option value="resolved">Résolu</option>
           <option value="archived">Archive</option>
         </select>
 
@@ -267,7 +281,7 @@ function FaqMessageCard({
 
       {item.handledBy ? (
         <p className="mt-2 text-xs text-gray-400">
-          Derniere action par {item.handledBy}
+          Dernière action par {item.handledBy}
           {item.handledAt ? ` - ${formatDate(item.handledAt)}` : ""}
         </p>
       ) : null}

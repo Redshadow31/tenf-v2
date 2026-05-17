@@ -162,14 +162,19 @@ export function getUserPermissions(discordId: string): Permission[] {
 }
 
 /**
- * Récupère le nom d'affichage d'un rôle
+ * Récupère le nom d'affichage d'un rôle (nomenclature TENF actuelle).
+ *
+ * Les CLÉS techniques (`FONDATEUR`, `ADMIN_COORDINATEUR`, …) restent celles
+ * stockées dans la base et le cache d'accès admin pour préserver la
+ * rétrocompatibilité. Les LABELS sont alignés sur la nouvelle nomenclature
+ * (Fondateur TENF / Coordinateur TENF / Modérateur TENF / …).
  */
 export function getRoleDisplayName(role: AdminRole): string {
   const names: Record<AdminRole, string> = {
-    FONDATEUR: "Fondateur",
-    ADMIN_COORDINATEUR: "Admin Coordinateur",
-    MODERATEUR: "Modérateur",
-    MODERATEUR_EN_FORMATION: "Modérateur en formation",
+    FONDATEUR: "Fondateur TENF",
+    ADMIN_COORDINATEUR: "Coordinateur TENF",
+    MODERATEUR: "Modérateur TENF",
+    MODERATEUR_EN_FORMATION: "Modérateur en Accompagnement",
     MODERATEUR_EN_PAUSE: "Modérateur en pause",
     SOUTIEN_TENF: "Soutien TENF",
   };

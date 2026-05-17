@@ -21,15 +21,16 @@ import {
   BarChart3,
 } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 import { adminNavigation, type NavItem } from "@/lib/admin/navigation";
 import type { AdminRole } from "@/lib/adminRoles";
 import type { SectionPermission } from "@/lib/sectionPermissions";
 
 const ROLE_LABELS: Record<AdminRole, string> = {
-  FONDATEUR: "Fondateur",
-  ADMIN_COORDINATEUR: "Admin Coordinateur",
-  MODERATEUR: "Modérateur",
-  MODERATEUR_EN_FORMATION: "Modérateur en formation",
+  FONDATEUR: "Fondateurs TENF",
+  ADMIN_COORDINATEUR: "Coordinateurs TENF",
+  MODERATEUR: "Modérateur TENF",
+  MODERATEUR_EN_FORMATION: "Modérateur en Accompagnement",
   MODERATEUR_EN_PAUSE: "Modérateur en pause",
   SOUTIEN_TENF: "Soutien TENF",
 };
@@ -523,16 +524,7 @@ export default function PermissionsPage() {
     <div className="relative min-h-screen overflow-hidden pb-28 sm:pb-24" style={{ backgroundColor: "var(--color-bg)" }}>
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_100%_40%_at_50%_-10%,rgba(124,58,237,0.14),transparent)]" />
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_bottom,transparent,rgba(9,9,11,0.65))]" />
-      <AdminHeader
-        title="Permissions par section"
-        navLinks={[
-          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
-          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
-          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
-          { href: "/admin/gestion-acces/permissions", label: "Permissions par section", active: true },
-          { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)" },
-        ]}
-      />
+      <AdminHeader title="Permissions par section" navLinks={administrationSiteHubNav("/admin/gestion-acces/permissions")} />
 
       <div className="relative mx-auto max-w-[1680px] px-4 py-6 sm:px-6 lg:px-8">
         {error && (

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface MemberData {
   twitchLogin: string;
@@ -229,20 +230,24 @@ export default function EditMemberCompletModal({
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               className="w-full bg-[#0e0e10] border border-[#2a2a2d] rounded-lg px-4 py-2 text-white"
             >
-              <option value="Nouveau">Nouveau</option>
-              <option value="Affilié">Affilié</option>
-              <option value="Développement">Développement</option>
-              <option value="Créateur Junior">Créateur Junior</option>
+              <option value="Nouveau">{getRoleBadgeLabel("Nouveau")}</option>
+              <option value="Affilié">{getRoleBadgeLabel("Affilié")}</option>
+              <option value="Développement">{getRoleBadgeLabel("Développement")}</option>
+              <option value="Créateur Junior">{getRoleBadgeLabel("Créateur Junior")}</option>
               <option value="Les P'tits Jeunes">Les P&apos;tits Jeunes</option>
               <option value="Communauté">Communauté</option>
-              <option value="Modérateur en formation">Modérateur en formation</option>
-              <option value="Modérateur">Modérateur</option>
-              <option value="Modérateur en activité réduite">Modérateur en activité réduite</option>
-              <option value="Modérateur en pause">Modérateur en pause</option>
-              <option value="Admin">Admin</option>
-              <option value="Admin Coordinateur">Admin Coordinateur</option>
-              <option value="Soutien TENF">Soutien TENF</option>
-              <option value="Contributeur TENF du Mois">Contributeur TENF du Mois</option>
+              <option value="Modérateur en Découverte">{getRoleBadgeLabel("Modérateur en Découverte")}</option>
+              <option value="Modérateur en Accompagnement">{getRoleBadgeLabel("Modérateur en Accompagnement")}</option>
+              <option value="Modérateur en Autonomie">{getRoleBadgeLabel("Modérateur en Autonomie")}</option>
+              <option value="Modérateur en formation">{getRoleBadgeLabel("Modérateur en formation")}</option>
+              <option value="Modérateur">{getRoleBadgeLabel("Modérateur")}</option>
+              <option value="Modérateur en activité réduite">{getRoleBadgeLabel("Modérateur en activité réduite")}</option>
+              <option value="Modérateur en pause">{getRoleBadgeLabel("Modérateur en pause")}</option>
+              <option value="Admin">{getRoleBadgeLabel("Admin")}</option>
+              <option value="Admin Coordinateur">{getRoleBadgeLabel("Admin Coordinateur")}</option>
+              <option value="Soutien TENF">{getRoleBadgeLabel("Soutien TENF")}</option>
+              <option value="Contributeur Invité TENF">{getRoleBadgeLabel("Contributeur Invité TENF")}</option>
+              <option value="Contributeur TENF du Mois">{getRoleBadgeLabel("Contributeur TENF du Mois")}</option>
             </select>
           </div>
 

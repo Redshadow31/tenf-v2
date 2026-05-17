@@ -164,7 +164,7 @@ export default function PilotageDataHealthPage() {
           <Link href="/admin/membres/incomplets" className="rounded-lg border border-white/15 px-3 py-2 hover:border-[#d4af37] transition-colors">
             Corriger les profils incomplets
           </Link>
-          <Link href="/admin/membres/erreurs" className="rounded-lg border border-white/15 px-3 py-2 hover:border-[#d4af37] transition-colors">
+          <Link href="/admin/membres/incomplets?vue=erreurs" className="rounded-lg border border-white/15 px-3 py-2 hover:border-[#d4af37] transition-colors">
             Traiter les incohérences membres
           </Link>
         </div>

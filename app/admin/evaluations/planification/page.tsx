@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { OnboardingSessionsHubView } from "@/components/admin/OnboardingSessionsHubView";
 import {
   Upload,
   X,
@@ -119,6 +121,9 @@ const subtleButtonClass =
 const focusRingClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0b10]";
 
+const hubPanelClass =
+  "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]";
+
 const emptyForm = () => ({
   title: "",
   description: "",
@@ -133,6 +138,10 @@ const emptyForm = () => ({
 });
 
 export default function PlanificationPage() {
+  const pathname = usePathname();
+  const hubLayout = pathname?.startsWith("/admin/onboarding") ?? false;
+  const hubBackHref = hubLayout ? "/admin/onboarding" : "/admin/evaluations";
+
   const [formData, setFormData] = useState(emptyForm);
   const [integrations, setIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -567,19 +576,62 @@ export default function PlanificationPage() {
   const scrollToList = () =>
     listSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  return (
-    <div className="space-y-8 text-white">
+  const priorityListRef = useRef<HTMLDivElement>(null);
+  const scrollToPriority = () =>
+    priorityListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const draftUpcoming = useMemo(
+    () =>
+      upcomingIntegrations
+        .filter((item) => !item.isPublished)
+        .map((item) => ({ id: item.id, title: item.title || "", date: item.date })),
+    [upcomingIntegrations]
+  );
+
+  const nextPublished = useMemo(() => {
+    const published = upcomingIntegrations.filter((item) => item.isPublished);
+    if (published.length === 0) return null;
+    const first = published[0];
+    return { id: first.id, title: first.title || "", date: first.date };
+  }, [upcomingIntegrations]);
+
+  const formatDateShort = (dateString: string) => {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("fr-FR", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const handleEditDraftById = (id: string) => {
+    const item = integrations.find((i) => i.id === id);
+    if (item) {
+      handleStartEdit(item);
+      scrollToForm();
+    }
+  };
+
+  const cardClass = hubLayout ? hubPanelClass : sectionCardClass;
+
+  const workspace = (
+    <>
+      {!hubLayout ? (
+        <>
       <section className={`${heroShellClass} p-6 md:p-8`}>
         <div className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-violet-600/20 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-cyan-500/12 blur-3xl" aria-hidden />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl space-y-4">
             <Link
-              href="/admin/onboarding"
+              href={hubBackHref}
               className={`inline-flex items-center gap-1 text-sm text-indigo-200/90 transition hover:text-white ${focusRingClass} rounded-lg`}
             >
               <ChevronLeft className="h-4 w-4" aria-hidden />
-              Retour au hub onboarding
+              {hubLayout ? "Retour au hub intégration" : "Retour aux évaluations"}
             </Link>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-100/90">
@@ -724,10 +776,12 @@ export default function PlanificationPage() {
           </span>
         </button>
       </section>
+        </>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
         {/* Formulaire */}
-        <div ref={formSectionRef} className={`${sectionCardClass} scroll-mt-24 p-6 md:p-7`}>
+        <div ref={formSectionRef} className={`${cardClass} scroll-mt-24 p-6 md:p-7`}>
           <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-200/75">Éditeur</p>
@@ -1173,7 +1227,7 @@ export default function PlanificationPage() {
         </div>
 
         {/* Liste des intégrations */}
-        <div ref={listSectionRef} className={`${sectionCardClass} scroll-mt-24 p-6 md:p-7`}>
+        <div ref={listSectionRef} className={`${cardClass} scroll-mt-24 p-6 md:p-7`}>
           <div
             className="mb-4 flex gap-1 rounded-xl border border-[#353a50] bg-[#0a0d18] p-1"
             role="tablist"
@@ -1413,6 +1467,28 @@ export default function PlanificationPage() {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
+
+  if (hubLayout) {
+    return (
+      <OnboardingSessionsHubView
+        loading={loading}
+        onRefresh={() => void loadIntegrations()}
+        stats={stats}
+        draftUpcoming={draftUpcoming}
+        nextPublished={nextPublished}
+        priorityListRef={priorityListRef}
+        onScrollToPriority={scrollToPriority}
+        onScrollToForm={scrollToForm}
+        onScrollToList={scrollToList}
+        onEditDraft={handleEditDraftById}
+        formatDateShort={formatDateShort}
+      >
+        {workspace}
+      </OnboardingSessionsHubView>
+    );
+  }
+
+  return <div className="space-y-8 text-white">{workspace}</div>;
 }

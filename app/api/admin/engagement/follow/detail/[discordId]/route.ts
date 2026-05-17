@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   try {
     const admin = await requireAdvancedAdminAccess();
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const { discordId } = await params;
@@ -33,7 +33,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   } catch (error) {
     console.error("[Admin Follow Detail] Erreur:", error);
     return NextResponse.json(
-      { error: "Erreur interne lors du detail follow" },
+      { error: "Erreur interne lors du détail follow" },
       { status: 500 }
     );
   }

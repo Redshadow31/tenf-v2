@@ -4,7 +4,12 @@
  * IMPORTANT: ne pas modifier les href (routes stables).
  * Libellés orientés modérateurs / administrateurs : formulations courtes, vocabulaire de pilotage (animation,
  * engagement, validation) plutôt que marketing grand public.
+ *
+ * Le bloc "Modération" est dérivé de la source unique `lib/moderation/moderationTree.ts`
+ * via `buildModerationNavSection()` pour éviter les duplications.
  */
+
+import { buildModerationNavSection } from "@/lib/moderation/navigation";
 
 export interface NavItem {
   href: string;
@@ -12,6 +17,27 @@ export interface NavItem {
   icon?: string;
   sectionLabel?: string;
   children?: NavItem[];
+}
+
+const moderationNavStaff = buildModerationNavSection();
+const moderationNavFull = buildModerationNavSection({ includeAdminView: true });
+
+function moderationSectionForSidebar(): NavItem {
+  return {
+    href: moderationNavStaff.href,
+    label: moderationNavStaff.label,
+    icon: "🛡️",
+    sectionLabel: "MODÉRATION",
+    children: moderationNavStaff.children,
+  };
+}
+
+function moderationSectionForAdministration(): NavItem {
+  return {
+    href: moderationNavFull.href,
+    label: moderationNavFull.label,
+    children: moderationNavFull.children,
+  };
 }
 
 export const adminNavigation: NavItem[] = [
@@ -40,47 +66,51 @@ export const adminNavigation: NavItem[] = [
     label: "Gestion des membres",
     icon: "👥",
     sectionLabel: "MEMBRES",
+    // Hub "Gestion des membres" — labels courts et premium.
+    // L'ordre des sous-catégories suit le parcours admin :
+    //   Vue d'ensemble → Profils → Données → Staff → Reconnaissance.
+    // Toutes les routes restent inchangées (pas de page créée ni supprimée).
     children: [
       {
         href: "/admin/membres",
-        label: "Vue d'ensemble & recherche",
+        label: "Vue d'ensemble",
         children: [
           { href: "/admin/membres", label: "Dashboard membres" },
-          { href: "/admin/membres/gestion", label: "Liste & gestion des membres" },
-          { href: "/admin/membres/actions", label: "Actions à traiter (queue unifiée)" },
+          { href: "/admin/membres/actions", label: "Actions à traiter" },
+          { href: "/admin/membres/gestion", label: "Liste & gestion" },
           { href: "/admin/search", label: "Recherche membre" },
         ],
       },
       {
         href: "/admin/membres/validation-profil",
-        label: "Cycle profil",
+        label: "Profils",
         children: [
-          { href: "/admin/membres/validation-profil", label: "Validation des profils" },
-          { href: "/admin/membres/revues", label: "Revues membres (SLA & responsables)" },
-          { href: "/admin/membres/historique", label: "Historique des modifications" },
+          { href: "/admin/membres/validation-profil", label: "Validation" },
+          { href: "/admin/membres/revues", label: "Revues" },
+          { href: "/admin/membres/historique", label: "Historique" },
         ],
       },
       {
         href: "/admin/membres/qualite-data",
-        label: "Qualité data",
+        label: "Données",
         children: [
-          { href: "/admin/membres/qualite-data", label: "Qualité data (vue fusionnée)" },
+          { href: "/admin/membres/qualite-data", label: "Diagnostic" },
           { href: "/admin/membres/incomplets", label: "Comptes incomplets" },
-          { href: "/admin/membres/reconciliation", label: "Réconciliation public -> gestion" },
-        ],
-      },
-      {
-        href: "/admin/membres/badges",
-        label: "Rôles & distinctions",
-        children: [
-          { href: "/admin/membres/badges", label: "Badges & rôles" },
-          { href: "/admin/membres/vip", label: "VIP & reconnaissances" },
+          { href: "/admin/membres/reconciliation", label: "Réconciliation" },
         ],
       },
       {
         href: "/admin/membres/postulations",
-        label: "Recrutement staff",
-        children: [{ href: "/admin/membres/postulations", label: "Postulations staff" }],
+        label: "Staff",
+        children: [{ href: "/admin/membres/postulations", label: "Candidatures" }],
+      },
+      {
+        href: "/admin/membres/badges",
+        label: "Reconnaissance",
+        children: [
+          { href: "/admin/membres/badges", label: "Badges & rôles" },
+          { href: "/admin/membres/vip", label: "VIP" },
+        ],
       },
     ],
   },
@@ -127,7 +157,9 @@ export const adminNavigation: NavItem[] = [
           { href: "/admin/communaute/evenements", label: "Pilotage des événements" },
           { href: "/admin/communaute/evenements/suivi", label: "Suivi par type de créneau" },
           { href: "/admin/communaute/evenements/calendrier", label: "Calendrier & planification" },
+          { href: "/admin/communaute/evenements/liste", label: "Liste des événements" },
           { href: "/admin/communaute/evenements/participation", label: "Présences & participation" },
+          { href: "/admin/communaute/evenements/recap", label: "Récapitulatifs" },
           { href: "/admin/communaute/evenements/propositions", label: "Propositions des membres" },
           { href: "/admin/communaute/evenements/liens-vocaux", label: "Liens vocaux (Discord)" },
           { href: "/admin/communaute/evenements/archives", label: "Archives des événements" },
@@ -185,11 +217,14 @@ export const adminNavigation: NavItem[] = [
     ],
   },
   {
-    href: "/admin/upa-event",
+    href: "/admin/partenariats",
     label: "Partenariats",
     icon: "🤝",
     sectionLabel: "PARTENARIATS",
-    children: [{ href: "/admin/upa-event", label: "Partenaire TENF" }],
+    children: [
+      { href: "/admin/partenariats", label: "Demandes reçues" },
+      { href: "/admin/upa-event", label: "Partenaire TENF (UPA)" },
+    ],
   },
   {
     href: "/admin/new-family-aventura",
@@ -272,112 +307,65 @@ export const adminNavigation: NavItem[] = [
       },
     ],
   },
+  moderationSectionForSidebar(),
   {
-    href: "/admin/moderation/staff",
-    label: "Modération",
-    icon: "🛡️",
-    sectionLabel: "MODÉRATION",
-    children: [
-      { href: "/admin/moderation/staff", label: "Dashboard modération staff" },
-      { href: "/admin/mon-compte", label: "Mon compte (profil staff)" },
-      { href: "/admin/mon-compte/pilotage-staff", label: "Mon compte — Pilotage staff (admin avancé)" },
-      { href: "/admin/moderation/staff/info/annonces-staff", label: "Info - Annonces staff" },
-      { href: "/admin/moderation/staff/info/charte", label: "Info - Charte modération" },
-      { href: "/admin/moderation/staff/info/validation-charte", label: "Info - Validation charte" },
-      { href: "/admin/moderation/staff/info/comptes-rendus-reunions", label: "Info - Comptes rendus de réunion" },
-      { href: "/admin/moderation/staff/petits-travaux/exercices-mensuels", label: "Petit travaux - Exercices mensuels" },
-      { href: "/admin/moderation/staff/petits-travaux/mes-soumissions", label: "Petit travaux - Mes soumissions" },
-      { href: "/admin/moderation/staff/petits-travaux/mes-validations", label: "Petit travaux - Mes validations" },
-      { href: "/admin/moderation/staff/discord/tickets", label: "Discord - Tickets" },
-      { href: "/admin/moderation/staff/discord/incidents-streamers", label: "Discord - Incidents streamers" },
-      { href: "/admin/moderation/staff/discord/cas-sensibles", label: "Discord - Cas sensibles" },
-    ],
-  },
-  {
-    href: "/admin/gestion-acces/accueil",
+    href: "/admin/gestion-acces",
     label: "Administration du site",
     icon: "⚙️",
     sectionLabel: "ADMINISTRATION",
     children: [
       {
-        href: "/admin/gestion-acces/accueil",
-        label: "Vue d'ensemble administration",
-        children: [{ href: "/admin/gestion-acces/accueil", label: "Dashboard d'accueil administration" }],
+        href: "/admin/gestion-acces",
+        label: "Vue d'ensemble",
+        children: [{ href: "/admin/gestion-acces", label: "Accueil administration" }],
       },
       {
-        href: "/admin/gestion-acces",
+        href: "/admin/gestion-acces/comptes",
         label: "Accès & sécurité",
         children: [
-          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
+          { href: "/admin/gestion-acces/comptes", label: "Comptes administrateurs" },
           { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
           { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé (fondateurs)" },
         ],
       },
       {
         href: "/admin/gestion-acces/dashboard",
-        label: "Configuration & données",
+        label: "Configuration du site",
         children: [
-          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
-          { href: "/admin/gestion-acces/images", label: "Gestion des images profils Twitch" },
-          {
-            href: "/admin/gestion-acces/discord-activite-personnelle",
-            label: "Activité Discord personnelle",
-          },
-          {
-            href: "/admin/gestion-acces/discord-activite",
-            label: "Activité Discord (mois & salons)",
-          },
+          { href: "/admin/gestion-acces/dashboard", label: "Dashboard membre" },
+          { href: "/admin/gestion-acces/images", label: "Images profils Twitch" },
           { href: "/admin/migration", label: "Migration des données" },
         ],
       },
       {
         href: "/admin/gestion-acces/organigramme-staff",
-        label: "Organisation staff",
+        label: "Équipe staff",
         children: [
           { href: "/admin/gestion-acces/organigramme-staff", label: "Organigramme staff" },
-          { href: "/admin/gestion-acces/missions-staff", label: "Missions nominatives staff" },
+          { href: "/admin/gestion-acces/missions-staff", label: "Missions staff" },
           { href: "/admin/gestion-acces/reunions-staff-mensuelles", label: "Réunions mensuelles staff" },
           { href: "/admin/follow/config", label: "Configuration follow staff" },
         ],
       },
       {
-        href: "/admin/moderation",
-        label: "Modération",
+        href: "/admin/gestion-acces/discord-activite",
+        label: "Activité & données",
         children: [
-          { href: "/admin/moderation", label: "Dashboard modération" },
-          { href: "/admin/mon-compte", label: "Mon compte (profil staff)" },
-          { href: "/admin/mon-compte/pilotage-staff", label: "Mon compte — Pilotage staff (admin avancé)" },
-          { href: "/admin/moderation/config/navigation-labels", label: "Config - Labels navigation" },
-          { href: "/admin/moderation/config/roles-permissions", label: "Config - Rôles & permissions" },
-          { href: "/admin/moderation/config/parametres", label: "Config - Paramètres" },
-          { href: "/admin/moderation/logs/actions", label: "Logs - Actions" },
-          { href: "/admin/moderation/logs/status-history", label: "Logs - Historique statuts" },
-          { href: "/admin/moderation/logs/exports", label: "Logs - Exports" },
-          { href: "/admin/moderation/info/annonces", label: "Info - Annonces" },
-          { href: "/admin/moderation/info/charte-versions", label: "Info - Charte versions" },
-          { href: "/admin/moderation/info/charte-validations", label: "Info - Charte validations" },
-          { href: "/admin/moderation/staff/info/validation-charte", label: "Info - Validation charte (staff)" },
-          { href: "/admin/moderation/petits-travaux/catalogue-exercices", label: "Petit travaux - Catalogue" },
-          { href: "/admin/moderation/petits-travaux/campagnes-mensuelles", label: "Petit travaux - Campagnes" },
-          { href: "/admin/moderation/petits-travaux/assignations", label: "Petit travaux - Assignations" },
-          { href: "/admin/moderation/petits-travaux/soumissions", label: "Petit travaux - Soumissions" },
-          { href: "/admin/moderation/petits-travaux/validations", label: "Petit travaux - Validations" },
-          { href: "/admin/moderation/discord/tickets", label: "Discord - Tickets" },
-          { href: "/admin/moderation/discord/incidents", label: "Discord - Incidents" },
-          { href: "/admin/moderation/discord/cas-sensibles", label: "Discord - Cas sensibles" },
-          { href: "/admin/moderation/discord/transferts-admin", label: "Discord - Transferts admin" },
+          { href: "/admin/gestion-acces/discord-activite", label: "Activité Discord (mois & salons)" },
+          { href: "/admin/gestion-acces/discord-activite-personnelle", label: "Activité Discord personnelle" },
         ],
       },
+      moderationSectionForAdministration(),
       {
         href: "/admin/audit-logs",
-        label: "Logs & conformité",
+        label: "Audit & conformité",
         children: [
           { href: "/admin/audit-logs", label: "Audit & logs" },
-          { href: "/admin/gestion-acces/retours-faq", label: "Retours FAQ rejoindre" },
           { href: "/admin/audit-logs/connexions", label: "Logs de connexion" },
           { href: "/admin/audit-logs/membres", label: "Logs membres" },
           { href: "/admin/audit-logs/historique-pages", label: "Historique des pages" },
           { href: "/admin/audit-logs/temps-reel", label: "Temps réel" },
+          { href: "/admin/gestion-acces/retours-faq", label: "Retours FAQ rejoindre" },
           { href: "/admin/log-center", label: "Logs & audit (legacy)" },
           { href: "/admin/log-center/notifications-lues", label: "Notifications lues (legacy)" },
         ],
@@ -414,47 +402,49 @@ export const adminNavigationSimple: NavItem[] = [
     href: "/admin/membres",
     label: "Gestion des membres",
     icon: "👥",
+    // Mode simple — même arborescence que le mode avancé pour ce hub :
+    // labels courts et ordre Vue d'ensemble → Profils → Données → Staff → Reconnaissance.
     children: [
       {
         href: "/admin/membres",
-        label: "Vue d'ensemble & recherche",
+        label: "Vue d'ensemble",
         children: [
           { href: "/admin/membres", label: "Dashboard membres" },
-          { href: "/admin/membres/gestion", label: "Liste & gestion" },
           { href: "/admin/membres/actions", label: "Actions à traiter" },
+          { href: "/admin/membres/gestion", label: "Liste & gestion" },
           { href: "/admin/search", label: "Recherche membre" },
         ],
       },
       {
         href: "/admin/membres/validation-profil",
-        label: "Cycle profil",
+        label: "Profils",
         children: [
-          { href: "/admin/membres/validation-profil", label: "Validation des profils" },
-          { href: "/admin/membres/revues", label: "Revues membres" },
-          { href: "/admin/membres/historique", label: "Historique des modifications" },
+          { href: "/admin/membres/validation-profil", label: "Validation" },
+          { href: "/admin/membres/revues", label: "Revues" },
+          { href: "/admin/membres/historique", label: "Historique" },
         ],
       },
       {
         href: "/admin/membres/qualite-data",
-        label: "Qualité data",
+        label: "Données",
         children: [
-          { href: "/admin/membres/qualite-data", label: "Qualité data" },
+          { href: "/admin/membres/qualite-data", label: "Diagnostic" },
           { href: "/admin/membres/incomplets", label: "Comptes incomplets" },
-          { href: "/admin/membres/reconciliation", label: "Détection public -> gestion" },
-        ],
-      },
-      {
-        href: "/admin/membres/badges",
-        label: "Rôles & distinctions",
-        children: [
-          { href: "/admin/membres/badges", label: "Badges & rôles" },
-          { href: "/admin/membres/vip", label: "VIP & reconnaissances" },
+          { href: "/admin/membres/reconciliation", label: "Réconciliation" },
         ],
       },
       {
         href: "/admin/membres/postulations",
-        label: "Recrutement staff",
-        children: [{ href: "/admin/membres/postulations", label: "Postulations staff" }],
+        label: "Staff",
+        children: [{ href: "/admin/membres/postulations", label: "Candidatures" }],
+      },
+      {
+        href: "/admin/membres/badges",
+        label: "Reconnaissance",
+        children: [
+          { href: "/admin/membres/badges", label: "Badges & rôles" },
+          { href: "/admin/membres/vip", label: "VIP" },
+        ],
       },
     ],
   },
@@ -497,7 +487,9 @@ export const adminNavigationSimple: NavItem[] = [
           { href: "/admin/communaute/evenements", label: "Pilotage des événements" },
           { href: "/admin/communaute/evenements/suivi", label: "Suivi par type de créneau" },
           { href: "/admin/communaute/evenements/calendrier", label: "Calendrier & planification" },
+          { href: "/admin/communaute/evenements/liste", label: "Liste des événements" },
           { href: "/admin/communaute/evenements/participation", label: "Présences & participation" },
+          { href: "/admin/communaute/evenements/recap", label: "Récapitulatifs" },
           { href: "/admin/communaute/evenements/propositions", label: "Propositions des membres" },
           { href: "/admin/communaute/evenements/liens-vocaux", label: "Liens vocaux (Discord)" },
           { href: "/admin/communaute/evenements/archives", label: "Archives des événements" },
@@ -547,10 +539,13 @@ export const adminNavigationSimple: NavItem[] = [
     ],
   },
   {
-    href: "/admin/upa-event",
+    href: "/admin/partenariats",
     label: "Partenariats",
     icon: "🤝",
-    children: [{ href: "/admin/upa-event", label: "Partenaire TENF" }],
+    children: [
+      { href: "/admin/partenariats", label: "Demandes reçues" },
+      { href: "/admin/upa-event", label: "Partenaire TENF (UPA)" },
+    ],
   },
   {
     href: "/admin/new-family-aventura",
@@ -629,116 +624,70 @@ export const adminNavigationSimple: NavItem[] = [
     ],
   },
   {
-    href: "/admin/moderation/staff",
-    label: "Modération",
+    href: moderationNavStaff.href,
+    label: moderationNavStaff.label,
     icon: "🛡️",
-    children: [
-      { href: "/admin/moderation/staff", label: "Dashboard modération staff" },
-      { href: "/admin/mon-compte", label: "Mon compte (profil staff)" },
-      { href: "/admin/mon-compte/pilotage-staff", label: "Mon compte — Pilotage staff (admin avancé)" },
-      {
-        href: "/admin/moderation/staff/info",
-        label: "Info",
-        children: [
-          { href: "/admin/moderation/staff/info/annonces-staff", label: "Annonces staff" },
-          { href: "/admin/moderation/staff/info/charte", label: "Charte modération" },
-          { href: "/admin/moderation/staff/info/validation-charte", label: "Validation charte" },
-          { href: "/admin/moderation/staff/info/comptes-rendus-reunions", label: "Comptes rendus de réunion" },
-        ],
-      },
-      {
-        href: "/admin/moderation/staff/petits-travaux",
-        label: "Petit travaux",
-        children: [
-          { href: "/admin/moderation/staff/petits-travaux/exercices-mensuels", label: "Exercices mensuels" },
-          { href: "/admin/moderation/staff/petits-travaux/mes-soumissions", label: "Mes soumissions" },
-          { href: "/admin/moderation/staff/petits-travaux/mes-validations", label: "Mes validations" },
-        ],
-      },
-      {
-        href: "/admin/moderation/staff/discord",
-        label: "Discord",
-        children: [
-          { href: "/admin/moderation/staff/discord/tickets", label: "Tickets" },
-          { href: "/admin/moderation/staff/discord/incidents-streamers", label: "Incidents streamers" },
-          { href: "/admin/moderation/staff/discord/cas-sensibles", label: "Cas sensibles" },
-        ],
-      },
-    ],
+    children: moderationNavStaff.children,
   },
   {
-    href: "/admin/gestion-acces/accueil",
+    href: "/admin/gestion-acces",
     label: "Administration du site",
     icon: "⚙️",
     children: [
       {
-        href: "/admin/gestion-acces/accueil",
-        label: "Vue d'ensemble administration",
-        children: [{ href: "/admin/gestion-acces/accueil", label: "Dashboard d'accueil" }],
+        href: "/admin/gestion-acces",
+        label: "Vue d'ensemble",
+        children: [{ href: "/admin/gestion-acces", label: "Accueil administration" }],
       },
       {
-        href: "/admin/gestion-acces",
+        href: "/admin/gestion-acces/comptes",
         label: "Accès & sécurité",
         children: [
-          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
+          { href: "/admin/gestion-acces/comptes", label: "Comptes administrateurs" },
           { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
           { href: "/admin/gestion-acces/admin-avance", label: "Accès admin avancé" },
         ],
       },
       {
         href: "/admin/gestion-acces/dashboard",
-        label: "Configuration & données",
+        label: "Configuration du site",
         children: [
-          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
+          { href: "/admin/gestion-acces/dashboard", label: "Dashboard membre" },
           { href: "/admin/gestion-acces/images", label: "Images profils Twitch" },
-          {
-            href: "/admin/gestion-acces/discord-activite-personnelle",
-            label: "Activité Discord personnelle",
-          },
-          {
-            href: "/admin/gestion-acces/discord-activite",
-            label: "Activité Discord (mois & salons)",
-          },
           { href: "/admin/migration", label: "Migration des données" },
         ],
       },
       {
         href: "/admin/gestion-acces/organigramme-staff",
-        label: "Organisation staff",
+        label: "Équipe staff",
         children: [
           { href: "/admin/gestion-acces/organigramme-staff", label: "Organigramme staff" },
-          { href: "/admin/gestion-acces/missions-staff", label: "Missions nominatives staff" },
+          { href: "/admin/gestion-acces/missions-staff", label: "Missions staff" },
           { href: "/admin/gestion-acces/reunions-staff-mensuelles", label: "Réunions mensuelles staff" },
           { href: "/admin/follow/config", label: "Configuration follow staff" },
         ],
       },
       {
-        href: "/admin/moderation",
-        label: "Modération",
+        href: "/admin/gestion-acces/discord-activite",
+        label: "Activité & données",
         children: [
-          { href: "/admin/moderation/staff", label: "Dashboard modération staff" },
-          { href: "/admin/mon-compte", label: "Mon compte (profil staff)" },
-          { href: "/admin/mon-compte/pilotage-staff", label: "Mon compte — Pilotage staff (admin avancé)" },
-          { href: "/admin/moderation/staff/info/annonces-staff", label: "Info - Annonces staff" },
-          { href: "/admin/moderation/staff/info/charte", label: "Info - Charte modération" },
-          { href: "/admin/moderation/staff/info/validation-charte", label: "Info - Validation charte" },
-          { href: "/admin/moderation/staff/info/comptes-rendus-reunions", label: "Info - Comptes rendus de réunion" },
-          { href: "/admin/moderation/staff/petits-travaux/exercices-mensuels", label: "Petit travaux - Exercices mensuels" },
-          { href: "/admin/moderation/staff/petits-travaux/mes-soumissions", label: "Petit travaux - Mes soumissions" },
-          { href: "/admin/moderation/staff/petits-travaux/mes-validations", label: "Petit travaux - Mes validations" },
-          { href: "/admin/moderation/staff/discord/tickets", label: "Discord - Tickets" },
-          { href: "/admin/moderation/staff/discord/incidents-streamers", label: "Discord - Incidents streamers" },
-          { href: "/admin/moderation/staff/discord/cas-sensibles", label: "Discord - Cas sensibles" },
+          { href: "/admin/gestion-acces/discord-activite", label: "Activité Discord (mois & salons)" },
+          { href: "/admin/gestion-acces/discord-activite-personnelle", label: "Activité Discord personnelle" },
         ],
       },
+      moderationSectionForAdministration(),
       {
         href: "/admin/audit-logs",
-        label: "Logs & conformité",
+        label: "Audit & conformité",
         children: [
           { href: "/admin/audit-logs", label: "Audit & logs" },
-          { href: "/admin/gestion-acces/retours-faq", label: "Retours FAQ rejoindre" },
           { href: "/admin/audit-logs/connexions", label: "Logs de connexion" },
           { href: "/admin/audit-logs/membres", label: "Logs membres" },
+          { href: "/admin/audit-logs/historique-pages", label: "Historique des pages" },
+          { href: "/admin/audit-logs/temps-reel", label: "Temps réel" },
+          { href: "/admin/gestion-acces/retours-faq", label: "Retours FAQ rejoindre" },
+          { href: "/admin/log-center", label: "Logs & audit (legacy)" },
+          { href: "/admin/log-center/notifications-lues", label: "Notifications lues (legacy)" },
         ],
       },
     ],

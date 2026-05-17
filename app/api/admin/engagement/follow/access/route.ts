@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const admin = await requireAdvancedAdminAccess();
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     return NextResponse.json({

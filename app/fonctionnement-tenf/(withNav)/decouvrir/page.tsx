@@ -3,6 +3,7 @@ import { ArrowRight, Radio } from "lucide-react";
 import styles from "../../fonctionnement.module.css";
 import DecouvrirTenfInteractive from "@/components/fonctionnement/DecouvrirTenfInteractive";
 import { FonctionnementPageHeader } from "@/components/fonctionnement/FonctionnementPageHeader";
+import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
 
 export const metadata = {
   title: "Découvrir TENF — Fonctionnement",
@@ -24,10 +25,10 @@ export default function DecouvrirTenfPage() {
               Voir les 3 étapes
               <ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
             </Link>
-            <Link href="https://discord.gg/WnpazgcZHk" target="_blank" rel="noopener noreferrer" className={styles.fnBtnGhost}>
+            <Link href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.fnBtnGhost}>
               Discord TENF
             </Link>
-            <Link href="/events2" className={styles.fnBtnGhost}>
+            <Link href="/evenements" className={styles.fnBtnGhost}>
               Calendrier public
             </Link>
           </>

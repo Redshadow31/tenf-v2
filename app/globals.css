@@ -309,6 +309,17 @@ body {
   }
 }
 
+@keyframes qfFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Lisibilité mobile : textes denses (max-xl = < 1280px) */
 @media (max-width: 1279px) {
   .prose-readable-mobile p,
@@ -1648,6 +1659,244 @@ a:hover {
   .about-js-enabled .about-reveal {
     opacity: 1 !important;
     transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ============================================
+   Partnership modal — animations & visuals
+   ============================================ */
+
+@keyframes pmodal-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pmodal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pmodal-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pmodal-aurora {
+  0%,
+  100% {
+    transform: translate3d(-12%, -8%, 0) scale(1.05);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(8%, 6%, 0) scale(1.15);
+    opacity: 0.75;
+  }
+}
+
+@keyframes pmodal-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pmodal-circle-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pmodal-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 28%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+}
+
+.pmodal-overlay {
+  animation: pmodal-overlay-in 0.18s ease-out both;
+}
+
+.pmodal-panel {
+  animation: pmodal-panel-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.pmodal-step {
+  animation: pmodal-step-in 0.28s ease-out both;
+}
+
+.pmodal-aurora {
+  position: absolute;
+  inset: -25%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(40% 50% at 20% 30%, color-mix(in srgb, var(--color-primary) 28%, transparent) 0%, transparent 60%),
+    radial-gradient(35% 45% at 80% 70%, color-mix(in srgb, #6366f1 26%, transparent) 0%, transparent 60%),
+    radial-gradient(45% 55% at 60% 20%, color-mix(in srgb, #ec4899 18%, transparent) 0%, transparent 60%);
+  filter: blur(60px);
+  animation: pmodal-aurora 18s ease-in-out infinite;
+}
+
+.pmodal-aurora--success {
+  background:
+    radial-gradient(40% 50% at 30% 35%, color-mix(in srgb, #16a34a 32%, transparent) 0%, transparent 60%),
+    radial-gradient(40% 50% at 70% 65%, color-mix(in srgb, #10b981 28%, transparent) 0%, transparent 60%);
+}
+
+.pmodal-stepper-line {
+  position: relative;
+  height: 2px;
+  flex: 1;
+  background: color-mix(in srgb, var(--color-border) 100%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.pmodal-stepper-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 70%, #6366f1));
+  transform-origin: left;
+  transform: scaleX(var(--progress, 0));
+  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.pmodal-stepper-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  border: 2px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font-weight: 700;
+  font-size: 0.75rem;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.pmodal-stepper-dot--active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-bg));
+  color: var(--color-primary);
+  transform: scale(1.08);
+  animation: pmodal-pulse 2.4s ease-in-out infinite;
+}
+
+.pmodal-stepper-dot--done {
+  border-color: color-mix(in srgb, #16a34a 90%, transparent);
+  background: color-mix(in srgb, #16a34a 16%, var(--color-bg));
+  color: #15803d;
+}
+
+.pmodal-field-input {
+  background: var(--color-bg);
+  color: var(--color-text);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.pmodal-field-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+.pmodal-field-input--error {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #dc2626 18%, transparent);
+}
+
+.pmodal-rule-card {
+  position: relative;
+  padding-left: 2.75rem;
+}
+
+.pmodal-rule-card::before {
+  content: attr(data-num);
+  position: absolute;
+  left: 0.5rem;
+  top: 0.65rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+}
+
+.pmodal-check-svg {
+  width: 64px;
+  height: 64px;
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pmodal-check-svg .pmodal-check-circle {
+  stroke: #16a34a;
+  stroke-dasharray: 180;
+  stroke-dashoffset: 180;
+  animation: pmodal-circle-draw 0.55s ease-out 0.05s forwards;
+}
+
+.pmodal-check-svg .pmodal-check-tick {
+  stroke: #16a34a;
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: pmodal-check-draw 0.35s ease-out 0.45s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pmodal-overlay,
+  .pmodal-panel,
+  .pmodal-step,
+  .pmodal-aurora,
+  .pmodal-stepper-dot--active {
+    animation: none !important;
+  }
+  .pmodal-check-svg .pmodal-check-circle,
+  .pmodal-check-svg .pmodal-check-tick {
+    stroke-dashoffset: 0 !important;
+    animation: none !important;
+  }
+  .pmodal-stepper-line::after {
     transition: none !important;
   }
 }

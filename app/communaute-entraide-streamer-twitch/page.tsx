@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
 
 export const metadata: Metadata = {
   title: "Communaute entraide streamer Twitch | TENF",
@@ -71,7 +72,7 @@ export default function CommunauteEntraideStreamerPage() {
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
-            href="https://discord.gg/WnpazgcZHk"
+            href={DISCORD_INVITE_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-xl bg-indigo-500/70 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-400/80"

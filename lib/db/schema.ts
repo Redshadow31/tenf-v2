@@ -14,6 +14,9 @@ export const memberRoleEnum = pgEnum('member_role', [
   'Développement',
   'Modérateur',
   'Modérateur en formation',
+  'Modérateur en Découverte',
+  'Modérateur en Accompagnement',
+  'Modérateur en Autonomie',
   'Modérateur en activité réduite',
   'Modérateur en pause',
   'Modérateur Junior',
@@ -22,6 +25,7 @@ export const memberRoleEnum = pgEnum('member_role', [
   'Admin Coordinateur',
   'Admin Adjoint',
   'Soutien TENF',
+  'Contributeur Invité TENF',
   'Contributeur TENF du Mois',
   'Créateur Junior',
   "Les P'tits Jeunes",
@@ -564,6 +568,163 @@ export const pageActivityEvents = pgTable('page_activity_events', {
   eventType: text('event_type').notNull(), // 'page_view' | 'click'
   target: text('target'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// STAFF QUESTIONNAIRE (modération)
+// ============================================
+
+export const staffQuestionnaireSubmissionStatusEnum = pgEnum('staff_questionnaire_submission_status', [
+  'DRAFT',
+  'IN_PROGRESS',
+  'SUBMITTED',
+  'ADMIN_REVIEW',
+  'INTERNAL_ANALYSIS_DONE',
+  'MEMBER_SUMMARY_READY',
+  'MEMBER_SUMMARY_PUBLISHED',
+  'OBJECTIVES_DEFINED',
+  'FINAL_REVIEW_DONE',
+]);
+
+export const staffQuestionnaireQuestionTypeEnum = pgEnum('staff_questionnaire_question_type', [
+  'TEXT_LONG',
+  'TEXT_SHORT',
+  'SINGLE_CHOICE',
+  'MULTIPLE_CHOICE',
+  'SCALE_1_5',
+  'THREE_FIELDS',
+]);
+
+export const staffQuestionnaireObjectiveStatusEnum = pgEnum('staff_questionnaire_objective_status', [
+  'TODO',
+  'IN_PROGRESS',
+  'DONE',
+  'PAUSED',
+]);
+
+export const staffQuestionnaireFinalDecisionEnum = pgEnum('staff_questionnaire_final_decision', [
+  'VALIDATED',
+  'EXTENDED_TRAINING',
+  'BINOME',
+  'OBSERVATION',
+  'SUPPORT_TENF',
+  'PAUSE_RECOMMENDED',
+  'REFERENT_POTENTIAL',
+]);
+
+export const staffQuestionnaireTemplates = pgTable('staff_questionnaire_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  description: text('description'),
+  version: integer('version').notNull().default(1),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const staffQuestionnaireQuestions = pgTable('staff_questionnaire_questions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  templateId: uuid('template_id')
+    .notNull()
+    .references(() => staffQuestionnaireTemplates.id, { onDelete: 'cascade' }),
+  sectionKey: text('section_key').notNull(),
+  sectionTitle: text('section_title').notNull(),
+  order: integer('order').notNull().default(0),
+  questionNumber: integer('question_number').notNull(),
+  questionKey: text('question_key').notNull(),
+  label: text('label').notNull(),
+  helpText: text('help_text'),
+  type: staffQuestionnaireQuestionTypeEnum('type').notNull(),
+  options: jsonb('options'),
+  isRequired: boolean('is_required').notNull().default(true),
+  analysisHints: jsonb('analysis_hints'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const staffQuestionnaireSubmissions = pgTable('staff_questionnaire_submissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  templateId: uuid('template_id')
+    .notNull()
+    .references(() => staffQuestionnaireTemplates.id, { onDelete: 'restrict' }),
+  memberId: uuid('member_id')
+    .notNull()
+    .references(() => members.id, { onDelete: 'cascade' }),
+  status: staffQuestionnaireSubmissionStatusEnum('status').notNull().default('DRAFT'),
+  consents: jsonb('consents').$type<Record<string, boolean>>().notNull().default({}),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  submittedAt: timestamp('submitted_at'),
+  reviewedAt: timestamp('reviewed_at'),
+  reviewedById: uuid('reviewed_by_id').references(() => members.id, { onDelete: 'set null' }),
+  memberSummaryPublishedAt: timestamp('member_summary_published_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const staffQuestionnaireAnswers = pgTable('staff_questionnaire_answers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  submissionId: uuid('submission_id')
+    .notNull()
+    .references(() => staffQuestionnaireSubmissions.id, { onDelete: 'cascade' }),
+  questionId: uuid('question_id')
+    .notNull()
+    .references(() => staffQuestionnaireQuestions.id, { onDelete: 'cascade' }),
+  answerText: text('answer_text'),
+  answerJson: jsonb('answer_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const staffQuestionnaireAdminReviews = pgTable('staff_questionnaire_admin_reviews', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  submissionId: uuid('submission_id')
+    .notNull()
+    .unique()
+    .references(() => staffQuestionnaireSubmissions.id, { onDelete: 'cascade' }),
+  reviewerId: uuid('reviewer_id').references(() => members.id, { onDelete: 'set null' }),
+  internalAnalysisText: text('internal_analysis_text'),
+  memberSummaryText: text('member_summary_text'),
+  behavioralProfile: text('behavioral_profile'),
+  functioningMode: text('functioning_mode'),
+  supportNeeds: text('support_needs'),
+  vigilancePoints: text('vigilance_points'),
+  communicationStyle: text('communication_style'),
+  autonomyLevel: text('autonomy_level'),
+  conflictRelation: text('conflict_relation'),
+  authorityRelation: text('authority_relation'),
+  emotionalManagement: text('emotional_management'),
+  recommendedMissions: text('recommended_missions'),
+  adminNotes: text('admin_notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const staffQuestionnaireObjectives = pgTable('staff_questionnaire_objectives', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  submissionId: uuid('submission_id')
+    .notNull()
+    .references(() => staffQuestionnaireSubmissions.id, { onDelete: 'cascade' }),
+  createdById: uuid('created_by_id').references(() => members.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  monthIndex: integer('month_index'),
+  status: staffQuestionnaireObjectiveStatusEnum('status').notNull().default('TODO'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const staffQuestionnaireFinalReviews = pgTable('staff_questionnaire_final_reviews', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  submissionId: uuid('submission_id')
+    .notNull()
+    .unique()
+    .references(() => staffQuestionnaireSubmissions.id, { onDelete: 'cascade' }),
+  reviewerId: uuid('reviewer_id').references(() => members.id, { onDelete: 'set null' }),
+  finalReviewText: text('final_review_text').notNull(),
+  decision: staffQuestionnaireFinalDecisionEnum('decision').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // ============================================

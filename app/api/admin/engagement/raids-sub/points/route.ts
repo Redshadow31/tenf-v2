@@ -1,8 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireSectionAccess, requireSectionAccessAny } from "@/lib/requireAdmin";
+import { RAIDS_EVENTSUB_SECTION_HREFS } from "@/lib/admin/raidsFiabiliteRbac";
 import { getActiveRaidTestRun } from "@/lib/raidEventsubTest";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { buildDiscordUsernameByTwitchLoginMap } from "@/lib/adminDiscordUsernameLookup";
+
+/**
+ * Section RBAC pour cette route. La page hub canonique est
+ * `/admin/communaute/engagement/points-discord` ; on s'aligne sur ce href pour
+ * que le système de permissions par section (gestion-acces/permissions) soit
+ * respecté côté API. Les rôles autorisés via cette page peuvent attribuer
+ * des points ; les autres reçoivent un 403.
+ *
+ * Règles métier forcées côté serveur :
+ * - Raid EventSub validé = exactement +500 points.
+ * - Aucune valeur `points` venant du client n'est acceptée pour cette route.
+ *
+ * TODO (RBAC dédié) : à terme remplacer `requireSectionAccess(href)` par une
+ * permission métier dédiée du type `engagement.points.award` une fois que la
+ * convention de permissions granulaires sera retenue dans le projet.
+ */
+const POINTS_DISCORD_SECTION_HREF = "/admin/communaute/engagement/points-discord";
+const RAID_POINTS_VALUE = 500;
 
 type RaidTestEventRow = {
   id: string;
@@ -88,9 +107,13 @@ async function fetchAllAwardedRaidEventIdsForRun(runId: string): Promise<Set<str
 
 export async function GET(request: NextRequest) {
   try {
-    const admin = await requireAdmin();
+    /** Lecture : EventSub ou cockpit points Discord (même agrégat côté client). */
+    const admin = await requireSectionAccessAny([
+      ...RAIDS_EVENTSUB_SECTION_HREFS,
+      POINTS_DISCORD_SECTION_HREF,
+    ]);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -235,9 +258,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireAdmin();
+    // Écriture : on exige l'accès RBAC à la section « Points Discord »
+    // (gestion-acces/permissions). Les rôles non autorisés via cette page
+    // reçoivent un 403, sans hardcode de FONDATEUR / ADMIN_COORDINATEUR.
+    const admin = await requireSectionAccess(POINTS_DISCORD_SECTION_HREF);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -252,8 +278,9 @@ export async function POST(request: NextRequest) {
       : [];
     const eventId = String(body?.eventId || "").trim();
     const note = String(body?.note || "").trim();
-    const pointsRaw = Number.parseInt(String(body?.points || "500"), 10);
-    const points = Number.isFinite(pointsRaw) && pointsRaw > 0 ? pointsRaw : 500;
+    // Sécurité métier : on ignore TOUJOURS le `points` envoyé par le client.
+    // Un raid EventSub validé vaut exactement +500 points TENF.
+    const points = RAID_POINTS_VALUE;
 
     if (eventIds.length > 0) {
       const eventsRes = await supabaseAdmin
@@ -367,14 +394,14 @@ export async function POST(request: NextRequest) {
       if (isMissingRelationError(message)) {
         return NextResponse.json({ error: "Table points manquante. Applique la migration 0037." }, { status: 500 });
       }
-      return NextResponse.json({ error: "Verification des points existants impossible" }, { status: 500 });
+      return NextResponse.json({ error: "Vérification des points existants impossible" }, { status: 500 });
     }
 
     if (existing.data?.id) {
       return NextResponse.json({
         success: true,
         alreadyAwarded: true,
-        message: "Les points ont deja ete attribues pour ce raid.",
+        message: "Les points ont déjà été attribués pour ce raid.",
       });
     }
 

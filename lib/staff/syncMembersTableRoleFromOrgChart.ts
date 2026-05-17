@@ -2,7 +2,12 @@ import { memberRepository } from "@/lib/repositories";
 import { toCanonicalMemberRole, type MemberRole } from "@/lib/memberRoles";
 import type { OrgChartRoleKey } from "@/lib/staff/orgChartTypes";
 
-/** Alignement `members.role` (gestion membres / API publique) avec le rôle organigramme. */
+/**
+ * Alignement `members.role` (gestion membres / API publique) avec le rôle organigramme.
+ *
+ * Les paliers Découverte / Accompagnement / Autonomie et « Contributeur Invité TENF »
+ * correspondent aux valeurs ajoutées dans la migration `0053_member_role_moderation_tiers.sql`.
+ */
 export function memberRoleFromOrgChartRoleKey(roleKey: OrgChartRoleKey): MemberRole {
   switch (roleKey) {
     case "FONDATEUR":
@@ -11,12 +16,19 @@ export function memberRoleFromOrgChartRoleKey(roleKey: OrgChartRoleKey): MemberR
       return "Admin Coordinateur";
     case "MODERATEUR":
       return "Modérateur";
+    case "MODERATEUR_AUTONOMIE":
+      return "Modérateur en Autonomie";
     case "MODERATEUR_EN_FORMATION":
-      return "Modérateur en formation";
+    case "MODERATEUR_ACCOMPAGNEMENT":
+      return "Modérateur en Accompagnement";
+    case "MODERATEUR_DECOUVERTE":
+      return "Modérateur en Découverte";
     case "MODERATEUR_EN_PAUSE":
       return "Modérateur en pause";
     case "SOUTIEN_TENF":
       return "Soutien TENF";
+    case "CONTRIBUTEUR_INVITE":
+      return "Contributeur Invité TENF";
     default: {
       const _n: never = roleKey;
       return _n;

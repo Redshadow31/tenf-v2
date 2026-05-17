@@ -8,6 +8,18 @@ import { discordAvatarUrl } from "@/lib/discordAvatarUrl";
 import AdminToastStack, { type AdminToastItem } from "@/components/admin/ui/AdminToastStack";
 import AdminTableShell from "@/components/admin/ui/AdminTableShell";
 import CandidateAnswersFiche from "@/components/admin/postulations/CandidateAnswersFiche";
+import MembersCockpitShell from "@/components/admin/members-hub/MembersCockpitShell";
+import MembersPostulationsCockpitAside from "@/components/admin/members-hub/MembersPostulationsCockpitAside";
+import MembersPostulationsHeader from "@/components/admin/members-hub/MembersPostulationsHeader";
+import MembersPostulationsStaffGuide from "@/components/admin/members-hub/MembersPostulationsStaffGuide";
+import MembersPostulationsTodayPulse from "@/components/admin/members-hub/MembersPostulationsTodayPulse";
+import {
+  cockpitInputClass,
+  cockpitPanelClass,
+  hubFocusRingClass,
+  hubPrimaryButtonClass,
+  hubSubCardClass,
+} from "@/components/admin/members-hub/membersHubStyles";
 import { isFounder } from "@/lib/adminRoles";
 import type { StaffApplicationAnswers } from "@/lib/staffApplicationsStorage";
 import {
@@ -134,16 +146,8 @@ type FounderFinalDecision = {
 const COMMENT_PREFIX = "__TENF_REVIEW_COMMENT__";
 const OPINION_PREFIX = "__TENF_REVIEW_OPINION__";
 const FINAL_DECISION_PREFIX = "__TENF_FINAL_DECISION__";
-const glassCardClass =
-  "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
-const sectionCardClass =
-  "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
-const subtleButtonClass =
-  "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
-const focusRingClass =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0b10]";
-const heroShellClass =
-  "relative overflow-hidden rounded-3xl border border-indigo-400/25 bg-[linear-gradient(155deg,rgba(99,102,241,0.14),rgba(14,15,23,0.92)_38%,rgba(11,13,20,0.97))] shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl";
+const sectionCardClass = cockpitPanelClass;
+const focusRingClass = hubFocusRingClass;
 
 const PIPELINE_LABELS = ["Réception", "Contact", "Entretien", "Décision"] as const;
 
@@ -741,189 +745,152 @@ export default function PostulationsStaffPage() {
     operationalStats.roleModerateur + operationalStats.roleSoutien + operationalStats.roleBoth
   );
 
+  const postulationsKpiCards = useMemo(
+    () => [
+      {
+        label: "Total dossiers",
+        value: dashboardStats.total,
+        sub: "Historique complet",
+        icon: ClipboardList,
+        tone: "zinc" as const,
+        onClick: () => {
+          setStatusFilter("all");
+          setRoleFilter("all");
+          setDateFilter("");
+          setFlagsOnly(false);
+          setOpenPipelineOnly(false);
+          pushToast("info", "Filtres réinitialisés");
+        },
+      },
+      {
+        label: "En traitement",
+        value: dashboardStats.open,
+        sub: "Réception → entretien",
+        icon: Activity,
+        tone: "sky" as const,
+        onClick: () => {
+          setStatusFilter("all");
+          setOpenPipelineOnly(true);
+          setFlagsOnly(false);
+          pushToast("info", "Pipeline actif", "Dossiers non clos uniquement.");
+        },
+      },
+      {
+        label: "Acceptés",
+        value: dashboardStats.accepted,
+        sub: "Intégration à suivre",
+        icon: CheckCircle2,
+        tone: "emerald" as const,
+        onClick: () => {
+          setOpenPipelineOnly(false);
+          setFlagsOnly(false);
+          setStatusFilter("accepte");
+        },
+      },
+      {
+        label: "Signalements sensibles",
+        value: dashboardStats.flagged,
+        sub: "À examiner",
+        icon: Flag,
+        tone: "rose" as const,
+        onClick: () => {
+          setOpenPipelineOnly(false);
+          setFlagsOnly(true);
+          pushToast("info", "Signalements sensibles", "Seuls les dossiers signalés sont affichés.");
+        },
+      },
+    ],
+    [dashboardStats.accepted, dashboardStats.flagged, dashboardStats.open, dashboardStats.total]
+  );
+
+  const postulationsAside = (
+    <MembersPostulationsCockpitAside
+      openCount={dashboardStats.open}
+      toContactCount={operationalStats.toContact}
+      flaggedCount={dashboardStats.flagged}
+    />
+  );
+
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#06060a] text-white">
+      <MembersCockpitShell
+        aside={
+          <MembersPostulationsCockpitAside openCount={0} toContactCount={0} flaggedCount={0} />
+        }
+      >
+      <div className={`${cockpitPanelClass} flex flex-col items-center justify-center gap-4 py-24`}>
         <div className="relative h-14 w-14">
           <div className="absolute inset-0 rounded-full border-2 border-violet-500/25" />
           <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-violet-400" />
         </div>
-        <p className="text-sm text-violet-200/85">Chargement des candidatures…</p>
+        <p className="text-sm text-zinc-400">Chargement des candidatures…</p>
       </div>
+      </MembersCockpitShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_rgba(79,70,229,0.12),_transparent_50%),#06060a] p-4 text-white md:p-8 space-y-6">
+    <MembersCockpitShell aside={postulationsAside}>
       <AdminToastStack
         toasts={toasts}
         onClose={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))}
       />
-      <section className={`${heroShellClass} p-6 md:p-8`}>
-        <div className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full bg-violet-600/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-16 h-52 w-52 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="relative flex flex-wrap items-start justify-between gap-6">
-          <div className="max-w-2xl">
-            <Link
-              href="/admin/membres/gestion"
-              className={`mb-3 inline-flex items-center gap-1 text-sm text-violet-200/85 transition hover:text-white ${focusRingClass} rounded-lg`}
-            >
-              <ChevronRight className="h-4 w-4 rotate-180" aria-hidden />
-              Retour gestion membres
-            </Link>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/35 bg-violet-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-100">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                Recrutement staff TENF
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-100">
-                <HeartHandshake className="h-3.5 w-3.5" aria-hidden />
-                Expérience candidats & équipe
-              </span>
-            </div>
-            <h1 className="mt-4 bg-gradient-to-r from-white via-indigo-100 to-cyan-200 bg-clip-text text-2xl font-bold text-transparent md:text-4xl md:leading-tight">
-              Postulations modération &amp; soutien
-            </h1>
-            <p className="mt-3 text-sm leading-relaxed text-slate-400 md:text-base">
-              Ici, le staff fait vivre un parcours clair pour les personnes qui veulent rejoindre TENF : lecture humaine des
-              réponses, relecture croisée, entretien, puis décision transparente. Chaque dossier est une promesse de sérieux
-              vis-à-vis des membres de la communauté.
-            </p>
-            <div className="mt-6 hidden gap-2 md:flex md:flex-wrap">
-              {PIPELINE_LABELS.map((label, i) => (
-                <div key={label} className="flex items-center gap-2">
-                  <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-300">
-                    {i + 1}. {label}
-                  </span>
-                  {i < PIPELINE_LABELS.length - 1 ? (
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-600" aria-hidden />
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadApplications()}
-            disabled={loading}
-            className={`${subtleButtonClass} shrink-0 disabled:opacity-60`}
-          >
-            <RefreshCw className="h-4 w-4" />
-            Actualiser
-          </button>
-        </div>
+      <MembersPostulationsHeader
+        refreshing={loading}
+        onRefresh={() => void loadApplications()}
+        kpiCards={postulationsKpiCards}
+      />
 
-        <div className="relative mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {[
-            {
-              label: "Total dossiers",
-              value: dashboardStats.total,
-              sub: "Historique complet",
-              icon: ClipboardList,
-              border: "border-slate-500/35",
-              onClick: () => {
-                setStatusFilter("all");
-                setRoleFilter("all");
-                setDateFilter("");
-                setFlagsOnly(false);
-                setOpenPipelineOnly(false);
-                pushToast("info", "Filtres réinitialisés");
-              },
-            },
-            {
-              label: "En traitement",
-              value: dashboardStats.open,
-              sub: "Réception → entretien",
-              icon: Activity,
-              border: "border-sky-400/40",
-              onClick: () => {
-                setStatusFilter("all");
-                setOpenPipelineOnly(true);
-                setFlagsOnly(false);
-                pushToast("info", "Pipeline actif", "Dossiers non clos uniquement.");
-              },
-            },
-            {
-              label: "Acceptés",
-              value: dashboardStats.accepted,
-              sub: "Intégration à suivre",
-              icon: CheckCircle2,
-              border: "border-emerald-400/40",
-              onClick: () => {
-                setOpenPipelineOnly(false);
-                setFlagsOnly(false);
-                setStatusFilter("accepte");
-              },
-            },
-            {
-              label: "Red flags",
-              value: dashboardStats.flagged,
-              sub: "À examiner",
-              icon: Flag,
-              border: "border-rose-400/40",
-              onClick: () => {
-                setOpenPipelineOnly(false);
-                setFlagsOnly(true);
-                pushToast("info", "Red flags", "Seuls les dossiers signalés sont affichés.");
-              },
-            },
-          ].map((card) => {
-            const Icon = card.icon;
-            return (
-              <button
-                key={card.label}
-                type="button"
-                onClick={card.onClick}
-                className={`rounded-2xl border ${card.border} bg-black/30 p-4 text-left transition hover:-translate-y-0.5 hover:bg-black/45 hover:shadow-lg hover:shadow-black/30 ${focusRingClass}`}
-              >
-                <Icon className="h-5 w-5 text-indigo-200/90" aria-hidden />
-                <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{card.label}</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-white">{card.value}</p>
-                <p className="mt-1 text-[11px] text-slate-500">{card.sub}</p>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      <MembersPostulationsTodayPulse
+        openCount={dashboardStats.open}
+        toContactCount={operationalStats.toContact}
+        flaggedCount={dashboardStats.flagged}
+      />
+
+      <MembersPostulationsStaffGuide
+        totalDossiers={dashboardStats.total}
+        openCount={dashboardStats.open}
+        toContactCount={operationalStats.toContact}
+      />
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
         <article className={`${sectionCardClass} p-5 md:p-6`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Gauge className="h-5 w-5 text-sky-300" aria-hidden />
-              <h2 className="text-lg font-semibold text-slate-100">Rythme sur 7 jours</h2>
+              <h2 className="text-lg font-semibold text-zinc-100">Rythme sur 7 jours</h2>
             </div>
-            <p className="text-xs text-slate-500">Arrivées récentes et files actives</p>
+            <p className="text-xs text-zinc-500">Arrivées récentes et files actives</p>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-2xl border border-sky-400/35 bg-sky-500/10 p-4 transition hover:border-sky-400/55">
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">Nouvelles 7j</p>
-              <p className="mt-2 text-2xl font-bold tabular-nums text-white">{operationalStats.recent}</p>
+            <div className={`${hubSubCardClass} border-sky-400/20 p-4`}>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500">Nouvelles 7j</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-sky-100">{operationalStats.recent}</p>
             </div>
-            <div className="rounded-2xl border border-amber-400/35 bg-amber-500/10 p-4 transition hover:border-amber-400/55">
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">À contacter</p>
-              <p className="mt-2 text-2xl font-bold tabular-nums text-white">{operationalStats.toContact}</p>
+            <div className={`${hubSubCardClass} border-amber-400/20 p-4`}>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500">À contacter</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-amber-100">{operationalStats.toContact}</p>
             </div>
-            <div className="rounded-2xl border border-violet-400/35 bg-violet-500/10 p-4 transition hover:border-violet-400/55">
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">Entretiens</p>
-              <p className="mt-2 text-2xl font-bold tabular-nums text-white">{operationalStats.interviews}</p>
+            <div className={`${hubSubCardClass} border-violet-400/20 p-4`}>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500">Entretiens</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-violet-100">{operationalStats.interviews}</p>
             </div>
-            <div className="rounded-2xl border border-emerald-400/35 bg-emerald-500/10 p-4 transition hover:border-emerald-400/55">
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">Score moyen</p>
-              <p className="mt-2 text-2xl font-bold tabular-nums text-white">
+            <div className={`${hubSubCardClass} border-emerald-400/20 p-4`}>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500">Score moyen</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-emerald-100">
                 {operationalStats.avgScore}
-                <span className="text-lg font-semibold text-slate-500">/5</span>
+                <span className="text-lg font-semibold text-zinc-500">/5</span>
               </p>
             </div>
           </div>
         </article>
         <article className={`${sectionCardClass} p-5 md:p-6`}>
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-indigo-300" aria-hidden />
-            <h2 className="text-lg font-semibold text-slate-100">Parcours choisi par les candidats</h2>
+            <Users className="h-5 w-5 text-violet-300" aria-hidden />
+            <h2 className="text-lg font-semibold text-zinc-100">Parcours choisi par les candidats</h2>
           </div>
-          <p className="mt-1 text-xs text-slate-500">Répartition visuelle — utile pour anticiper les entretiens</p>
-          <div className="mt-4 flex h-4 w-full overflow-hidden rounded-full border border-white/10 bg-black/40">
+          <p className="mt-1 text-xs text-zinc-500">Répartition visuelle — utile pour anticiper les entretiens</p>
+          <div className="mt-4 flex h-4 w-full overflow-hidden rounded-full border border-white/10 bg-zinc-900/80 ring-1 ring-inset ring-white/[0.04]">
             <div
               className="bg-gradient-to-r from-indigo-500 to-violet-500 transition-all"
               style={{ width: `${(operationalStats.roleModerateur / roleSum) * 100}%` }}
@@ -965,16 +932,16 @@ export default function PostulationsStaffPage() {
           </div>
           <Link
             href="/admin/membres/gestion"
-            className={`mt-4 inline-flex w-full items-center justify-between rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-indigo-400/40 hover:bg-white/[0.07] ${focusRingClass}`}
+            className={`${hubPrimaryButtonClass} mt-4 w-full justify-between ${focusRingClass}`}
           >
             Passer à la gestion des membres actifs
-            <ArrowRight className="h-4 w-4 text-indigo-300" aria-hidden />
+            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
           </Link>
         </article>
       </section>
 
       <section className={`${sectionCardClass} p-4 md:p-5`}>
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Raccourcis filtres</p>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Raccourcis filtres</p>
       <div className="mb-4 flex flex-wrap gap-2">
         <button
           type="button"
@@ -986,7 +953,7 @@ export default function PostulationsStaffPage() {
           className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${focusRingClass} ${
             statusFilter === "nouveau" && !openPipelineOnly && !flagsOnly
               ? "border-sky-400/50 bg-sky-500/20 text-sky-100"
-              : "border-white/12 bg-black/25 text-slate-300 hover:border-white/25"
+              : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-violet-400/25 hover:text-zinc-200"
           }`}
         >
           Boîte nouveaux
@@ -1001,7 +968,7 @@ export default function PostulationsStaffPage() {
           className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${focusRingClass} ${
             openPipelineOnly && !flagsOnly
               ? "border-violet-400/50 bg-violet-500/20 text-violet-100"
-              : "border-white/12 bg-black/25 text-slate-300 hover:border-white/25"
+              : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-violet-400/25 hover:text-zinc-200"
           }`}
         >
           Dossiers ouverts
@@ -1016,7 +983,7 @@ export default function PostulationsStaffPage() {
           className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${focusRingClass} ${
             statusFilter === "entretien_prevu"
               ? "border-indigo-400/50 bg-indigo-500/20 text-indigo-100"
-              : "border-white/12 bg-black/25 text-slate-300 hover:border-white/25"
+              : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-violet-400/25 hover:text-zinc-200"
           }`}
         >
           Entretiens prévus
@@ -1028,17 +995,17 @@ export default function PostulationsStaffPage() {
             setOpenPipelineOnly(false);
           }}
           className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${focusRingClass} ${
-            flagsOnly ? "border-rose-400/50 bg-rose-500/15 text-rose-100" : "border-white/12 bg-black/25 text-slate-300 hover:border-white/25"
+            flagsOnly ? "border-rose-400/50 bg-rose-500/15 text-rose-100" : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-violet-400/25 hover:text-zinc-200"
           }`}
         >
-          Red flags
+          Signalements sensibles
         </button>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
-          className={`rounded-xl border border-[#353a50] bg-[#121623]/85 px-3 py-2.5 text-white ${focusRingClass}`}
+          className={`${cockpitInputClass} w-full ${focusRingClass}`}
         >
           <option value="all">Tous rôles</option>
           <option value="moderateur">Modérateur</option>
@@ -1051,7 +1018,7 @@ export default function PostulationsStaffPage() {
             setStatusFilter(e.target.value as typeof statusFilter);
             setOpenPipelineOnly(false);
           }}
-          className={`rounded-xl border border-[#353a50] bg-[#121623]/85 px-3 py-2.5 text-white ${focusRingClass}`}
+          className={`${cockpitInputClass} w-full ${focusRingClass}`}
         >
           <option value="all">Tous statuts</option>
           <option value="nouveau">Nouveau</option>
@@ -1065,12 +1032,12 @@ export default function PostulationsStaffPage() {
           type="date"
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
-          className={`rounded-xl border border-[#353a50] bg-[#121623]/85 px-3 py-2.5 text-white ${focusRingClass}`}
+          className={`${cockpitInputClass} w-full ${focusRingClass}`}
         />
         <button
           type="button"
           onClick={exportCsv}
-          className={`rounded-xl border border-indigo-300/35 bg-indigo-500/20 px-3 py-2.5 font-semibold text-indigo-100 transition hover:bg-indigo-500/30 ${focusRingClass}`}
+          className={`${hubPrimaryButtonClass} w-full justify-center ${focusRingClass}`}
         >
           Export CSV
         </button>
@@ -1082,7 +1049,7 @@ export default function PostulationsStaffPage() {
         <select
           value={selectedSavedViewId}
           onChange={(e) => applySavedView(e.target.value)}
-          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white"
+          className={`${cockpitInputClass} text-sm ${focusRingClass}`}
         >
           <option value="">Vues sauvegardées</option>
           {savedViews.map((view) => (
@@ -1095,9 +1062,13 @@ export default function PostulationsStaffPage() {
           value={newSavedViewName}
           onChange={(e) => setNewSavedViewName(e.target.value)}
           placeholder="Nom de vue"
-          className="rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white"
+          className={`${cockpitInputClass} text-sm ${focusRingClass}`}
         />
-        <button onClick={saveCurrentView} className="rounded-lg border border-indigo-300/35 bg-indigo-500/20 px-3 py-2 text-sm font-semibold text-indigo-100 transition hover:bg-indigo-500/30">
+        <button
+          type="button"
+          onClick={saveCurrentView}
+          className={`${hubPrimaryButtonClass} text-sm ${focusRingClass}`}
+        >
           Sauver vue
         </button>
         {selectedSavedViewId && (
@@ -1669,16 +1640,16 @@ export default function PostulationsStaffPage() {
                     onChange={(e) =>
                       void updateApplication(selected.id, {
                         hasRedFlag: e.target.checked,
-                        redFlagLabel: "Red flag manuel",
+                        redFlagLabel: "Signalement sensible manuel",
                       })
                     }
                   />
-                  Tag red flag
+                  Tag signalement sensible
                 </label>
                 {selected.has_red_flag && (
                   <p className="flex items-center gap-1.5 text-xs text-red-300">
                     <Flag className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    Candidature marquée red flag
+                    Candidature marquée comme sensible
                   </p>
                 )}
 
@@ -1929,6 +1900,6 @@ export default function PostulationsStaffPage() {
           </div>
         </div>
       ) : null}
-    </div>
+    </MembersCockpitShell>
   );
 }

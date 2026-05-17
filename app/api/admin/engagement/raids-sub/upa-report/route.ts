@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fromZonedTime } from "date-fns-tz";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireSectionAccessAny } from "@/lib/requireAdmin";
+import { RAIDS_EVENTSUB_SECTION_HREFS } from "@/lib/admin/raidsFiabiliteRbac";
 import { upaEventRepository } from "@/lib/repositories/UpaEventRepository";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { PARIS_TIMEZONE } from "@/lib/timezone";
@@ -26,9 +27,9 @@ function parisInclusiveRangeUtcIso(startYmd: string, endYmd: string): { startIso
 
 export async function GET() {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSectionAccessAny(RAIDS_EVENTSUB_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: "Acces refuse" }, { status: 403 });
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     const content = await upaEventRepository.getContent("upa-event");

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
+import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
 import {
   ArrowRight,
   BookOpen,
@@ -104,7 +105,7 @@ const hubLinks: HubLink[] = [
     Icon: LineChart,
   },
   {
-    href: "/events2",
+    href: "/evenements",
     label: "Calendrier événements",
     hint: "Public — inscriptions membres",
     Icon: Calendar,
@@ -265,7 +266,7 @@ export default function DecouvrirTenfInteractive() {
                 Les 3 étapes
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
-              <Link href="/events2" className={styles.fnBtnGhost}>
+              <Link href="/evenements" className={styles.fnBtnGhost}>
                 Voir les événements
               </Link>
               <Link href="/rejoindre/guide-public" className={styles.fnBtnGhost}>
@@ -476,7 +477,7 @@ export default function DecouvrirTenfInteractive() {
             Besoin d’un contact humain ? Le Discord TENF reste le lieu des annonces et des réponses rapides du staff.
           </p>
           <Link
-            href="https://discord.gg/WnpazgcZHk"
+            href={DISCORD_INVITE_URL}
             target="_blank"
             rel="noopener noreferrer"
             className={`${styles.fnBtnGhost} mt-4 inline-flex border-[color-mix(in_srgb,var(--fn-purple)_35%,var(--color-border))]`}

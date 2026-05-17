@@ -5,7 +5,7 @@ export default function CommunauteAnniversairesMoisPage() {
     <AnniversariesPage
       scope="month"
       backHref="/admin/communaute/anniversaires"
-      backLabel="Retour au sous-groupe Anniversaires"
+      backLabel="Retour pilier Anniversaires"
       title="Anniversaires du mois"
       description="Retrouve les anniversaires du mois en deux onglets : Anniversaire et Anniversaire d'affiliation."
     />

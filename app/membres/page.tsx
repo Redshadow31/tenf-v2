@@ -1,9 +1,19 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, ExternalLink, Radio, Search, Shuffle, Sparkles, Users } from "lucide-react";
+import {
+  ArrowRight,
+  ExternalLink,
+  HeartHandshake,
+  Radio,
+  Search,
+  Shuffle,
+  Sparkles,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import MemberModal from "@/components/MemberModal";
 import MembresDirectoryMemberCard from "@/components/members/MembresDirectoryMemberCard";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
@@ -65,21 +75,44 @@ type StaffTier =
   | "admin_fondateur"
   | "admin_coordinateur"
   | "moderateur"
+  | "moderateur_autonomie"
+  | "moderateur_accompagnement"
+  | "moderateur_decouverte"
   | "moderateur_formation"
   | "moderateur_pause"
+  | "contributeur_invite"
   | "soutien_tenf"
   | null;
 
-const FILTERS: Array<{ key: FilterKey; label: string }> = [
-  { key: "all", label: "🎮 Tous" },
-  { key: "dev", label: "🌱 Créateurs en développement" },
-  { key: "affilie", label: "⭐ Affiliés Twitch" },
-  { key: "staff", label: "🛡 Staff TENF" },
-  { key: "discover", label: "💜 À découvrir pour toi" },
+const FILTERS: Array<{ key: FilterKey; label: string; hint: string }> = [
+  { key: "all", label: "🎮 Tout le monde", hint: "Tous les profils, mélangés" },
+  { key: "dev", label: "🌱 En développement", hint: "Chaînes qui démarrent" },
+  { key: "affilie", label: "⭐ Affiliés Twitch", hint: "Affiliés officiels" },
+  { key: "staff", label: "🛡 Staff TENF", hint: "Équipe qui anime" },
+  { key: "discover", label: "💜 À découvrir pour toi", hint: "Connexion Twitch requise" },
 ];
 
 const INITIAL_VISIBLE_COUNT = 24;
 const LOAD_MORE_COUNT = 24;
+
+// Wrapper fluide : la page contrôle ses propres marges intérieures pour
+// utiliser l'espace libre à droite de la sidebar membre et rester
+// scalable au zoom navigateur.
+const MEMBRES_PAGE_STYLE: CSSProperties = {
+  // @ts-expect-error CSS custom property
+  "--membres-px": "clamp(0.75rem, 2vw, 2.5rem)",
+  paddingLeft: "var(--membres-px)",
+  paddingRight: "var(--membres-px)",
+  paddingTop: "clamp(1rem, 1.5vw, 1.75rem)",
+  paddingBottom: "clamp(2rem, 3vw, 3.5rem)",
+};
+
+const MEMBRES_CONTAINER_STYLE: CSSProperties = {
+  maxWidth: "min(120rem, 100%)",
+  marginLeft: "auto",
+  marginRight: "auto",
+  width: "100%",
+};
 
 function twitchPreviewUrl(url: string): string {
   return url
@@ -147,11 +180,23 @@ function shuffleArray<T>(items: T[]): T[] {
 function normalizeMemberRole(role: string): StaffTier {
   const normalized = normalizeText(role);
 
-  if (normalized.includes("admin") && (normalized.includes("fondateur") || normalized === "admin")) {
+  if (normalized.includes("fondateur") || (normalized.includes("admin") && !normalized.includes("coordinateur") && !normalized.includes("adjoint"))) {
     return "admin_fondateur";
   }
-  if (normalized.includes("admin") && (normalized.includes("coordinateur") || normalized.includes("adjoint"))) {
+  if (normalized.includes("coordinateur") || (normalized.includes("admin") && (normalized.includes("adjoint") || normalized.includes("coordinateur")))) {
     return "admin_coordinateur";
+  }
+  if (normalized.includes("contributeur") && normalized.includes("invite")) {
+    return "contributeur_invite";
+  }
+  if (normalized.includes("moderateur") && normalized.includes("autonomie")) {
+    return "moderateur_autonomie";
+  }
+  if (normalized.includes("moderateur") && normalized.includes("accompagnement")) {
+    return "moderateur_accompagnement";
+  }
+  if (normalized.includes("moderateur") && normalized.includes("decouverte")) {
+    return "moderateur_decouverte";
   }
   if (normalized.includes("moderateur") && normalized.includes("formation")) {
     return "moderateur_formation";
@@ -172,8 +217,12 @@ const STAFF_PRIORITY: StaffTier[] = [
   "admin_fondateur",
   "admin_coordinateur",
   "moderateur",
+  "moderateur_autonomie",
+  "moderateur_accompagnement",
+  "moderateur_decouverte",
   "moderateur_formation",
   "moderateur_pause",
+  "contributeur_invite",
   "soutien_tenf",
 ];
 
@@ -726,11 +775,13 @@ export default function Page() {
   }, [activeMembers, queryModalHandled, searchParams]);
 
   return (
-    <div className="space-y-8 pb-10">
+    <div style={MEMBRES_PAGE_STYLE}>
+      <div className="space-y-8 sm:space-y-10" style={MEMBRES_CONTAINER_STYLE}>
       {/* HERO — vitrine publique + invitation TENF */}
       <section
-        className="relative overflow-hidden rounded-3xl border p-4 sm:p-6 md:p-8 lg:p-10"
+        className="relative overflow-hidden rounded-3xl border"
         style={{
+          padding: "clamp(1rem, 2.5vw, 2.75rem)",
           borderColor: "rgba(145,70,255,0.38)",
           background:
             "linear-gradient(125deg, rgba(14,14,20,0.99) 0%, rgba(48,26,72,0.92) 48%, rgba(22,16,38,0.96) 100%)",
@@ -740,13 +791,22 @@ export default function Page() {
         <div
           className="pointer-events-none absolute -left-20 -top-20 h-60 w-60 rounded-full opacity-75 blur-3xl"
           style={{ background: "rgba(167,139,250,0.35)" }}
+          aria-hidden
         />
         <div
           className="pointer-events-none absolute -bottom-24 right-[-10%] h-64 w-64 rounded-full opacity-45 blur-3xl"
           style={{ background: "rgba(236,72,153,0.2)" }}
+          aria-hidden
         />
-        <div className="relative grid items-stretch gap-8 lg:grid-cols-[1.25fr_0.95fr]">
-          <div className="relative rounded-2xl border p-5 sm:p-6 md:p-8" style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.03)" }}>
+        <div className="relative grid items-stretch gap-6 lg:grid-cols-[1.35fr_1fr] lg:gap-8 xl:gap-10">
+          <div
+            className="relative rounded-2xl border"
+            style={{
+              padding: "clamp(1.25rem, 2vw, 2.25rem)",
+              borderColor: "rgba(255,255,255,0.08)",
+              backgroundColor: "rgba(255,255,255,0.03)",
+            }}
+          >
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]"
@@ -755,105 +815,134 @@ export default function Page() {
                 <Sparkles className="h-3.5 w-3.5 text-amber-300" aria-hidden />
                 Annuaire public
               </span>
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Membres TENF & curieux·ses</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
+                <HeartHandshake className="h-3.5 w-3.5 text-emerald-300" aria-hidden />
+                La New Family au grand jour
+              </span>
             </div>
-            <h1 className="mt-4 text-3xl font-black leading-[1.1] tracking-tight sm:text-4xl md:text-[2.75rem]" style={{ color: "var(--color-text)" }}>
+            <h1
+              className="mt-4 font-black leading-[1.05] tracking-tight"
+              style={{ color: "var(--color-text)", fontSize: "clamp(1.85rem, 1.4rem + 1.8vw, 3.25rem)" }}
+            >
               Trouve ta prochaine chaîne{" "}
-              <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-violet-200 bg-clip-text text-transparent">coup de cœur</span>
+              <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-violet-200 bg-clip-text text-transparent">
+                coup de cœur
+              </span>
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-300 sm:text-base">
-              Ici, chaque fiche raconte un peu qui anime derrière l’écran : pseudo Twitch, ambiance, parfois une bio. Que tu passes en mode découvreur·se ou que tu sois déjà dans la{" "}
-              <strong className="font-semibold text-white">New Family</strong>, le jeu consiste à ouvrir les profils, tomber sur des univers différents et peut-être poser ta prochaine veille sur un live TENF.
+            <p
+              className="mt-4 max-w-2xl leading-relaxed text-zinc-300"
+              style={{ fontSize: "clamp(0.95rem, 0.9rem + 0.2vw, 1.1rem)" }}
+            >
+              Ici, chaque fiche raconte un peu qui anime derrière l'écran : pseudo Twitch, ambiance,
+              parfois une bio. Que tu passes en mode découvreur·se ou que tu sois déjà dans la{" "}
+              <strong className="font-semibold text-white">New Family</strong>, le jeu consiste à
+              ouvrir les profils, tomber sur des univers différents et peut-être poser ta prochaine
+              veille sur un live TENF.
+            </p>
+            <p className="mt-3 text-xs leading-relaxed text-violet-200/75 sm:text-sm">
+              Astuce : utilise le tirage au sort pour sortir de ta zone de confort, ou file en bas
+              pour filtrer par rôle et chercher un jeu.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={() => openRandomMember()}
-                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:brightness-110 sm:flex-none"
+                className="group inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:flex-none"
                 style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 14px 34px rgba(124,58,237,0.42)" }}
               >
-                <Shuffle className="h-4 w-4 shrink-0" aria-hidden />
+                <Shuffle className="h-4 w-4 shrink-0 transition group-hover:rotate-12" aria-hidden />
                 Surprends-moi avec un profil
               </button>
               <button
                 type="button"
                 onClick={() => liveSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-red-400/35 hover:bg-red-500/10 sm:flex-none"
+                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-red-400/35 hover:bg-red-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300 sm:flex-none"
               >
                 <Radio className="h-4 w-4 shrink-0 text-red-400" aria-hidden />
-                Voir qui est en live
+                Voir qui est en live ({formatStatValue(stats.liveCount, loadingLive)})
               </button>
             </div>
-            <nav className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-5 text-xs font-semibold sm:text-sm" aria-label="Autres découvertes TENF">
-              <Link href="/lives" className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white">
+            <nav
+              className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-5 text-xs font-semibold sm:text-sm"
+              aria-label="Autres découvertes TENF"
+            >
+              <Link
+                href="/lives"
+                className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
+              >
                 Tous les lives <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
               </Link>
-              <Link href="/decouvrir-createurs" className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white">
+              <Link
+                href="/decouvrir-createurs"
+                className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
+              >
                 Clips à découvrir <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
               </Link>
-              <Link href="/auth/login" className="inline-flex items-center gap-1 rounded-full border border-violet-400/35 bg-violet-500/10 px-3 py-1.5 text-violet-100 transition hover:bg-violet-500/18">
+              <Link
+                href="/evenements"
+                className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
+              >
+                Agenda événements <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
+              </Link>
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center gap-1 rounded-full border border-violet-400/35 bg-violet-500/10 px-3 py-1.5 text-violet-100 transition hover:bg-violet-500/18 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
+              >
                 Déjà membre ? Connexion <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
               </Link>
             </nav>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <div
-              className="rounded-2xl border p-4 transition hover:border-violet-400/25 sm:p-5"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.04)" }}
-            >
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
-                <Users className="h-4 w-4 text-violet-400" aria-hidden />
-                Côté Discord
-              </div>
-              <p className="mt-3 text-3xl font-black tabular-nums text-white">{formatStatValue(stats.totalMembers, loadingCommunityStats)}</p>
-              <p className="mt-1 text-xs leading-snug text-zinc-400">Personnes qui font partie du projet (ordre de grandeur).</p>
-            </div>
-            <div
-              className="rounded-2xl border p-4 transition hover:border-violet-400/25 sm:p-5"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.04)" }}
-            >
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
-                <Sparkles className="h-4 w-4 text-amber-300" aria-hidden />
-                Créateurs suivis
-              </div>
-              <p className="mt-3 text-3xl font-black tabular-nums text-white">{formatStatValue(stats.activeCreators, loadingCommunityStats)}</p>
-              <p className="mt-1 text-xs leading-snug text-zinc-400">Profils actifs sur une fenêtre récente — parcours-les plus bas.</p>
-            </div>
-            <div
-              className="rounded-2xl border p-4 transition hover:border-red-400/20 sm:p-5"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.04)" }}
-            >
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
-                <Radio className="h-4 w-4 text-red-400" aria-hidden />
-                En direct
-              </div>
-              <p className="mt-3 text-3xl font-black tabular-nums text-white">{formatStatValue(stats.liveCount, loadingLive)}</p>
-              <p className="mt-1 text-xs leading-snug text-zinc-400">Chaînes TENF détectées tout de suite — section dédiée ci-dessous.</p>
-            </div>
+            <HeroStatCard
+              icon={Users}
+              label="Côté Discord"
+              value={formatStatValue(stats.totalMembers, loadingCommunityStats)}
+              caption="Personnes qui font partie du projet (ordre de grandeur)."
+              tone="violet"
+            />
+            <HeroStatCard
+              icon={Sparkles}
+              label="Créateurs suivis"
+              value={formatStatValue(stats.activeCreators, loadingCommunityStats)}
+              caption="Profils actifs sur une fenêtre récente — parcours-les plus bas."
+              tone="amber"
+            />
+            <HeroStatCard
+              icon={Radio}
+              label="En direct"
+              value={formatStatValue(stats.liveCount, loadingLive)}
+              caption="Chaînes TENF détectées tout de suite — section dédiée ci-dessous."
+              tone="red"
+              live
+            />
           </div>
         </div>
       </section>
 
       {/* Lives — vitrine immersive */}
       <section ref={liveSectionRef} className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="flex items-center gap-2 text-2xl font-black tracking-tight text-white">
-              <span className="relative flex h-3 w-3">
+            <h2
+              className="flex items-center gap-2 font-black tracking-tight text-white"
+              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
+            >
+              <span className="relative flex h-3 w-3" aria-hidden>
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
               </span>
               En direct tout de suite
             </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-zinc-400">
+            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-zinc-400">
               Trois chaînes tirées au sort parmi les membres TENF actuellement live — aperçu vidéo, titre du stream, puis{" "}
-              <strong className="font-semibold text-zinc-200">ouvre la fiche</strong> pour voir bio et réseaux avant de suivre le live.
+              <strong className="font-semibold text-zinc-200">ouvre la fiche</strong> pour découvrir bio et réseaux avant
+              de rejoindre le live.
             </p>
           </div>
           <Link
             href="/lives"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-100 transition hover:bg-violet-500/18"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-100 transition hover:bg-violet-500/18 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
           >
             Voir tous les lives TENF
             <ArrowRight className="h-4 w-4" aria-hidden />
@@ -864,7 +953,7 @@ export default function Page() {
             On synchronise les vignettes Twitch…
           </div>
         ) : liveShowcaseMembers.length > 0 ? (
-          <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 pt-1 scrollbar-thin sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible lg:grid-cols-3">
+          <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 pt-1 scrollbar-thin sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible lg:grid-cols-3 2xl:grid-cols-4">
             {liveShowcaseMembers.map((member) => {
               const stream = member.stream!;
               const followBadge = getFollowBadge(member.followState);
@@ -916,18 +1005,30 @@ export default function Page() {
 
       {/* Découverte personnalisée (connecté + Twitch lié) ou sélection du jour */}
       {showFollowStatuses ? (
-        <section className="space-y-5 rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-950/25 via-transparent to-fuchsia-950/15 p-4 sm:p-6">
+        <section
+          className="space-y-5 rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-950/25 via-transparent to-fuchsia-950/15"
+          style={{ padding: "clamp(1rem, 2vw, 2rem)" }}
+        >
           <div>
-            <h2 className="text-2xl font-black tracking-tight text-white">Des chaînes que tu ne suis pas encore</h2>
+            <h2
+              className="font-black tracking-tight text-white"
+              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
+            >
+              Des chaînes que tu ne suis pas encore
+            </h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
-              On compare ton compte Twitch aux membres TENF : voici des profils où tu n’as pas encore cliqué sur « suivre ». Ce n’est pas une obligation — juste une façon ludique de sortir de ta bulle et de découvrir des voisin·es de réseau.
+              On compare ton compte Twitch aux membres TENF : voici des profils sur lesquels tu n'as pas encore cliqué
+              sur « suivre ». Ce n'est pas une obligation — juste une façon ludique de sortir de ta bulle et de
+              découvrir des voisin·es de réseau.
             </p>
           </div>
           {discoverForYouMembers.length > 0 ? (
             <>
               <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-300/80">Trois cartes tirées pour te faire envie</p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-300/80">
+                  Trois cartes tirées pour te faire envie
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {discoverForYouTopMembers.map((member) => {
                     const followBadge = getFollowBadge(member.followState);
                     return (
@@ -1018,12 +1119,19 @@ export default function Page() {
       ) : (
         <section className="space-y-4">
           <div>
-            <h2 className="text-2xl font-black tracking-tight text-white">Pépites du jour (sans connexion Twitch)</h2>
+            <h2
+              className="font-black tracking-tight text-white"
+              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
+            >
+              Pépites du jour (sans connexion Twitch)
+            </h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
-              Tu navigues en invité·e : on te propose quand même une petite sélection pour te donner envie de fouiller les fiches. Connecte-toi avec Discord et lie Twitch pour débloquer le fil « chaînes que tu ne suis pas encore ».
+              Tu navigues en invité·e : on te propose quand même une petite sélection pour te donner envie de fouiller
+              les fiches. Connecte-toi avec Discord et lie Twitch pour débloquer le fil{" "}
+              <strong className="font-semibold text-zinc-200">« chaînes que tu ne suis pas encore »</strong>.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {discoverTodayMembers.map((member) => (
               <MembresDirectoryMemberCard
                 key={`fallback-${member.twitchLogin}`}
@@ -1052,16 +1160,30 @@ export default function Page() {
 
       {/* Nouveaux membres — accueil chaleureux */}
       <section className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-black tracking-tight text-white">Nouveaux dans la communauté</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
-            Intégrations récentes (30 derniers jours) : un bon endroit pour passer dire bonjour et découvrir des chaînes toutes fraîches. Chaque fiche résume le style de stream et les liens utiles.
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2
+              className="font-black tracking-tight text-white"
+              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
+            >
+              Nouveaux dans la communauté
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+              Intégrations récentes (30 derniers jours) : un super endroit pour passer dire bonjour et découvrir des
+              chaînes toutes fraîches. Chaque fiche résume le style de stream et les liens utiles.
+            </p>
+          </div>
+          {recentIntegratedMembers.length > 0 ? (
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-200">
+              <HeartHandshake className="h-3.5 w-3.5" aria-hidden />
+              {recentIntegratedMembers.length} arrivée{recentIntegratedMembers.length > 1 ? "s" : ""} ce mois-ci
+            </span>
+          ) : null}
         </div>
 
         {recentIntegratedMembers.length > 0 ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {recentIntegratedMembers.map((member) => (
                 <MembresDirectoryMemberCard
                   key={`recent-integrated-${member.login}`}
@@ -1097,20 +1219,31 @@ export default function Page() {
       </section>
 
       {/* Recherche + filtres */}
-      <section className="space-y-4 rounded-3xl border border-white/10 bg-black/20 p-4 sm:p-6">
+      <section
+        className="space-y-4 rounded-3xl border border-white/10 bg-black/20"
+        style={{ padding: "clamp(1rem, 2vw, 1.75rem)" }}
+        aria-labelledby="explorer-title"
+      >
         <div>
-          <h2 className="text-lg font-bold text-white sm:text-xl">Explorer toute la communauté</h2>
-          <p className="mt-1 text-sm text-zinc-400">
-            Filtre par rôle, cherche un jeu ou un mot dans la bio — puis ouvre les fiches qui te intriguent.
+          <h2 id="explorer-title" className="text-lg font-bold text-white sm:text-xl">
+            Explorer toute la communauté
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+            Filtre par rôle, cherche un jeu ou un mot dans la bio — puis ouvre les fiches qui t'intriguent. Tout
+            fonctionne sans connexion ; certains filtres s'enrichissent une fois que tu as lié ton compte Twitch.
           </p>
         </div>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden />
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+            aria-hidden
+          />
           <input
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Pseudo Twitch, jeu, mot-clé dans la bio…"
+            aria-label="Rechercher un membre par pseudo, jeu ou mot-clé"
             className="w-full rounded-xl border py-3 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-violet-500/40"
             style={{
               backgroundColor: "var(--color-card)",
@@ -1119,35 +1252,47 @@ export default function Page() {
               boxShadow: "none",
             }}
           />
+          {searchQuery ? (
+            <p className="mt-1.5 pl-1 text-xs text-zinc-500">
+              Recherche dans les pseudos, les noms d'affichage, les jeux et les bios.
+            </p>
+          ) : null}
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory [&>button]:snap-start sm:flex-wrap sm:overflow-visible">
+        <div
+          className="flex gap-2 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory [&>button]:snap-start sm:flex-wrap sm:overflow-visible"
+          role="group"
+          aria-label="Filtrer les membres par rôle"
+        >
           {FILTERS.map((filter) => {
             const disabled = filter.key === "discover" && !showFollowStatuses;
             const tooltip = disabled
               ? "Lie ton compte Twitch pour utiliser ce filtre"
-              : undefined;
+              : filter.hint;
+            const isActive = activeFilter === filter.key && !disabled;
             return (
-            <button
-              key={filter.key}
-              type="button"
-              onClick={() => !disabled && setActiveFilter(filter.key)}
-              disabled={disabled}
-              title={tooltip}
-              className="shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition-all min-h-[42px]"
-              style={{
-                backgroundColor: activeFilter === filter.key && !disabled ? "rgba(145,70,255,0.15)" : "var(--color-card)",
-                borderColor: activeFilter === filter.key ? "rgba(145,70,255,0.6)" : "var(--color-border)",
-                color: disabled
-                  ? "rgba(148,163,184,0.6)"
-                  : activeFilter === filter.key
-                    ? "var(--color-text)"
-                    : "var(--color-text-secondary)",
-                opacity: disabled ? 0.65 : 1,
-                cursor: disabled ? "not-allowed" : "pointer",
-              }}
-            >
-              {filter.label}
-            </button>
+              <button
+                key={filter.key}
+                type="button"
+                onClick={() => !disabled && setActiveFilter(filter.key)}
+                disabled={disabled}
+                title={tooltip}
+                aria-pressed={isActive}
+                aria-label={disabled ? `${filter.label} — ${tooltip}` : filter.label}
+                className="group shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition-all min-h-[42px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
+                style={{
+                  backgroundColor: isActive ? "rgba(145,70,255,0.15)" : "var(--color-card)",
+                  borderColor: isActive ? "rgba(145,70,255,0.6)" : "var(--color-border)",
+                  color: disabled
+                    ? "rgba(148,163,184,0.6)"
+                    : isActive
+                      ? "var(--color-text)"
+                      : "var(--color-text-secondary)",
+                  opacity: disabled ? 0.65 : 1,
+                  cursor: disabled ? "not-allowed" : "pointer",
+                }}
+              >
+                {filter.label}
+              </button>
             );
           })}
         </div>
@@ -1157,27 +1302,60 @@ export default function Page() {
       <section className="space-y-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-2xl font-black tracking-tight text-white">Annuaire complet</h2>
-            <p className="mt-1 text-sm text-zinc-400">
-              {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""} après filtres — clique sur « Ouvrir la fiche » pour la vue détaillée (bio, réseaux, statut follow si tu es connecté·e).
+            <h2
+              className="font-black tracking-tight text-white"
+              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
+            >
+              Annuaire complet
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+              <strong className="font-semibold text-zinc-200">
+                {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""}
+              </strong>{" "}
+              après filtres — clique sur « Ouvrir la fiche » pour la vue détaillée (bio, réseaux, statut follow si tu
+              es connecté·e).
             </p>
           </div>
+          {filteredMembers.length > 0 ? (
+            <span className="inline-flex items-center gap-2 self-start rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-zinc-300 sm:self-end">
+              <Users className="h-3.5 w-3.5 text-violet-300" aria-hidden />
+              Triés : staff d'abord, puis mélange aléatoire
+            </span>
+          ) : null}
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-16">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+          <div
+            className="flex flex-col items-center justify-center gap-3 py-16"
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              className="h-10 w-10 animate-spin rounded-full border-2 border-violet-500 border-t-transparent"
+              aria-hidden
+            />
             <p className="text-sm text-zinc-500">Chargement des créateurs TENF…</p>
           </div>
         ) : visibleMembers.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-10 text-center">
             <p className="text-sm leading-relaxed text-zinc-400">
-              Aucun résultat avec cette recherche ou ce filtre. Élargis ta requête ou réinitialise les filtres pour retrouver des profils.
+              Aucun résultat avec cette recherche ou ce filtre. Essaie un mot plus court, ou{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setActiveFilter("all");
+                }}
+                className="font-bold text-violet-300 underline-offset-2 hover:underline focus-visible:underline"
+              >
+                réinitialise les filtres
+              </button>{" "}
+              pour retrouver tous les profils.
             </p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {visibleMembers.map((member) => {
                 const followBadge = getFollowBadge(member.followState);
                 return (
@@ -1225,33 +1403,57 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => setVisibleCount((prev) => prev + LOAD_MORE_COUNT)}
-                  className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/10 px-6 py-3 text-sm font-bold text-violet-100 transition hover:bg-violet-500/18"
+                  className="group inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/10 px-6 py-3 text-sm font-bold text-violet-100 transition hover:bg-violet-500/18 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
                 >
                   Afficher {Math.min(LOAD_MORE_COUNT, filteredMembers.length - visibleCount)} profils de plus
-                  <ArrowRight className="h-4 w-4" aria-hidden />
+                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden />
                 </button>
               </div>
-            ) : null}
+            ) : (
+              <p className="pt-2 text-center text-xs text-zinc-500">
+                Tu as parcouru tous les profils correspondant à ta recherche. Tu peux changer de filtre, ou tirer un
+                profil au sort plus bas.
+              </p>
+            )}
           </>
         )}
       </section>
 
       {/* Tirage au sort — même ton que le hero */}
-      <section className="relative overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-950/50 via-black/40 to-fuchsia-950/30 p-8 text-center sm:p-10">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" aria-hidden />
+      <section
+        className="relative overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-950/50 via-black/40 to-fuchsia-950/30 text-center"
+        style={{ padding: "clamp(1.5rem, 2.5vw, 2.75rem)" }}
+      >
+        <div
+          className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -left-16 bottom-[-3rem] h-48 w-48 rounded-full bg-fuchsia-500/15 blur-3xl"
+          aria-hidden
+        />
         <Shuffle className="mx-auto h-10 w-10 text-violet-300" aria-hidden />
-        <h2 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-3xl">Pas d’idée ? Laisse le hasard choisir</h2>
-        <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-zinc-400">
-          Un clic ouvre une fiche tirée parmi les résultats actuels (filtres + recherche inclus). Idéal pour sortir de sa zone de confort.
+        <h2
+          className="mt-4 font-black tracking-tight text-white"
+          style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2.1rem)" }}
+        >
+          Pas d'idée ? Laisse le hasard choisir
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-300">
+          Un clic ouvre une fiche tirée parmi les résultats actuels (filtres + recherche inclus). Idéal pour sortir de
+          sa zone de confort et tomber sur une chaîne qu'on n'aurait jamais ouverte autrement.
         </p>
         <button
           type="button"
           onClick={() => openRandomMember(filteredMembers)}
-          className="mt-6 inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-600 px-8 py-3 text-sm font-bold text-white shadow-[0_12px_40px_rgba(124,58,237,0.35)] transition hover:brightness-110 active:scale-[0.99]"
+          className="group mt-6 inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-600 px-8 py-3 text-sm font-bold text-white shadow-[0_12px_40px_rgba(124,58,237,0.35)] transition hover:brightness-110 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
-          <Shuffle className="h-4 w-4" aria-hidden />
+          <Shuffle className="h-4 w-4 transition group-hover:rotate-12" aria-hidden />
           Tirer un profil au hasard
         </button>
+        <p className="mt-4 text-[11px] uppercase tracking-wider text-violet-300/70">
+          Parmi {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""} correspondant à tes filtres
+        </p>
       </section>
 
       {/* Modal membre */}
@@ -1266,6 +1468,48 @@ export default function Page() {
           isAdmin={false}
         />
       )}
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================ */
+/* Sous-composant : carte statistique du hero                        */
+/* ================================================================ */
+
+type HeroStatCardProps = {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  caption: string;
+  tone: "violet" | "amber" | "red";
+  live?: boolean;
+};
+
+function HeroStatCard({ icon: Icon, label, value, caption, tone, live }: HeroStatCardProps) {
+  const TONE_MAP: Record<HeroStatCardProps["tone"], { iconColor: string; hoverBorder: string }> = {
+    violet: { iconColor: "text-violet-400", hoverBorder: "hover:border-violet-400/25" },
+    amber: { iconColor: "text-amber-300", hoverBorder: "hover:border-amber-300/25" },
+    red: { iconColor: "text-red-400", hoverBorder: "hover:border-red-400/25" },
+  };
+  const t = TONE_MAP[tone];
+  return (
+    <div
+      className={`rounded-2xl border p-4 transition sm:p-5 ${t.hoverBorder}`}
+      style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.04)" }}
+    >
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+        <Icon className={`h-4 w-4 ${t.iconColor}`} aria-hidden />
+        {label}
+        {live ? (
+          <span className="relative ml-auto flex h-2 w-2" aria-hidden>
+            <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-red-500 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-3 text-3xl font-black tabular-nums text-white">{value}</p>
+      <p className="mt-1 text-xs leading-snug text-zinc-400">{caption}</p>
     </div>
   );
 }

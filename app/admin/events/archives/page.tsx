@@ -7,12 +7,16 @@ import {
   ArrowRight,
   BarChart3,
   Calendar,
+  CalendarCheck2,
   CalendarDays,
   ChevronLeft,
   Clock3,
+  Compass,
   Image as ImageIcon,
+  ListOrdered,
   MapPin,
   PartyPopper,
+  RefreshCw,
   Search,
   Sparkles,
   X,
@@ -101,8 +105,32 @@ const sectionCardClass =
   "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
 const subtleButtonClass =
   "inline-flex items-center gap-2 rounded-xl border border-indigo-300/25 bg-[linear-gradient(135deg,rgba(79,70,229,0.24),rgba(30,41,59,0.36))] px-3 py-2 text-sm font-medium text-indigo-100 transition hover:-translate-y-[1px] hover:border-indigo-200/45 hover:bg-[linear-gradient(135deg,rgba(99,102,241,0.34),rgba(30,41,59,0.54))]";
-const hubHeroClass =
-  "relative overflow-hidden rounded-3xl border border-indigo-400/25 bg-[linear-gradient(155deg,rgba(99,102,241,0.14),rgba(14,15,23,0.92)_38%,rgba(11,13,20,0.97))] shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl";
+const layoutPanelClass =
+  "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]";
+const heroVisualClass =
+  "relative isolate overflow-hidden rounded-2xl border border-violet-500/20 bg-zinc-950/70 ring-1 ring-inset ring-violet-500/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
+const hubSubtleBtnClass =
+  "inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-950/25 px-3 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-900/30";
+const focusRingClass =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";
+
+const archivesAsideSteps = [
+  {
+    n: "1",
+    title: "Filtrer puis zoomer",
+    body: "Combine mois, catégorie et recherche : ouvrez la fiche pour relire le contexte avant une réédition.",
+  },
+  {
+    n: "2",
+    title: "Visuels = repères",
+    body: "Le filtre « Avec visuel » isole les créneaux prêts à être réutilisés comme modèles de communication.",
+  },
+  {
+    n: "3",
+    title: "Périodes creuses",
+    body: "Comparer le nombre de mois distincts au volume total aide à repérer les trous dans le calendrier passé.",
+  },
+];
 const modalBackdropClass =
   "fixed inset-0 z-[100] flex animate-fadeIn items-center justify-center bg-black/70 p-4 backdrop-blur-md";
 const modalShellClass =
@@ -262,82 +290,189 @@ export default function ArchivesPage() {
     setInsightFilter((cur) => (cur === next ? "all" : next));
   }
 
-  const chipBase =
-    "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60";
-  const chipInactive = "border-[#3b4157] bg-[#13192b] text-slate-300 hover:border-indigo-300/35 hover:text-slate-100";
-  const chipActive = "border-indigo-400/50 bg-indigo-500/20 text-indigo-50";
+  const hubPanel = hubLayout ? layoutPanelClass : sectionCardClass;
+  const chipBase = hubLayout
+    ? `shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${focusRingClass}`
+    : "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60";
+  const chipInactive = hubLayout
+    ? "border-white/10 bg-zinc-900/50 text-zinc-300 hover:border-violet-400/25 hover:text-slate-100"
+    : "border-[#3b4157] bg-[#13192b] text-slate-300 hover:border-indigo-300/35 hover:text-slate-100";
+  const chipActive = hubLayout
+    ? "border-violet-400/50 bg-violet-500/20 text-violet-50"
+    : "border-indigo-400/50 bg-indigo-500/20 text-indigo-50";
 
   return (
-    <div className={`space-y-6 text-white ${hubLayout ? "mx-auto max-w-6xl pb-10" : ""}`}>
+    <div
+      className={
+        hubLayout
+          ? "relative isolate min-h-[calc(100vh-4rem)] min-w-0 scroll-smooth pb-12 text-white selection:bg-violet-500/35 [--arch-gap:clamp(1rem,1.55vw,1.85rem)]"
+          : "min-h-screen space-y-6 bg-[#0e0e10] p-8 text-white"
+      }
+    >
       {hubLayout ? (
-        <section className={`${hubHeroClass} p-6 md:p-8`}>
-          <div className="pointer-events-none absolute -right-16 top-0 h-48 w-48 rounded-full bg-amber-500/15 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-0 left-0 h-40 w-40 rounded-full bg-indigo-600/20 blur-3xl" />
-          <div className="relative">
-            <Link
-              href={hubBackHref}
-              className="inline-flex items-center gap-2 text-sm text-indigo-100/90 hover:text-white transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Retour au hub événements communauté
-            </Link>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/35 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-100">
-                <PartyPopper className="h-3.5 w-3.5" />
-                Mémoire côté membres
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/35 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-100">
-                <BarChart3 className="h-3.5 w-3.5" />
-                Pilotage staff
-              </span>
-            </div>
-            <h1 className="mt-4 flex flex-wrap items-center gap-3 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
-              <Archive className="h-9 w-9 shrink-0 text-amber-300/90 md:h-10 md:w-10" />
-              Archives événements
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-300">
-              Historique des événements passés : explorez par mois et par catégorie, cherchez un format, ouvrez une fiche pour
-              relire le contexte avant une nouvelle édition.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/admin/communaute/evenements/calendrier" className={subtleButtonClass}>
-                Calendrier
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href="/admin/communaute/evenements/recap" className={subtleButtonClass}>
-                Récaps
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </section>
-      ) : (
-        <section className={`${glassCardClass} p-5 md:p-6`}>
-          <Link
-            href={classicBackHref}
-            className="text-gray-300 hover:text-white transition-colors mb-4 inline-flex items-center gap-2"
+        <>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-[max(-4rem,calc(-6vw))] top-[-2.5rem] -z-10 h-[clamp(240px,32vw,440px)] overflow-hidden blur-3xl"
           >
-            <ChevronLeft className="w-4 h-4" />
-            Retour aux événements
-          </Link>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-3xl">
-              <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Evenements communautaires</p>
-              <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
-                Archives des evenements
-              </h1>
-              <p className="mt-3 text-sm text-slate-300">
-                Cette page centralise l&apos;historique des evenements passes pour faciliter les analyses, la reutilisation des
-                formats qui performent et la preparation des prochaines editions.
-              </p>
-            </div>
-            <div className="rounded-xl border border-indigo-300/25 bg-[#101522]/70 px-4 py-3 text-sm text-indigo-100">
-              <p className="text-xs uppercase tracking-[0.1em] text-indigo-200/80">Dernier mois archive</p>
-              <p className="mt-1">{latestMonth ? formatMonthKey(latestMonth) : "Aucun"}</p>
-            </div>
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_24%_-8%,rgba(167,139,250,0.28),transparent_54%),radial-gradient(ellipse_at_86%_22%,rgba(244,114,182,0.12),transparent_48%),radial-gradient(ellipse_at_52%_100%,rgba(56,189,248,0.1),transparent_52%)]" />
           </div>
-        </section>
-      )}
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-x-0 top-0 -z-20 h-[min(820px,100vh)]"
+            style={{
+              backgroundImage:
+                "linear-gradient(104deg,rgba(255,255,255,0.032) 0px,rgba(255,255,255,0.032) 1px,transparent 1px,transparent 74px)",
+              backgroundSize: "clamp(54px,4.2vw,72px) 100%",
+              opacity: 0.21,
+              maskImage: "linear-gradient(180deg,black 0%,transparent 78%)",
+            }}
+          />
+        </>
+      ) : null}
+      <div
+        className={
+          hubLayout
+            ? "mx-auto w-full max-w-[min(1720px,calc(100vw-2*clamp(0.6rem,1.75vw,1.75rem)))] px-[clamp(0.75rem,2vw,2.35rem)] pb-12 pt-2 sm:pt-3"
+            : ""
+        }
+      >
+        <div
+          className={
+            hubLayout
+              ? "grid min-w-0 grid-cols-1 gap-6 [--sidebar:min(100%,clamp(17rem,24vw,25rem))] xl:grid-cols-[minmax(0,1fr)_var(--sidebar)] xl:items-start xl:gap-[clamp(1.35rem,2.6vw,2.85rem)]"
+              : "contents"
+          }
+        >
+          <div className={hubLayout ? "min-w-0 space-y-6 sm:space-y-8 xl:space-y-[var(--arch-gap)]" : "space-y-6"}>
+            {hubLayout ? (
+              <header
+                className={`grid min-w-0 gap-6 p-[clamp(1rem,2vw,1.6rem)] lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,min(100%,0.94fr))] lg:gap-8 ${layoutPanelClass}`}
+              >
+                <div className="min-w-0 space-y-4">
+                  <Link
+                    href={hubBackHref}
+                    className={`inline-flex items-center gap-1 text-[length:clamp(0.8rem,0.74rem+0.32vw,0.9375rem)] text-zinc-400 transition hover:text-white ${focusRingClass} rounded-lg`}
+                  >
+                    <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
+                    Retour pilotage événements
+                  </Link>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/28 bg-amber-500/[0.08] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-amber-100/90">
+                      <PartyPopper className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      Mémoire côté membres
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/26 bg-violet-500/[0.1] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-violet-100/92">
+                      <BarChart3 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      Pilotage staff
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[length:clamp(0.6875rem,0.625rem+0.25vw,0.8125rem)] uppercase tracking-[0.12em] text-violet-200/95">
+                      Historique & réutilisation
+                    </p>
+                    <h1 className="mt-2 flex flex-wrap items-center gap-3 text-[clamp(1.45rem,1.05rem+1.05vw,2.35rem)] font-semibold tracking-tight text-white">
+                      <Archive className="h-8 w-8 shrink-0 text-amber-300/90 md:h-9 md:w-9" aria-hidden />
+                      Archives événements
+                    </h1>
+                    <p className="mt-3 max-w-3xl text-[length:clamp(0.8125rem,0.75rem+0.32vw,0.9625rem)] leading-[1.65] text-zinc-400">
+                      Historique des événements passés : explorez par mois et par catégorie, cherchez un format, ouvrez une
+                      fiche pour relire le contexte avant une nouvelle édition.
+                    </p>
+                  </div>
+                  <div className="flex min-w-0 flex-wrap gap-[clamp(0.4rem,0.85vw,0.625rem)]">
+                    <button
+                      type="button"
+                      onClick={() => void loadEvents()}
+                      className={`${hubSubtleBtnClass} ${focusRingClass}`}
+                    >
+                      <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+                      Actualiser
+                    </button>
+                    <Link href="/admin/communaute/evenements/calendrier" className={`${hubSubtleBtnClass} ${focusRingClass}`}>
+                      <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
+                      Calendrier
+                    </Link>
+                    <Link
+                      href="/admin/communaute/evenements/recap"
+                      className={`${hubSubtleBtnClass} ${focusRingClass} border-sky-400/28 bg-sky-950/[0.35] text-sky-100`}
+                    >
+                      <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
+                      Récaps
+                    </Link>
+                  </div>
+                </div>
+                <div className={`relative min-h-[11rem] p-[clamp(0.875rem,1.5vw,1.2rem)] sm:min-h-[12rem] ${heroVisualClass}`}>
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-[conic-gradient(from_200deg_at_72%_-10%,rgba(167,139,250,0.16),transparent_42%,transparent_58%,rgba(244,114,182,0.1))]"
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.12),transparent_40%,transparent_65%,rgba(0,0,0,0.32))]"
+                  />
+                  <div className="relative flex h-full min-h-[10rem] flex-col justify-between gap-4">
+                    <span className="inline-flex w-fit items-center gap-2 rounded-xl border border-violet-400/26 bg-violet-500/[0.11] px-3 py-1.5 text-[length:clamp(0.65rem,0.55rem+0.35vw,0.7rem)] font-semibold uppercase tracking-[0.08em] text-violet-50/96">
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-200/92" aria-hidden />
+                      Synthèse
+                    </span>
+                    <dl className="grid min-w-0 grid-cols-3 gap-[clamp(0.45rem,0.9vw,0.65rem)] text-[length:clamp(0.65rem,0.58rem+0.22vw,0.775rem)]">
+                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                        <dt className="font-medium uppercase tracking-wide text-zinc-500">Archivés</dt>
+                        <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-zinc-50">
+                          {events.length}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                        <dt className="font-medium uppercase tracking-wide text-zinc-500">Publiés</dt>
+                        <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-emerald-200/95">
+                          {publishedCount}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                        <dt className="font-medium uppercase tracking-wide text-zinc-500">Mois</dt>
+                        <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-amber-200/95">
+                          {groupedAll.length}
+                        </dd>
+                      </div>
+                    </dl>
+                    <p className="text-[length:clamp(0.65rem,0.58rem+0.2vw,0.75rem)] leading-snug text-zinc-500">
+                      Résultat filtres :{" "}
+                      <span className="font-semibold tabular-nums text-zinc-200">{filteredEvents.length}</span>
+                      <span className="mx-1.5 text-zinc-600">·</span>
+                      Dernier mois :{" "}
+                      <span className="font-medium text-zinc-300">{latestMonth ? formatMonthKey(latestMonth) : "—"}</span>
+                    </p>
+                  </div>
+                </div>
+              </header>
+            ) : (
+              <section className={`${glassCardClass} p-5 md:p-6`}>
+                <Link
+                  href={classicBackHref}
+                  className="mb-4 inline-flex items-center gap-2 text-gray-300 transition-colors hover:text-white"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Retour aux événements
+                </Link>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="max-w-3xl">
+                    <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Evenements communautaires</p>
+                    <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+                      Archives des evenements
+                    </h1>
+                    <p className="mt-3 text-sm text-slate-300">
+                      Cette page centralise l&apos;historique des evenements passes pour faciliter les analyses, la reutilisation des
+                      formats qui performent et la preparation des prochaines editions.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-indigo-300/25 bg-[#101522]/70 px-4 py-3 text-sm text-indigo-100">
+                    <p className="text-xs uppercase tracking-[0.1em] text-indigo-200/80">Dernier mois archive</p>
+                    <p className="mt-1">{latestMonth ? formatMonthKey(latestMonth) : "Aucun"}</p>
+                  </div>
+                </div>
+              </section>
+            )}
 
       {loadError ? (
         <div className="animate-fadeIn rounded-2xl border border-rose-500/35 bg-rose-950/30 px-4 py-3 text-sm text-rose-100">
@@ -352,9 +487,13 @@ export default function ArchivesPage() {
         <button
           type="button"
           onClick={resetFilters}
-          className={`${sectionCardClass} p-4 text-left transition hover:border-indigo-400/35 ${
+          className={`${hubPanel} p-4 text-left transition hover:shadow-[0_12px_36px_rgba(2,6,23,0.5)] ${
+            hubLayout ? "hover:border-violet-400/30" : "hover:border-indigo-400/35"
+          } ${
             insightFilter === "all" && !categoryFilter && !search && !selectedMonth
-              ? "ring-2 ring-indigo-400/45 ring-offset-2 ring-offset-[#0a0b10]"
+              ? hubLayout
+                ? "ring-2 ring-violet-400/45 ring-offset-2 ring-offset-zinc-950"
+                : "ring-2 ring-indigo-400/45 ring-offset-2 ring-offset-[#0a0b10]"
               : ""
           }`}
         >
@@ -365,8 +504,14 @@ export default function ArchivesPage() {
         <button
           type="button"
           onClick={() => toggleInsight("published")}
-          className={`${sectionCardClass} p-4 text-left transition hover:border-emerald-400/35 ${
-            insightFilter === "published" ? "ring-2 ring-emerald-400/45 ring-offset-2 ring-offset-[#0a0b10]" : ""
+          className={`${hubPanel} p-4 text-left transition hover:shadow-[0_12px_36px_rgba(2,6,23,0.5)] ${
+            hubLayout ? "hover:border-emerald-400/30" : "hover:border-emerald-400/35"
+          } ${
+            insightFilter === "published"
+              ? hubLayout
+                ? "ring-2 ring-emerald-400/45 ring-offset-2 ring-offset-zinc-950"
+                : "ring-2 ring-emerald-400/45 ring-offset-2 ring-offset-[#0a0b10]"
+              : ""
           }`}
         >
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Publiés</p>
@@ -376,8 +521,14 @@ export default function ArchivesPage() {
         <button
           type="button"
           onClick={() => toggleInsight("withImage")}
-          className={`${sectionCardClass} p-4 text-left transition hover:border-sky-400/35 ${
-            insightFilter === "withImage" ? "ring-2 ring-sky-400/45 ring-offset-2 ring-offset-[#0a0b10]" : ""
+          className={`${hubPanel} p-4 text-left transition hover:shadow-[0_12px_36px_rgba(2,6,23,0.5)] ${
+            hubLayout ? "hover:border-sky-400/30" : "hover:border-sky-400/35"
+          } ${
+            insightFilter === "withImage"
+              ? hubLayout
+                ? "ring-2 ring-sky-400/45 ring-offset-2 ring-offset-zinc-950"
+                : "ring-2 ring-sky-400/45 ring-offset-2 ring-offset-[#0a0b10]"
+              : ""
           }`}
         >
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Avec visuel</p>
@@ -387,7 +538,9 @@ export default function ArchivesPage() {
         <button
           type="button"
           onClick={() => setSelectedMonth("")}
-          className={`${sectionCardClass} p-4 text-left transition hover:border-amber-400/35`}
+          className={`${hubPanel} p-4 text-left transition hover:shadow-[0_12px_36px_rgba(2,6,23,0.5)] ${
+            hubLayout ? "hover:border-amber-400/30" : "hover:border-amber-400/35"
+          }`}
         >
           <p className="text-xs uppercase tracking-[0.1em] text-slate-400">Mois (périodes)</p>
           <p className="mt-2 text-3xl font-semibold text-amber-300">{groupedAll.length}</p>
@@ -399,7 +552,7 @@ export default function ArchivesPage() {
         </button>
       </section>
 
-      <section className={`${sectionCardClass} p-5`}>
+      <section className={`${hubPanel} p-5`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold text-slate-100">Filtres interactifs</h2>
@@ -498,7 +651,7 @@ export default function ArchivesPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.1fr]">
-        <article className={`${sectionCardClass} p-5`}>
+        <article className={`${hubPanel} p-5`}>
           <h2 className="text-lg font-semibold text-slate-100">Lecture rapide</h2>
           <div className="mt-3 space-y-2 text-sm text-slate-300">
             <p className="rounded-lg border border-indigo-300/30 bg-indigo-300/10 px-3 py-2 text-indigo-100">
@@ -515,7 +668,7 @@ export default function ArchivesPage() {
             </p>
           </div>
         </article>
-        <article className={`${sectionCardClass} flex flex-col justify-center p-5`}>
+        <article className={`${hubPanel} flex flex-col justify-center p-5`}>
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-indigo-400/30 bg-indigo-500/10">
               <CalendarDays className="h-6 w-6 text-indigo-200" />
@@ -536,7 +689,7 @@ export default function ArchivesPage() {
         hubLayout ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className={`${sectionCardClass} animate-pulse overflow-hidden`}>
+              <div key={i} className={`${hubPanel} animate-pulse overflow-hidden`}>
                 <div className="h-40 bg-slate-800/50" />
                 <div className="space-y-3 p-4">
                   <div className="h-4 w-[75%] rounded bg-slate-700/40" />
@@ -547,13 +700,13 @@ export default function ArchivesPage() {
             ))}
           </div>
         ) : (
-          <div className={`${sectionCardClass} py-12 text-center`}>
+          <div className={`${hubPanel} py-12 text-center`}>
             <div className="inline-block h-12 w-12 animate-spin rounded-full border-b-2 border-[#9146ff]" />
             <p className="mt-4 text-gray-400">Chargement des événements...</p>
           </div>
         )
       ) : displayedGroups.length === 0 ? (
-        <div className={`${sectionCardClass} p-10 text-center`}>
+        <div className={`${hubPanel} p-10 text-center`}>
           <Archive className="mx-auto h-12 w-12 text-slate-600" />
           <p className="mt-4 text-slate-400">
             {events.length === 0
@@ -657,6 +810,101 @@ export default function ArchivesPage() {
         </div>
       )}
 
+          </div>
+          {hubLayout ? (
+            <aside className="min-w-0 space-y-4 xl:sticky xl:top-5 xl:self-start" aria-label="Aide et raccourcis archives">
+              <div className={`${layoutPanelClass} space-y-3 p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+                <p className="flex items-center gap-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                  <Compass className="h-4 w-4 shrink-0 text-violet-300/85" aria-hidden />
+                  Astuce équipe
+                </p>
+                <p className="text-[length:clamp(0.75rem,0.68rem+0.28vw,0.8625rem)] leading-[1.6] text-zinc-400">
+                  Les fiches archivées documentent ce qui s&apos;est réellement joué : précieuses pour réutiliser un format ou
+                  trancher sur une ancienne édition.
+                </p>
+              </div>
+
+              <div className={`${layoutPanelClass} p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+                <p className="flex items-center gap-2 text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                  <ListOrdered className="h-4 w-4 shrink-0 text-violet-300/85" aria-hidden />
+                  En trois gestes
+                </p>
+                <ol className="mt-4 space-y-[0.65rem]">
+                  {archivesAsideSteps.map((step) => (
+                    <li key={step.n} className="flex min-w-0 gap-3">
+                      <span
+                        aria-hidden
+                        className="flex h-[2.125em] min-w-[2.125em] items-center justify-center rounded-lg border border-violet-500/28 bg-violet-500/[0.09] text-[length:clamp(0.65rem,0.58rem+0.22vw,0.75rem)] font-bold tabular-nums text-violet-50"
+                      >
+                        {step.n}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-semibold text-zinc-100">{step.title}</p>
+                        <p className="mt-1 text-[length:clamp(0.6875rem,0.62rem+0.2vw,0.8rem)] leading-[1.55] text-zinc-500">
+                          {step.body}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              <div className={`${layoutPanelClass} p-[clamp(0.875rem,1.75vw,1.25rem)]`}>
+                <p className="text-[length:clamp(0.6875rem,0.625rem+0.2vw,0.8125rem)] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                  Modules proches
+                </p>
+                <nav className="mt-3 flex flex-col gap-2" aria-label="Liens pilier événements">
+                  <Link
+                    href="/admin/communaute/evenements/calendrier"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-violet-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    Calendrier
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements/recap"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-fuchsia-400/22 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    Récapitulatif
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements/participation"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-emerald-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    Présences
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements/liste"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-sky-400/26 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    Liste des événements
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements/propositions"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-amber-400/24 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    Propositions
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                  <Link
+                    href="/admin/communaute/evenements"
+                    className={`flex min-h-[2.85rem] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-zinc-900/45 px-3 py-2 text-[length:clamp(0.78rem,0.72rem+0.22vw,0.9rem)] font-medium text-zinc-100 transition hover:border-white/14 hover:bg-zinc-900/72 ${focusRingClass}`}
+                  >
+                    <span className="inline-flex min-w-0 items-center gap-2">
+                      <CalendarCheck2 className="h-4 w-4 shrink-0 opacity-85" aria-hidden />
+                      Hub événements
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                </nav>
+              </div>
+            </aside>
+          ) : null}
+        </div>
+
       {detailEvent ? (
         <div
           className={modalBackdropClass}
@@ -738,6 +986,7 @@ export default function ArchivesPage() {
           </div>
         </div>
       ) : null}
+      </div>
     </div>
   );
 }

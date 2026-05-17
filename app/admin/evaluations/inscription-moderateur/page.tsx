@@ -1,7 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import ModeratorRegistrationModal from "@/components/admin/ModeratorRegistrationModal";
+import {
+  OnboardingStaffHubView,
+  MIN_STAFF_MODERATORS,
+  type StaffSessionRiskRow,
+} from "@/components/admin/OnboardingStaffHubView";
 import {
   loadStaffOnboardingSnapshot,
   type StaffOnboardingIntegration as Integration,
@@ -13,8 +19,14 @@ const glassCardClass =
   "rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur";
 const sectionCardClass =
   "rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] shadow-[0_16px_40px_rgba(2,6,23,0.45)]";
+const hubPanelClass =
+  "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]";
 
 export default function InscriptionModerateurPage() {
+  const pathname = usePathname();
+  const hubLayout = pathname?.startsWith("/admin/onboarding") ?? false;
+  const priorityListRef = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
@@ -24,27 +36,23 @@ export default function InscriptionModerateurPage() {
   const [moderatorStats, setModeratorStats] = useState<Record<string, ModeratorStats>>({});
   const [registrationStats, setRegistrationStats] = useState<Record<string, RegistrationStats>>({});
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        const snap = await loadStaffOnboardingSnapshot();
-        if (!cancelled) {
-          setIntegrations(snap.integrations);
-          setModeratorStats(snap.moderatorStats);
-          setRegistrationStats(snap.registrationStats);
-        }
-      } catch (error) {
-        console.error("Erreur chargement intégrations:", error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const loadSnapshot = useCallback(async () => {
+    try {
+      setLoading(true);
+      const snap = await loadStaffOnboardingSnapshot();
+      setIntegrations(snap.integrations);
+      setModeratorStats(snap.moderatorStats);
+      setRegistrationStats(snap.registrationStats);
+    } catch (error) {
+      console.error("Erreur chargement intégrations:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadSnapshot();
+  }, [loadSnapshot]);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -188,7 +196,7 @@ export default function InscriptionModerateurPage() {
       const stats = moderatorStats[integration.id];
       const adminCount = stats?.adminCount || 0;
       totalAdmins += adminCount;
-      if (adminCount >= 2) covered += 1;
+      if (adminCount >= MIN_STAFF_MODERATORS) covered += 1;
       else atRisk += 1;
     });
 
@@ -196,8 +204,59 @@ export default function InscriptionModerateurPage() {
     return { sessionCount, covered, atRisk, totalAdmins, avgAdminsPerSession };
   }, [integrations, moderatorStats]);
 
-  return (
-    <div className="space-y-6 p-8 text-white">
+  const sessionsAtRisk = useMemo((): StaffSessionRiskRow[] => {
+    const now = Date.now();
+    return integrations
+      .filter((integration) => (moderatorStats[integration.id]?.adminCount ?? 0) < MIN_STAFF_MODERATORS)
+      .map((integration) => ({
+        id: integration.id,
+        title: integration.title,
+        date: integration.date,
+        adminCount: moderatorStats[integration.id]?.adminCount ?? 0,
+        totalModerators: moderatorStats[integration.id]?.total ?? 0,
+        registrationsCount: registrationStats[integration.id]?.normalCount ?? 0,
+      }))
+      .sort((a, b) => {
+        const aFuture = new Date(a.date).getTime() >= now ? 0 : 1;
+        const bFuture = new Date(b.date).getTime() >= now ? 0 : 1;
+        if (aFuture !== bFuture) return aFuture - bFuture;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+  }, [integrations, moderatorStats, registrationStats]);
+
+  const formatDateShort = (iso: string) =>
+    new Date(iso).toLocaleDateString("fr-FR", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  const scrollToPriority = () => {
+    priorityListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const scrollToCalendar = () => {
+    calendarRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const openSessionById = (id: string) => {
+    const integration = integrations.find((i) => i.id === id);
+    if (!integration) return;
+    setSelectedIntegration(integration);
+    setIsModalOpen(true);
+    const sessionDate = new Date(integration.date);
+    setCurrentMonth(new Date(sessionDate.getFullYear(), sessionDate.getMonth(), 1));
+    scrollToCalendar();
+  };
+
+  const cardClass = hubLayout ? hubPanelClass : sectionCardClass;
+
+  const workspace = (
+    <>
+      {!hubLayout ? (
+        <>
       <section className={`${glassCardClass} p-6`}>
         <p className="text-xs uppercase tracking-[0.14em] text-indigo-200/90">Onboarding · Staff sessions</p>
         <h1 className="mt-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
@@ -258,10 +317,12 @@ export default function InscriptionModerateurPage() {
           </div>
         </article>
       </section>
+        </>
+      ) : null}
 
       {/* Calendrier */}
       <div
-        className={`${sectionCardClass} relative overflow-hidden p-6 sm:p-8`}
+        className={`${cardClass} relative overflow-hidden p-6 sm:p-8`}
         style={{
           boxShadow:
             "0 0 0 1px rgba(255,255,255,0.04) inset, 0 24px 64px rgba(2,6,23,0.5), 0 0 80px rgba(99,102,241,0.06)",
@@ -330,7 +391,7 @@ export default function InscriptionModerateurPage() {
             const integration = getIntegrationForDate(date);
             const stats = integration ? moderatorStats[integration.id] : null;
             const regStats = integration ? registrationStats[integration.id] : null;
-            const hasEnoughAdmins = stats ? stats.adminCount >= 2 : false;
+            const hasEnoughAdmins = stats ? stats.adminCount >= MIN_STAFF_MODERATORS : false;
             const normalCount = regStats ? regStats.normalCount : 0;
             const today = new Date();
             const isToday = date ? isSameCalendarDay(date, today) : false;
@@ -384,7 +445,7 @@ export default function InscriptionModerateurPage() {
                           <div
                             className={`mt-1 text-[10px] font-medium sm:text-xs ${hasEnoughAdmins ? "text-emerald-300/95" : "text-zinc-500"}`}
                           >
-                            Staff {stats.adminCount}/2
+                            Staff {stats.adminCount}/{MIN_STAFF_MODERATORS}
                           </div>
                         )}
                       </>
@@ -422,11 +483,32 @@ export default function InscriptionModerateurPage() {
       )}
 
       {!loading && integrations.length === 0 && (
-        <div className={`${sectionCardClass} text-center py-12`}>
+        <div className={`${cardClass} text-center py-12`}>
           <p className="text-gray-400">Aucune intégration disponible pour le moment.</p>
         </div>
       )}
-    </div>
+    </>
   );
+
+  if (hubLayout) {
+    return (
+      <OnboardingStaffHubView
+        loading={loading}
+        onRefresh={() => void loadSnapshot()}
+        staffingStats={staffingStats}
+        sessionsAtRisk={sessionsAtRisk}
+        priorityListRef={priorityListRef}
+        calendarRef={calendarRef}
+        onScrollToPriority={scrollToPriority}
+        onScrollToCalendar={scrollToCalendar}
+        onOpenSession={openSessionById}
+        formatDateShort={formatDateShort}
+      >
+        {workspace}
+      </OnboardingStaffHubView>
+    );
+  }
+
+  return <div className="space-y-6 p-8 text-white">{workspace}</div>;
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ImageIcon, Loader2, RefreshCcw, Search, XCircle } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 
 type AvatarQuality = "good" | "fallback" | "missing";
 
@@ -125,17 +126,7 @@ export default function AdminImagesManagementPage() {
 
   return (
     <div className="min-h-screen bg-[#0f1116] text-white">
-      <AdminHeader
-        title="Gestion des images profils Twitch"
-        navLinks={[
-          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
-          { href: "/admin/gestion-acces", label: "Comptes administrateurs" },
-          { href: "/admin/gestion-acces/dashboard", label: "Paramètres dashboard" },
-          { href: "/admin/gestion-acces/permissions", label: "Permissions par section" },
-          { href: "/admin/gestion-acces/images", label: "Images profils Twitch", active: true },
-          { href: "/admin/gestion-acces/admin-avance", label: "Admin avancé (fondateurs)" },
-        ]}
-      />
+      <AdminHeader title="Images profils Twitch" navLinks={administrationSiteHubNav("/admin/gestion-acces/images")} />
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
         <div className="rounded-xl border border-gray-700 bg-[#151924] p-4">

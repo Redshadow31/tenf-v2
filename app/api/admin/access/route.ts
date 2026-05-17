@@ -419,7 +419,7 @@ export async function POST(request: NextRequest) {
       resourceType: "admin_access",
       resourceId: discordId,
       newValue: { role: targetRole, adminAlias: adminAlias || null },
-      metadata: { sourcePage: "/admin/gestion-acces" },
+      metadata: { sourcePage: "/admin/gestion-acces/comptes" },
     });
 
     return NextResponse.json({ 
@@ -530,7 +530,7 @@ export async function DELETE(request: NextRequest) {
       resourceType: "admin_access",
       resourceId: discordId,
       previousValue: { role: memberExists?.role },
-      metadata: { sourcePage: "/admin/gestion-acces" },
+      metadata: { sourcePage: "/admin/gestion-acces/comptes" },
     });
 
     return NextResponse.json({ 

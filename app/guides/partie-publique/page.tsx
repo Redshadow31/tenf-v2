@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import GuidePartiePubliqueExperience from "./GuidePartiePubliqueExperience";
+import GuideHubView from "@/components/guides/partie-publique/GuideHubView";
 
 export const metadata: Metadata = {
-  title: "Guide — partie publique du site | TENF",
+  title: "Guide du site public | TENF",
   description:
-    "Parcourir TENF sans connexion : carte du menu, profils interactifs, parcours, checklist et FAQ — puis passage à l'espace membre.",
+    "Guide complet de la partie publique TENF : Découvrir, Communauté, Agenda, Rejoindre et TENF+. Chaque page expliquée, sans connexion.",
   alternates: {
     canonical: "https://tenf-community.com/guides/partie-publique",
   },
 };
 
 export default function GuidePartiePubliquePage() {
-  return <GuidePartiePubliqueExperience />;
+  return <GuideHubView />;
 }

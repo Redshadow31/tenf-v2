@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import {
   findActiveHub,
   getNavigationByMode,
@@ -11,6 +11,10 @@ import {
   type NavItem,
 } from "@/lib/admin/navigation";
 import { useFilteredAdminNav } from "@/components/admin/AdminNavAccessContext";
+import AdminHubContextCard from "@/components/admin/sidebar/AdminHubContextCard";
+import AdminSidebarSection from "@/components/admin/sidebar/AdminSidebarSection";
+import AdminSidebarItem from "@/components/admin/sidebar/AdminSidebarItem";
+import { getAdminHubDescription } from "@/components/admin/sidebar/hubDescriptions";
 
 const ADMIN_MODE_COOKIE = "admin_mode";
 const EVALUATION_V2_ITEM_HREF = "/admin/evaluation/v2";
@@ -32,6 +36,28 @@ function getCurrentMonthKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function slugify(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Compte récursivement les liens "feuille" (pages réelles) dans un hub. */
+function countLeafPages(items: NavItem[]): number {
+  let total = 0;
+  for (const item of items) {
+    if (item.children && item.children.length > 0) {
+      total += countLeafPages(item.children);
+    } else {
+      total += 1;
+    }
+  }
+  return total;
+}
+
 export default function AdminSidebar({
   isMobileOpen = false,
   onCloseMobile,
@@ -49,11 +75,34 @@ export default function AdminSidebar({
     () => findActiveHub(navItems, pathname || "/admin"),
     [navItems, pathname]
   );
-  const displayedItems = useMemo(() => {
+  const hubChildren = useMemo<NavItem[]>(() => {
     if (!activeHub) return [];
     if (activeHub.children && activeHub.children.length > 0) return activeHub.children;
     return [activeHub];
   }, [activeHub]);
+
+  /**
+   * Tri visuel des enfants directs : items simples en haut (regroupés sous
+   * "Accès rapide"), catégories (avec enfants) en dessous.
+   */
+  const { quickAccess, categories } = useMemo(() => {
+    const quick: NavItem[] = [];
+    const cats: NavItem[] = [];
+    for (const child of hubChildren) {
+      if (child.children && child.children.length > 0) cats.push(child);
+      else quick.push(child);
+    }
+    return { quickAccess: quick, categories: cats };
+  }, [hubChildren]);
+
+  const hubDescription = useMemo(
+    () => getAdminHubDescription(activeHub?.href),
+    [activeHub]
+  );
+  const totalPages = useMemo(
+    () => (activeHub ? countLeafPages(hubChildren) : 0),
+    [activeHub, hubChildren]
+  );
 
   useEffect(() => {
     async function loadAccess() {
@@ -86,7 +135,10 @@ export default function AdminSidebar({
     async function loadV2ValidationStatus() {
       try {
         const month = getCurrentMonthKey();
-        const res = await fetch(`/api/evaluations/v2/validation?month=${month}&system=new`, { cache: "no-store" });
+        const res = await fetch(
+          `/api/evaluations/v2/validation?month=${month}&system=new`,
+          { cache: "no-store" }
+        );
         if (!res.ok) {
           if (mounted) setEvaluationV2Validated(null);
           return;
@@ -108,7 +160,7 @@ export default function AdminSidebar({
   useEffect(() => {
     if (!navReady) return;
     const newOpenMenus = new Set<string>();
-    displayedItems.forEach((item) => {
+    hubChildren.forEach((item) => {
       if (item.children && isParentActive(item)) {
         newOpenMenus.add(item.href);
         item.children?.forEach((child) => {
@@ -119,12 +171,12 @@ export default function AdminSidebar({
       }
     });
     setOpenMenus(newOpenMenus);
-  }, [pathname, navReady, adminMode, displayedItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, navReady, adminMode, hubChildren]);
 
   useEffect(() => {
     if (!isMobileOpen) return;
     onCloseMobile?.();
-    // ferme automatiquement le drawer mobile après navigation
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -139,10 +191,6 @@ export default function AdminSidebar({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isMobileOpen, onCloseMobile]);
 
-  /**
-   * Vérifie si un élément de navigation est actif
-   * Logique générique: un élément est actif si pathname === href OU pathname.startsWith(href + "/")
-   */
   function isActive(item: NavItem): boolean {
     if (!pathname) return false;
     if (pathname === item.href || pathname.startsWith(item.href + "/")) return true;
@@ -150,15 +198,11 @@ export default function AdminSidebar({
     return item.children.some((child) => isActive(child));
   }
 
-  /**
-   * Vérifie si un élément parent est actif (soit lui-même, soit un de ses enfants)
-   * Logique générique: parent actif si pathname.startsWith(parent.href) OU si un child est actif
-   */
   function isParentActive(item: NavItem): boolean {
     if (!pathname) return false;
     if (pathname === item.href || pathname.startsWith(item.href + "/")) return true;
     if (item.children) {
-      return item.children.some(child => {
+      return item.children.some((child) => {
         if (child.children) return isParentActive(child);
         return isActive(child);
       });
@@ -178,241 +222,189 @@ export default function AdminSidebar({
     });
   }
 
-  function renderItem(item: NavItem, depth = 0): JSX.Element {
+  function renderV2Badge(item: NavItem) {
+    const showV2ValidationBadge =
+      item.href === EVALUATION_V2_ITEM_HREF && evaluationV2Validated !== null;
+    if (!showV2ValidationBadge) return null;
+    return (
+      <span
+        className={
+          "inline-flex items-center rounded-full border px-1.5 py-[1px] text-[10px] font-semibold " +
+          (evaluationV2Validated
+            ? "border-emerald-400/35 bg-emerald-500/10 text-emerald-200"
+            : "border-amber-400/35 bg-amber-500/10 text-amber-200")
+        }
+      >
+        {evaluationV2Validated ? "Valide" : "À valider"}
+      </span>
+    );
+  }
+
+  /** Rendu récursif d'un sous-item (depth ≥ 1). */
+  function renderSubItem(item: NavItem, depth: 1 | 2 = 1): JSX.Element {
     const active = isActive(item);
     const parentActive = isParentActive(item);
     const hasChildren = !!item.children?.length;
-    const isMenuOpen = openMenus.has(item.href);
-    const isRoot = depth === 0;
-    const depthWrapperClass =
-      depth === 0 ? "pl-0" : depth === 1 ? "pl-3" : "pl-6";
-    const textClass = depth <= 1 ? "text-sm" : "text-xs";
-    const itemBaseClass = `group w-full flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6c773]/60 ${textClass}`;
-    const itemStyle = active
-      ? {
-          background:
-            "linear-gradient(135deg, rgba(124,58,237,0.22) 0%, rgba(37,99,235,0.16) 100%)",
-          borderColor: "rgba(167,139,250,0.45)",
-          color: "#eef2ff",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
-        }
-      : parentActive
-        ? {
-            backgroundColor: "rgba(255,255,255,0.045)",
-            borderColor: "rgba(167,139,250,0.3)",
-            color: "rgba(226,232,240,0.95)",
-          }
-        : {
-            backgroundColor: "transparent",
-            borderColor: "rgba(148,163,184,0.2)",
-            color: "rgba(203,213,225,0.85)",
-          };
-
-    const showV2ValidationBadge = item.href === EVALUATION_V2_ITEM_HREF && evaluationV2Validated !== null;
-    const v2Badge = showV2ValidationBadge ? (
-      <span
-        className="ml-2 inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold"
-        style={
-          evaluationV2Validated
-            ? {
-                borderColor: "rgba(34,197,94,0.5)",
-                backgroundColor: "rgba(34,197,94,0.15)",
-                color: "#86efac",
-              }
-            : {
-                borderColor: "rgba(245,158,11,0.5)",
-                backgroundColor: "rgba(245,158,11,0.15)",
-                color: "#fcd34d",
-              }
-        }
-      >
-        {evaluationV2Validated ? "Lot valide" : "A valider"}
-      </span>
-    ) : null;
-
-    const rootGroupStyle =
-      isRoot && hasChildren
-        ? {
-            borderColor: parentActive ? "rgba(167,139,250,0.26)" : "rgba(148,163,184,0.2)",
-            backgroundColor: parentActive ? "rgba(124,58,237,0.08)" : "rgba(255,255,255,0.02)",
-          }
-        : undefined;
+    const open = openMenus.has(item.href);
+    const badge = renderV2Badge(item);
+    const iconChar = typeof item.icon === "string" ? item.icon : null;
 
     if (hasChildren) {
       return (
-        <div
+        <AdminSidebarItem
           key={item.href}
-          className={`space-y-2 ${depthWrapperClass} ${isRoot ? "rounded-2xl border p-2" : ""}`}
-          style={rootGroupStyle}
+          href={item.href}
+          label={item.label}
+          depth={depth}
+          active={active}
+          parentActive={parentActive}
+          badge={badge}
+          iconChar={iconChar}
+          expandable
+          open={open}
+          onToggle={() => toggleMenu(item.href)}
         >
-          <button
-            type="button"
-            onClick={() => toggleMenu(item.href)}
-            className={itemBaseClass}
-            style={itemStyle}
-            aria-expanded={isMenuOpen}
-            aria-current={active ? "page" : undefined}
-          >
-            {isRoot ? (
-              <span
-                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border text-xs"
-                style={{
-                  backgroundColor: active ? "rgba(255,255,255,0.2)" : "rgba(145,70,255,0.15)",
-                  borderColor: active ? "rgba(255,255,255,0.36)" : "rgba(145,70,255,0.28)",
-                  color: active ? "#fff" : "#d6b8ff",
-                }}
-              >
-                {item.icon || "•"}
-              </span>
-            ) : null}
-            <span className="font-medium flex-1 text-left leading-tight">
-              {item.label}
-              {v2Badge}
-            </span>
-            <span
-              className={`inline-flex h-5 w-5 items-center justify-center rounded-md border transition-all ${isMenuOpen ? "rotate-90" : ""}`}
-              style={{
-                borderColor: active ? "rgba(255,255,255,0.34)" : "rgba(148,163,184,0.3)",
-                backgroundColor: active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.04)",
-              }}
-            >
-              <ChevronRight size={12} />
-            </span>
-          </button>
-          {isMenuOpen && (
-            <div
-              className="space-y-2 animate-[fadeIn_120ms_ease]"
-              style={{
-                borderLeft: "1px solid rgba(167,139,250,0.24)",
-                marginLeft: depth === 0 ? "0.5rem" : "0.25rem",
-                paddingLeft: "0.75rem",
-              }}
-            >
-              {item.children!.map((child) => renderItem(child, depth + 1))}
-            </div>
+          {item.children!.map((child) =>
+            renderSubItem(child, (depth === 1 ? 2 : 2) as 2)
           )}
-        </div>
+        </AdminSidebarItem>
       );
     }
 
     return (
-      <div key={item.href} className={depthWrapperClass}>
-        <Link
-          href={item.href}
-          className={`${itemBaseClass} ${!active && !parentActive ? "hover:border-white/20 hover:bg-white/5 hover:text-white" : ""}`}
-          style={itemStyle}
-          aria-current={active ? "page" : undefined}
-        >
-          {isRoot ? (
-            <span
-              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border text-xs"
-              style={{
-                backgroundColor: active ? "rgba(255,255,255,0.2)" : "rgba(145,70,255,0.15)",
-                borderColor: active ? "rgba(255,255,255,0.36)" : "rgba(145,70,255,0.28)",
-                color: active ? "#fff" : "#d6b8ff",
-              }}
-            >
-              {item.icon || "•"}
-            </span>
-          ) : null}
-          <span className="font-medium leading-tight">
-            {item.label}
-            {v2Badge}
-          </span>
-        </Link>
-      </div>
+      <AdminSidebarItem
+        key={item.href}
+        href={item.href}
+        label={item.label}
+        depth={depth}
+        active={active}
+        parentActive={parentActive}
+        badge={badge}
+        iconChar={iconChar}
+      />
     );
   }
 
+  const sectionsHaveContent = quickAccess.length > 0 || categories.length > 0;
+
   const sidebarContent = (
     <>
-      <div
-        className="mb-5 rounded-2xl border p-4"
-        style={{
-          borderColor: "rgba(148,163,184,0.24)",
-          background:
-            "radial-gradient(circle at top left, rgba(124,58,237,0.24), rgba(19,20,30,0.96) 46%)",
-        }}
-      >
-        <p
-          className="text-[10px] tracking-[0.2em] font-semibold uppercase"
-          style={{ color: "rgba(196,181,253,0.9)" }}
-        >
-          Navigation active
-        </p>
-        <p className="mt-2 text-sm font-semibold text-white">{activeHub?.label || "Navigation admin"}</p>
-        <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          {adminMode === "advanced" ? "Mode avancé" : "Mode simple"}
-        </p>
-      </div>
+      <AdminHubContextCard
+        hubLabel={activeHub?.label ?? null}
+        hubIcon={activeHub?.icon ?? null}
+        description={hubDescription}
+        mode={adminMode}
+        itemsCount={totalPages}
+      />
 
-      <nav className="space-y-3">
-        {displayedItems.map((item) => renderItem(item, 0))}
-      </nav>
+      {sectionsHaveContent ? (
+        <nav
+          className="mt-4 space-y-3 rounded-2xl border border-white/[0.05] bg-gradient-to-b from-violet-500/[0.03] via-transparent to-indigo-500/[0.04] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+          aria-label="Navigation du hub admin"
+        >
+          {quickAccess.length > 0 ? (
+            <AdminSidebarSection
+              id="quick-access"
+              label="Accès rapide"
+              defaultOpen
+              count={quickAccess.length}
+            >
+              {quickAccess.map((item) => renderSubItem(item, 1))}
+            </AdminSidebarSection>
+          ) : null}
+
+          {categories.map((category, idx) => {
+            const sectionId = slugify(category.href || category.label) || `cat-${idx}`;
+            const childCount = category.children?.length ?? 0;
+            const containsActive = isParentActive(category);
+            const iconChar = typeof category.icon === "string" ? category.icon : undefined;
+
+            return (
+              <AdminSidebarSection
+                key={category.href}
+                id={sectionId}
+                label={category.label}
+                icon={iconChar}
+                count={childCount}
+                defaultOpen={containsActive || idx === 0}
+              >
+                {category.children!.map((child) => renderSubItem(child, 1))}
+              </AdminSidebarSection>
+            );
+          })}
+        </nav>
+      ) : (
+        <p className="mt-3.5 rounded-lg border border-white/[0.04] bg-white/[0.015] px-3 py-2 text-[11px] leading-snug text-zinc-500">
+          Aucun module accessible dans ce hub avec ton profil actuel.
+        </p>
+      )}
 
       {navReady && adminMode === "advanced" && !canAccessAdvanced && (
-        <div className="mt-4 px-3 py-2 rounded-lg text-xs border" style={{ borderColor: "var(--color-sidebar-border)", color: "var(--color-text-secondary)" }}>
-          Mode avancé désactivé (droits insuffisants), retour au mode simple appliqué.
+        <div
+          className="mt-4 rounded-lg border border-rose-300/20 bg-rose-500/[0.04] px-3 py-2 text-xs leading-snug text-rose-100/85"
+          role="status"
+        >
+          Mode avancé désactivé (droits insuffisants). Retour au mode simple appliqué.
         </div>
       )}
 
-      <div className="mt-6 pt-5 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+      <div className="mt-5 pt-4">
+        <div
+          className="mb-3 h-px w-full bg-gradient-to-r from-transparent via-violet-400/30 via-indigo-400/20 to-transparent"
+          aria-hidden
+        />
         <Link
           href="/"
-          className="group flex items-center gap-2 rounded-xl border px-4 py-3 text-sm transition-colors"
-          style={{
-            color: "rgba(203,213,225,0.85)",
-            borderColor: "rgba(148,163,184,0.22)",
-            backgroundColor: "rgba(255,255,255,0.02)",
-          }}
+          className="group inline-flex w-full items-center gap-2 rounded-xl border border-transparent bg-gradient-to-r from-transparent via-white/[0.02] to-transparent px-3 py-2 text-[13px] font-medium text-zinc-400 transition-all duration-200 hover:border-violet-400/15 hover:from-violet-500/[0.06] hover:via-indigo-500/[0.04] hover:to-transparent hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
         >
-          <span className="transition-transform group-hover:-translate-x-0.5">←</span>
-          <span>Retour au site</span>
+          <ArrowLeft
+            className="h-3.5 w-3.5 text-zinc-500 transition-transform group-hover:-translate-x-0.5 group-hover:text-violet-300"
+            aria-hidden
+          />
+          Retour au site
         </Link>
       </div>
     </>
   );
 
+  const desktopBackground = {
+    background:
+      "linear-gradient(180deg, rgba(17,18,28,0.96) 0%, rgba(11,11,18,0.985) 60%, rgba(9,9,14,0.99) 100%)",
+    borderColor: "rgba(99,102,241,0.10)",
+    scrollbarWidth: "thin" as const,
+    scrollbarColor: "#3b3650 transparent",
+  };
+
   return (
     <>
       <aside
-        className="hidden lg:block admin-sidebar-scroll w-72 max-w-[88vw] border-r h-[calc(100vh-5rem)] sticky top-20 overflow-y-auto p-4"
-        style={{
-          background:
-            "radial-gradient(circle at 8% -10%, rgba(124,58,237,0.2), rgba(18,19,29,0.98) 34%), linear-gradient(180deg, rgba(21,22,33,0.98) 0%, rgba(14,15,24,0.98) 100%)",
-          borderColor: "rgba(148,163,184,0.2)",
-          scrollbarWidth: "thin",
-          scrollbarColor: "#4b425b transparent",
-        }}
+        className="hidden lg:block admin-sidebar-scroll w-80 min-w-[17.5rem] max-w-[min(22rem,92vw)] border-r h-[calc(100vh-5rem)] sticky top-20 overflow-y-auto px-4 py-4"
+        style={desktopBackground}
       >
         {sidebarContent}
       </aside>
 
       {isMobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/60" onClick={onCloseMobile} />
+          <div
+            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+            onClick={onCloseMobile}
+          />
           <aside
-            className="relative admin-sidebar-scroll h-full w-[92vw] max-w-sm border-r overflow-y-auto p-4"
-            style={{
-              background:
-                "radial-gradient(circle at 8% -10%, rgba(124,58,237,0.22), rgba(18,19,29,0.99) 34%), linear-gradient(180deg, rgba(21,22,33,0.99) 0%, rgba(14,15,24,0.99) 100%)",
-              borderColor: "rgba(148,163,184,0.2)",
-              scrollbarWidth: "thin",
-              scrollbarColor: "#4b425b transparent",
-            }}
+            className="relative admin-sidebar-scroll h-full w-[92vw] max-w-sm border-r overflow-y-auto px-3.5 py-4"
+            style={desktopBackground}
           >
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-violet-200/85">
                 Navigation admin
               </p>
               <button
                 type="button"
                 onClick={onCloseMobile}
-                className="h-8 w-8 rounded-lg border inline-flex items-center justify-center transition-colors"
-                style={{ borderColor: "rgba(255,255,255,0.15)", color: "var(--color-text)", backgroundColor: "rgba(255,255,255,0.03)" }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-300 transition-colors hover:border-violet-400/30 hover:bg-violet-500/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55"
                 aria-label="Fermer le menu admin"
               >
-                ✕
+                <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
             {sidebarContent}
@@ -421,19 +413,8 @@ export default function AdminSidebar({
       )}
 
       <style jsx global>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-1px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
         .admin-sidebar-scroll::-webkit-scrollbar {
-          width: 8px;
+          width: 7px;
         }
 
         .admin-sidebar-scroll::-webkit-scrollbar-track {
@@ -441,15 +422,14 @@ export default function AdminSidebar({
         }
 
         .admin-sidebar-scroll::-webkit-scrollbar-thumb {
-          background: #4b425b;
+          background: rgba(99, 102, 241, 0.20);
           border-radius: 999px;
         }
 
         .admin-sidebar-scroll::-webkit-scrollbar-thumb:hover {
-          background: #695f7a;
+          background: rgba(167, 139, 250, 0.32);
         }
       `}</style>
     </>
   );
 }
-

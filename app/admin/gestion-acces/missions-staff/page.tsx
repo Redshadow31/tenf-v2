@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import AdminConfirmModal from "@/components/admin/AdminConfirmModal";
+import { administrationSiteHubNav } from "@/lib/admin/gestionAccesNav";
 
 type Mission = {
   id: string;
@@ -22,6 +24,8 @@ export default function StaffMissionsAdminPage() {
   const [newDescription, setNewDescription] = useState("");
   const [newSortOrder, setNewSortOrder] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [missionToDelete, setMissionToDelete] = useState<Mission | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     const id = assigneeId.trim();
@@ -92,36 +96,32 @@ export default function StaffMissionsAdminPage() {
     }
   }
 
-  async function removeMission(missionId: string) {
-    if (!window.confirm("Supprimer cette mission ?")) return;
+  async function confirmRemoveMission() {
+    if (!missionToDelete) return;
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch(`/api/admin/staff-missions/${encodeURIComponent(missionId)}`, {
+      setDeleteSubmitting(true);
+      const res = await fetch(`/api/admin/staff-missions/${encodeURIComponent(missionToDelete.id)}`, {
         method: "DELETE",
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(typeof j?.error === "string" ? j.error : "Suppression refusée");
       }
+      setMissionToDelete(null);
       setMessage("Mission supprimée.");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setDeleteSubmitting(false);
     }
   }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
-      <AdminHeader
-        title="Missions nominatives staff"
-        navLinks={[
-          { href: "/admin/gestion-acces/accueil", label: "Dashboard administration" },
-          { href: "/admin/gestion-acces/organigramme-staff", label: "Organigramme staff" },
-          { href: "/admin/mon-compte", label: "Mon compte" },
-          { href: "/admin/gestion-acces/missions-staff", label: "Missions staff", active: true },
-        ]}
-      />
+      <AdminHeader title="Missions nominatives staff" navLinks={administrationSiteHubNav("/admin/gestion-acces/missions-staff")} />
 
       <div className="mx-auto max-w-3xl space-y-8 px-8 pb-16">
         <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
@@ -226,7 +226,7 @@ export default function StaffMissionsAdminPage() {
               </div>
               <button
                 type="button"
-                onClick={() => void removeMission(m.id)}
+                onClick={() => setMissionToDelete(m)}
                 className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-red-500/35 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/10"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -240,6 +240,24 @@ export default function StaffMissionsAdminPage() {
         ) : null}
       </section>
       </div>
+
+      <AdminConfirmModal
+        open={missionToDelete !== null}
+        tone="danger"
+        title="Supprimer cette mission ?"
+        description={
+          missionToDelete ? (
+            <>
+              La mission « <strong className="text-rose-100">{missionToDelete.title}</strong> » sera retirée du
+              compte staff. Cette action est immédiate.
+            </>
+          ) : null
+        }
+        confirmLabel="Supprimer"
+        loading={deleteSubmitting}
+        onCancel={() => !deleteSubmitting && setMissionToDelete(null)}
+        onConfirm={() => void confirmRemoveMission()}
+      />
     </div>
   );
 }

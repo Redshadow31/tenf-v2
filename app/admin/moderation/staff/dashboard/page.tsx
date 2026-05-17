@@ -1,5 +1,9 @@
-import AdminModerationStaffDashboardPage from "../page";
+import { redirect } from "next/navigation";
 
-export default function AdminModerationStaffDashboardRoutePage() {
-  return <AdminModerationStaffDashboardPage />;
+/**
+ * Alias historique de /admin/moderation/staff.
+ * Conservé pour rétrocompatibilité — l'URL canonique est /admin/moderation/staff.
+ */
+export default function AdminModerationStaffDashboardLegacyPage() {
+  redirect("/admin/moderation/staff");
 }

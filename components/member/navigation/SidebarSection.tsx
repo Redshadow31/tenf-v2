@@ -1,30 +1,82 @@
+"use client";
+
 import type { ReactNode } from "react";
-import { Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 type SidebarSectionProps = {
+  /** Identifiant stable (utilisé pour la clé d’ouverture/fermeture). */
+  id: string;
   title: string;
   children: ReactNode;
+  /** Ouvert par défaut (typiquement quand la section contient la page courante). */
+  defaultOpen?: boolean;
+  /** Point d’attention sur le titre (ex : non-lus). */
+  showAttentionDot?: boolean;
+  /** Compte d’items visibles (info discrète à droite du titre). */
+  count?: number;
 };
 
-export default function SidebarSection({ title, children }: SidebarSectionProps) {
+export default function SidebarSection({
+  id,
+  title,
+  children,
+  defaultOpen = false,
+  showAttentionDot = false,
+  count,
+}: SidebarSectionProps) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  // Synchronise quand la section devient active (ex. on navigue dedans).
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
+
+  const headingId = `sidebar-section-${id}`;
+  const panelId = `sidebar-panel-${id}`;
+
   return (
-    <section className="space-y-2.5">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-0.5">
-        <div
-          className="inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-bold uppercase leading-tight tracking-[0.14em] shadow-[0_0_20px_rgba(139,92,246,0.12)]"
-          style={{
-            color: "var(--color-text)",
-            borderColor: "rgba(167, 139, 250, 0.45)",
-            background:
-              "linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(139, 92, 246, 0.06) 100%)",
-          }}
+    <section className="space-y-2" aria-labelledby={headingId}>
+      <h2 id={headingId} className="m-0">
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className="group flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/60"
         >
-          <Sparkles className="h-3 w-3 shrink-0 text-violet-300/90" aria-hidden />
-          <span className="break-words text-pretty">{title}</span>
+          <span className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="min-w-0 break-words text-pretty text-[12px] font-extrabold uppercase leading-tight tracking-[0.12em] text-violet-200 transition-colors group-hover:text-violet-100 sm:text-[12.5px]">
+              {title}
+            </span>
+            {showAttentionDot ? (
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.65)]"
+                aria-label="Notifications non lues"
+              />
+            ) : null}
+            <span className="h-px min-w-[0.5rem] flex-1 bg-gradient-to-r from-violet-400/45 via-violet-500/15 to-transparent" aria-hidden />
+            {typeof count === "number" ? (
+              <span className="shrink-0 text-[10px] font-semibold tabular-nums text-violet-300/65">{count}</span>
+            ) : null}
+          </span>
+          <span
+            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/10 bg-black/25 text-zinc-400 transition-colors group-hover:border-violet-400/35 group-hover:text-violet-200"
+            aria-hidden
+          >
+            <ChevronDown
+              size={14}
+              className="transition-transform duration-200 ease-out"
+              style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}
+            />
+          </span>
+        </button>
+      </h2>
+      {open ? (
+        <div id={panelId} role="region" aria-labelledby={headingId} className="pl-0.5">
+          {children}
         </div>
-        <div className="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-violet-500/50 to-transparent" aria-hidden />
-      </div>
-      <div className="space-y-2 pl-0.5">{children}</div>
+      ) : null}
     </section>
   );
 }

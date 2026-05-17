@@ -104,7 +104,7 @@ export default function PilotageIncidentsPage() {
         severity: "high",
         title: "Incohérences données",
         description: `${dataErrors} incohérence(s) membres détectée(s).`,
-        href: "/admin/membres/erreurs",
+        href: "/admin/membres/incomplets?vue=erreurs",
       });
     }
 
@@ -226,7 +226,7 @@ export default function PilotageIncidentsPage() {
           <Link href="/admin/pilotage/release-readiness" className="rounded-lg border border-white/15 px-3 py-2 hover:border-[#d4af37] transition-colors">
             Vérifier la connectivité services
           </Link>
-          <Link href="/admin/membres/erreurs" className="rounded-lg border border-white/15 px-3 py-2 hover:border-[#d4af37] transition-colors">
+          <Link href="/admin/membres/incomplets?vue=erreurs" className="rounded-lg border border-white/15 px-3 py-2 hover:border-[#d4af37] transition-colors">
             Corriger les incohérences membres
           </Link>
           <Link href="/admin/gestion-acces/admin-avance" className="rounded-lg border border-white/15 px-3 py-2 hover:border-[#d4af37] transition-colors">

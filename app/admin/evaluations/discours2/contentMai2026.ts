@@ -310,7 +310,7 @@ export const discours2Parts: Discours2Part[] = [
       "👉 Leur rôle, ce n’est pas seulement de gérer.",
       "C’est surtout :",
       "• d’organiser • d’accompagner • d’écouter • et de maintenir un cadre juste pour tout le monde",
-      "À côté de ça, il y a aussi les Admin Coordinateurs.",
+      "À côté de ça, il y a aussi les Coordinateurs TENF.",
       "👉 Leur rôle, c’est d’assurer que tout fonctionne bien au quotidien, de faire le lien entre le staff et de garder une bonne organisation globale.",
       "Et ensuite, il y a les modérateurs.",
       "👉 Ils sont là pour :",

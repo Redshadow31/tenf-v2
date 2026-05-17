@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertTriangle, ShieldCheck, Sparkles, Users, X } from "lucide-react";
+import { AlertTriangle, ShieldCheck, X } from "lucide-react";
 
 type RaidDeclaration = {
   id: string;
@@ -28,6 +28,15 @@ type MemberLite = {
   isActive?: boolean;
 };
 
+/** Compteurs sur le même périmètre que la liste (recherche + mois API), hors filtre d’onglet statut. */
+type RaidDeclarationStatusCounts = {
+  total: number;
+  processing: number;
+  to_study: number;
+  validated: number;
+  rejected: number;
+};
+
 type CreateMemberDraft = {
   twitchLogin: string;
   displayName: string;
@@ -46,7 +55,9 @@ export default function AdminEngagementRaidsAValiderPage() {
   const backHref = isCommunity ? "/admin/communaute/engagement" : "/admin/raids";
   const raidsSubHref = isCommunity ? "/admin/communaute/engagement/raids-eventsub" : "/admin/engagement/raids-sub";
   const historiqueHref = isCommunity ? "/admin/communaute/engagement/historique-raids" : "/admin/engagement/historique-raids";
-
+  const pointsDiscordHref = isCommunity ? "/admin/communaute/engagement/points-discord" : "/admin/engagement/points-discord";
+  const followHref = isCommunity ? "/admin/communaute/engagement/follow" : "/admin/engagement/follow";
+  const searchFieldDescId = useId();
   const [statusFilter, setStatusFilter] = useState<"all" | "processing" | "to_study" | "validated" | "rejected">("processing");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -55,6 +66,7 @@ export default function AdminEngagementRaidsAValiderPage() {
   const [notice, setNotice] = useState("");
   const [savingId, setSavingId] = useState("");
   const [rows, setRows] = useState<RaidDeclaration[]>([]);
+  const [statusCounts, setStatusCounts] = useState<RaidDeclarationStatusCounts | null>(null);
   const [commentById, setCommentById] = useState<Record<string, string>>({});
   const [members, setMembers] = useState<MemberLite[]>([]);
   const [targetDraftById, setTargetDraftById] = useState<Record<string, string>>({});
@@ -68,9 +80,29 @@ export default function AdminEngagementRaidsAValiderPage() {
   });
   const [pendingValidateId, setPendingValidateId] = useState<string | null>(null);
 
-  async function loadData() {
+  const tabIdAll = useId();
+  const tabIdProcessing = useId();
+  const tabIdToStudy = useId();
+  const tabIdValidated = useId();
+  const tabIdRejected = useId();
+  const signalementsPanelId = useId();
+  const signalementsTabpanelLabelledby =
+    statusFilter === "all"
+      ? tabIdAll
+      : statusFilter === "processing"
+        ? tabIdProcessing
+        : statusFilter === "to_study"
+          ? tabIdToStudy
+          : statusFilter === "validated"
+            ? tabIdValidated
+            : tabIdRejected;
+
+  async function loadData(options?: { silent?: boolean }) {
+    const silent = Boolean(options?.silent);
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError("");
       const params = new URLSearchParams({
         status: statusFilter,
@@ -86,10 +118,25 @@ export default function AdminEngagementRaidsAValiderPage() {
       }
       setRows((body.declarations || []) as RaidDeclaration[]);
       setBackendReady(body.backendReady !== false);
+      const c = body.counts as RaidDeclarationStatusCounts | undefined;
+      if (
+        c &&
+        typeof c.total === "number" &&
+        typeof c.processing === "number" &&
+        typeof c.to_study === "number" &&
+        typeof c.validated === "number" &&
+        typeof c.rejected === "number"
+      ) {
+        setStatusCounts(c);
+      } else {
+        setStatusCounts(null);
+      }
     } catch {
       setError("Erreur reseau pendant le chargement.");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }
 
@@ -112,13 +159,23 @@ export default function AdminEngagementRaidsAValiderPage() {
   }, []);
 
   const stats = useMemo(() => {
+    if (statusCounts) {
+      return {
+        total: statusCounts.total,
+        processing: statusCounts.processing,
+        toStudy: statusCounts.to_study,
+        validated: statusCounts.validated,
+        rejected: statusCounts.rejected,
+      };
+    }
     return {
+      total: rows.length,
       processing: rows.filter((item) => item.status === "processing").length,
       toStudy: rows.filter((item) => item.status === "to_study").length,
       validated: rows.filter((item) => item.status === "validated").length,
       rejected: rows.filter((item) => item.status === "rejected").length,
     };
-  }, [rows]);
+  }, [statusCounts, rows]);
 
   async function applyStatus(id: string, status: "processing" | "to_study" | "validated" | "rejected") {
     setSavingId(id);
@@ -141,7 +198,7 @@ export default function AdminEngagementRaidsAValiderPage() {
       } else {
         setNotice("Mise a jour enregistree.");
       }
-      setRows((previous) => previous.map((item) => (item.id === id ? body.declaration : item)));
+      await loadData({ silent: true });
     } catch {
       setError("Erreur reseau pendant la mise a jour.");
     } finally {
@@ -200,8 +257,8 @@ export default function AdminEngagementRaidsAValiderPage() {
         setError(body.error || "Mise a jour de la cible impossible.");
         return;
       }
-      setRows((previous) => previous.map((item) => (item.id === id ? body.declaration : item)));
       setTargetDraftById((prev) => ({ ...prev, [id]: normalized }));
+      await loadData({ silent: true });
     } catch {
       setError("Erreur reseau pendant la mise a jour de la cible.");
     } finally {
@@ -282,7 +339,7 @@ export default function AdminEngagementRaidsAValiderPage() {
         borderColor: "rgba(96,165,250,0.45)",
         color: "#93c5fd",
         backgroundColor: "rgba(96,165,250,0.12)",
-        label: "A etudier",
+        label: "À vérifier avant décision",
       };
     }
     if (status === "validated") {
@@ -290,7 +347,7 @@ export default function AdminEngagementRaidsAValiderPage() {
         borderColor: "rgba(52,211,153,0.45)",
         color: "#34d399",
         backgroundColor: "rgba(52,211,153,0.12)",
-        label: "Valide",
+        label: "Validé",
       };
     }
     if (status === "rejected") {
@@ -298,74 +355,75 @@ export default function AdminEngagementRaidsAValiderPage() {
         borderColor: "rgba(248,113,113,0.45)",
         color: "#f87171",
         backgroundColor: "rgba(248,113,113,0.12)",
-        label: "Refuse",
+        label: "Refusé",
       };
     }
     return {
       borderColor: "rgba(250,204,21,0.45)",
       color: "#facc15",
       backgroundColor: "rgba(250,204,21,0.12)",
-      label: "En cours de traitement",
+      label: "En cours",
     };
   }
 
-  return (
-    <div className={`text-white space-y-6 ${isCommunity ? "pb-2" : "min-h-screen bg-[#0e0e10] p-8"}`}>
-      <section className="rounded-2xl border border-indigo-300/20 bg-[linear-gradient(150deg,rgba(99,102,241,0.12),rgba(14,15,23,0.85)_45%,rgba(56,189,248,0.08))] p-5 md:p-6 shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur">
-        <Link href={backHref} className="mb-4 inline-block text-gray-300 transition-colors hover:text-white">
-          {isCommunity ? "← Hub engagement" : "← Retour à Engagement"}
-        </Link>
-        {isCommunity ? (
-          <div className="mb-4 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-100">
-              <Users className="h-3 w-3" />
-              Déclarations membres
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/35 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-100">
-              <Sparkles className="h-3 w-3" />
-              Fiabilité TENF
-            </span>
-          </div>
-        ) : null}
-        <div className="mb-3 flex flex-wrap gap-2">
-          <Link
-            href={raidsSubHref}
-            className="inline-flex rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200"
-          >
-            Voir EventSub (état auto)
-          </Link>
-          <Link
-            href={historiqueHref}
-            className="inline-flex rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200"
-          >
-            Historique consolidé
-          </Link>
-        </div>
-        <h1 className="mb-2 bg-gradient-to-r from-indigo-100 via-sky-200 to-cyan-200 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
-          {isCommunity ? "Signalements raids — file staff" : "Raids à valider"}
-        </h1>
-        <p className="max-w-3xl text-sm text-slate-300">
-          {isCommunity ? (
-            <>
-              Les membres TENF déclarent un raid manquant ou incorrect. Chaque fiche est une <strong className="text-white">promesse
-              de réponse</strong> : vérifie d’abord l’historique EventSub, puis valide, refuse ou renvoie en analyse avec un
-              commentaire clair.
-            </>
-          ) : (
-            <>Validation des declarations raids membres avec statuts synchronises.</>
-          )}
-        </p>
-      </section>
+  const surface = "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20";
 
-      <section className="rounded-2xl border border-amber-300/35 bg-amber-300/10 p-4 text-amber-100">
-        <p className="inline-flex items-center gap-2 text-sm font-semibold">
-          <AlertTriangle className="h-4 w-4" />
-          Rappel obligatoire
-        </p>
-        <p className="mt-1 text-sm">
-          Toujours verifier qu un raid automatique EventSub n est pas deja comptabilise avant de valider une declaration manuelle.
-        </p>
-      </section>
+  return (
+    <div className={`text-white ${isCommunity ? "pb-2" : "min-h-screen bg-[#07080f] py-6 md:py-8"}`}>
+      <div className="mx-auto w-full max-w-[1480px] px-3 md:px-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start xl:gap-8">
+          <div className="min-w-0 space-y-6">
+            <header className={`${surface} p-4 sm:p-5`}>
+              <Link
+                href={backHref}
+                className="inline-flex text-xs font-medium text-zinc-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+              >
+                {isCommunity ? "← Hub engagement" : "← Retour à Engagement"}
+              </Link>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  href={raidsSubHref}
+                  className="inline-flex rounded-lg border border-sky-500/25 bg-sky-950/25 px-2.5 py-1.5 text-xs font-medium text-sky-100 transition hover:border-sky-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/45"
+                >
+                  Raids EventSub
+                </Link>
+                <Link
+                  href={historiqueHref}
+                  className="inline-flex rounded-lg border border-violet-500/25 bg-violet-950/25 px-2.5 py-1.5 text-xs font-medium text-violet-100 transition hover:border-violet-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/45"
+                >
+                  Historique
+                </Link>
+                <Link
+                  href={pointsDiscordHref}
+                  className="inline-flex rounded-lg border border-emerald-500/25 bg-emerald-950/25 px-2.5 py-1.5 text-xs font-medium text-emerald-100 transition hover:border-emerald-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/45"
+                >
+                  Points Discord
+                </Link>
+                {isCommunity ? (
+                  <Link
+                    href={followHref}
+                    className="inline-flex rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/45"
+                  >
+                    Follow
+                  </Link>
+                ) : null}
+              </div>
+              <h1 className="mt-4 text-[clamp(1.35rem,1.1rem+0.9vw,1.85rem)] font-semibold tracking-tight text-white">
+                Signalements raids
+              </h1>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
+                Examiner les déclarations et corriger les écarts remontés par les membres. Compare toujours avec l’auto EventSub
+                avant de valider.
+              </p>
+            </header>
+
+            <div className={`${surface} flex flex-wrap items-start gap-3 border-amber-500/20 bg-amber-950/15 p-3 sm:p-4`}>
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+              <p className="min-w-0 text-sm leading-relaxed text-amber-100/95">
+                <span className="font-semibold text-amber-50">Important :</span> vérifie qu’un raid automatique EventSub n’est pas
+                déjà compté avant de valider une déclaration manuelle.
+              </p>
+            </div>
 
       {!backendReady ? (
         <div className="mb-6 rounded-lg border border-yellow-500/30 bg-yellow-500/20 p-4">
@@ -374,23 +432,35 @@ export default function AdminEngagementRaidsAValiderPage() {
         </div>
       ) : null}
 
-      <div className="mb-6 rounded-xl border border-gray-700 bg-[#1a1a1d] p-4">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className={`${surface} p-4`}>
+        <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Filtrer les signalements par statut">
           <button
             type="button"
+            role="tab"
+            id={tabIdAll}
+            aria-selected={statusFilter === "all"}
+            aria-controls={signalementsPanelId}
+            tabIndex={statusFilter === "all" ? 0 : -1}
+            aria-label={`Tous les statuts, ${stats.total} signalements`}
             onClick={() => setStatusFilter("all")}
-            className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+            className="rounded-md border px-3 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1d]"
             style={{
               borderColor: statusFilter === "all" ? "rgba(139,92,246,0.55)" : "rgba(255,255,255,0.18)",
               color: statusFilter === "all" ? "#c4b5fd" : "#cbd5e1",
             }}
           >
-            Tous ({rows.length})
+            Tous ({stats.total})
           </button>
           <button
             type="button"
+            role="tab"
+            id={tabIdProcessing}
+            aria-selected={statusFilter === "processing"}
+            aria-controls={signalementsPanelId}
+            tabIndex={statusFilter === "processing" ? 0 : -1}
+            aria-label={`En cours de traitement, ${stats.processing} signalements`}
             onClick={() => setStatusFilter("processing")}
-            className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+            className="rounded-md border px-3 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1d]"
             style={{
               borderColor: statusFilter === "processing" ? "rgba(250,204,21,0.55)" : "rgba(255,255,255,0.18)",
               color: statusFilter === "processing" ? "#facc15" : "#cbd5e1",
@@ -400,19 +470,31 @@ export default function AdminEngagementRaidsAValiderPage() {
           </button>
           <button
             type="button"
+            role="tab"
+            id={tabIdToStudy}
+            aria-selected={statusFilter === "to_study"}
+            aria-controls={signalementsPanelId}
+            tabIndex={statusFilter === "to_study" ? 0 : -1}
+            aria-label={`À vérifier avant décision, ${stats.toStudy} signalements`}
             onClick={() => setStatusFilter("to_study")}
-            className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+            className="rounded-md border px-3 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1d]"
             style={{
               borderColor: statusFilter === "to_study" ? "rgba(96,165,250,0.55)" : "rgba(255,255,255,0.18)",
               color: statusFilter === "to_study" ? "#93c5fd" : "#cbd5e1",
             }}
           >
-            A etudier ({stats.toStudy})
+            À vérifier ({stats.toStudy})
           </button>
           <button
             type="button"
+            role="tab"
+            id={tabIdValidated}
+            aria-selected={statusFilter === "validated"}
+            aria-controls={signalementsPanelId}
+            tabIndex={statusFilter === "validated" ? 0 : -1}
+            aria-label={`Valides, ${stats.validated} signalements`}
             onClick={() => setStatusFilter("validated")}
-            className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+            className="rounded-md border px-3 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1d]"
             style={{
               borderColor: statusFilter === "validated" ? "rgba(52,211,153,0.55)" : "rgba(255,255,255,0.18)",
               color: statusFilter === "validated" ? "#34d399" : "#cbd5e1",
@@ -422,14 +504,20 @@ export default function AdminEngagementRaidsAValiderPage() {
           </button>
           <button
             type="button"
+            role="tab"
+            id={tabIdRejected}
+            aria-selected={statusFilter === "rejected"}
+            aria-controls={signalementsPanelId}
+            tabIndex={statusFilter === "rejected" ? 0 : -1}
+            aria-label={`Refusés, ${stats.rejected} signalements`}
             onClick={() => setStatusFilter("rejected")}
-            className="rounded-md border px-3 py-1.5 text-xs font-semibold"
+            className="rounded-md border px-3 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1d]"
             style={{
               borderColor: statusFilter === "rejected" ? "rgba(248,113,113,0.55)" : "rgba(255,255,255,0.18)",
               color: statusFilter === "rejected" ? "#f87171" : "#cbd5e1",
             }}
           >
-            Refuses ({stats.rejected})
+            Refusés ({stats.rejected})
           </button>
         </div>
 
@@ -440,30 +528,48 @@ export default function AdminEngagementRaidsAValiderPage() {
             placeholder="Rechercher membre, cible ou note..."
             className="w-full max-w-[460px] rounded-lg border px-3 py-2 text-sm"
             style={{ borderColor: "rgba(255,255,255,0.15)", backgroundColor: "#0e0e10", color: "#fff" }}
+            aria-label="Recherche membre, cible ou note"
+            aria-describedby={searchFieldDescId}
           />
           <button
             type="button"
             onClick={() => void loadData()}
-            className="rounded-lg bg-[#9146ff] px-3 py-2 text-sm font-semibold text-white hover:bg-[#7c3aed]"
+            aria-label="Lancer la recherche avec les filtres saisis"
+            className="rounded-lg bg-[#9146ff] px-3 py-2 text-sm font-semibold text-white hover:bg-[#7c3aed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1d]"
           >
             Rechercher
           </button>
         </div>
+        <p id={searchFieldDescId} className="mt-2 max-w-3xl text-[11px] leading-relaxed text-zinc-500">
+          Les compteurs suivent la recherche active et le lot de signalements renvoyé par le serveur ; ils ne sont pas limités à
+          l’onglet sélectionné.
+        </p>
       </div>
 
       {error ? (
-        <div className="mb-4 rounded-lg border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200">{error}</div>
+        <div className="mb-4 rounded-lg border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-200" role="alert">
+          {error}
+        </div>
       ) : null}
       {notice ? (
-        <div className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-900/20 px-4 py-3 text-sm text-emerald-200">
+        <div
+          className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-900/20 px-4 py-3 text-sm text-emerald-200"
+          role="status"
+          aria-live="polite"
+        >
           {notice}
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-[#2f3244] bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.10),_rgba(11,13,20,0.95)_46%)] p-6 shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
+      <div
+        id={signalementsPanelId}
+        role="tabpanel"
+        aria-labelledby={signalementsTabpanelLabelledby}
+        className={`${surface} p-4 sm:p-5`}
+      >
         {loading ? (
           isCommunity ? (
-            <div className="space-y-3">
+            <div className="space-y-3" role="status" aria-live="polite" aria-busy="true">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="animate-pulse rounded-xl border border-[#353a50] bg-[#121623]/60 p-4">
                   <div className="h-4 w-1/2 rounded bg-slate-700/40" />
@@ -473,12 +579,18 @@ export default function AdminEngagementRaidsAValiderPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-300">Chargement des declarations...</p>
+            <p className="text-sm text-gray-300" role="status" aria-live="polite">
+              Chargement des déclarations...
+            </p>
           )
         ) : rows.length === 0 ? (
           <p className="text-sm text-gray-300">Aucune declaration a afficher.</p>
         ) : (
-          <div className="space-y-3">
+          <>
+            <p className="sr-only" role="status" aria-live="polite">
+              {rows.length} déclaration(s) affichée(s).
+            </p>
+            <div className="space-y-3">
             {rows.map((item) => {
               const badge = badgeStyle(item.status);
               const isSaving = savingId === item.id;
@@ -584,7 +696,7 @@ export default function AdminEngagementRaidsAValiderPage() {
                         className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60"
                         style={{ borderColor: "rgba(96,165,250,0.5)", color: "#93c5fd" }}
                       >
-                        A etudier
+                        À étudier
                       </button>
                       <button
                         type="button"
@@ -619,7 +731,60 @@ export default function AdminEngagementRaidsAValiderPage() {
               );
             })}
           </div>
+          </>
         )}
+      </div>
+
+          </div>
+
+          <aside className="min-w-0 space-y-4 xl:sticky xl:top-6 xl:self-start">
+            <div className={`${surface} p-4`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Statuts visibles</p>
+              <ul className="mt-3 space-y-2 text-xs leading-relaxed text-zinc-400">
+                <li>
+                  <span className="font-medium text-amber-200/90">En cours</span> — la fiche vient d’arriver ou est en traitement.
+                </li>
+                <li>
+                  <span className="font-medium text-sky-200/90">À vérifier</span> — besoin d’une décision après contrôle EventSub /
+                  historique.
+                </li>
+                <li>
+                  <span className="font-medium text-emerald-200/90">Validé</span> — aligné avec les règles staff.
+                </li>
+                <li>
+                  <span className="font-medium text-rose-200/90">Refusé</span> — écart confirmé ou doublon avéré.
+                </li>
+              </ul>
+            </div>
+            <div className={`${surface} p-4`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Liens rapides</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                <li>
+                  <Link href={historiqueHref} className="text-violet-200/90 underline-offset-2 hover:underline">
+                    Historique consolidé
+                  </Link>
+                </li>
+                <li>
+                  <Link href={raidsSubHref} className="text-sky-200/90 underline-offset-2 hover:underline">
+                    Raids EventSub
+                  </Link>
+                </li>
+                <li>
+                  <Link href={pointsDiscordHref} className="text-emerald-200/90 underline-offset-2 hover:underline">
+                    Points Discord
+                  </Link>
+                </li>
+                {isCommunity ? (
+                  <li>
+                    <Link href={followHref} className="text-zinc-300 underline-offset-2 hover:underline">
+                      Follow communauté
+                    </Link>
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          </aside>
+        </div>
       </div>
 
       {pendingValidateId ? (
@@ -644,7 +809,7 @@ export default function AdminEngagementRaidsAValiderPage() {
                 className="rounded-xl border border-white/10 bg-black/30 p-2 text-slate-300 hover:bg-white/10 hover:text-white"
                 aria-label="Fermer"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
             <div className="px-6 pb-4 pt-2">

@@ -41,13 +41,34 @@ const founders: FounderProfile[] = [
   },
 ];
 
+const TITLE = "À propos — TENF";
+const DESCRIPTION =
+  "L'histoire de TENF : d'une idée née sur Facebook à une communauté Twitch refondée en septembre 2024 par Red, Clara et Nexou, après le refus de monétiser l'entraide. Notre vision, nos valeurs, notre fonctionnement.";
+const URL = "https://tenf-community.com/a-propos";
+
 export const metadata: Metadata = {
-  title: "À propos | TENF",
-  description:
-    "L’histoire de TENF : des débuts sur Facebook à une communauté de streamers structurée, portée par l’entraide réelle et trois fondateurs. Pour le public et les membres.",
-  alternates: {
-    canonical: "https://tenf-community.com/a-propos",
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: URL },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: URL,
+    type: "website",
+    siteName: "TENF — Twitch Entraide New Family",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  keywords: [
+    "à propos TENF",
+    "histoire TENF",
+    "Twitch Entraide New Family",
+    "fondateurs TENF",
+    "communauté streamers Twitch",
+  ],
 };
 
 export default async function Page() {

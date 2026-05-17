@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   X,
   UserPlus,
@@ -22,7 +23,11 @@ import {
   LayoutList,
   Users,
   MapPin,
+  AlertTriangle,
+  Zap,
+  ListOrdered,
 } from "lucide-react";
+import { OnboardingPresencesHubView } from "@/components/admin/OnboardingPresencesHubView";
 
 type Integration = {
   id: string;
@@ -72,6 +77,7 @@ type ApiMember = {
   discordUsername?: string;
   role?: string;
   parrain?: string;
+  isActive?: boolean;
 };
 
 const heroShellClass =
@@ -84,6 +90,61 @@ const focusRingClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0b10]";
 const modalShellClass =
   "relative max-h-[min(92vh,920px)] w-full max-w-5xl overflow-hidden rounded-3xl border border-indigo-400/20 bg-[linear-gradient(180deg,rgba(18,22,36,0.98),rgba(10,12,18,0.99))] shadow-[0_32px_90px_rgba(0,0,0,0.65)]";
+
+const hubPanelClass =
+  "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]";
+const hubHeroClass =
+  "relative isolate overflow-hidden rounded-2xl border border-violet-500/20 bg-zinc-950/70 ring-1 ring-inset ring-violet-500/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
+const hubBtnClass =
+  "inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-950/25 px-3 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-900/30";
+const hubFocusClass =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";
+
+type CorrelationSessionRow = {
+  integrationId: string;
+  title: string;
+  date: string;
+  attendedCount: number;
+  registrationsCount: number;
+};
+
+type AnnuaireStatus = "missing" | "nouveau" | "inactif" | "ok";
+
+type PresentGestionRow = {
+  twitchLogin: string;
+  displayName: string;
+  status: AnnuaireStatus;
+};
+
+function normalizeRoleKey(role?: string): string {
+  return String(role || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function getAnnuaireStatus(member: ApiMember | undefined): AnnuaireStatus {
+  if (!member) return "missing";
+  const role = normalizeRoleKey(member.role);
+  if (role === "nouveau") return "nouveau";
+  if (member.isActive === false) return "inactif";
+  if (role === "affilie" || role === "developpement" || role === "actif") return "ok";
+  return "nouveau";
+}
+
+function annuaireStatusLabel(status: AnnuaireStatus): string {
+  switch (status) {
+    case "missing":
+      return "Absent de l'annuaire";
+    case "nouveau":
+      return "Rôle Nouveau — à promouvoir";
+    case "inactif":
+      return "Inactif dans l'annuaire";
+    default:
+      return "Déjà Affilié / actif";
+  }
+}
 
 function toMemberForIntegrate(reg: IntegrationRegistration): MemberForIntegrate {
   return {
@@ -99,8 +160,15 @@ function toMemberForIntegrate(reg: IntegrationRegistration): MemberForIntegrate 
 }
 
 export default function PresenceRetourPage() {
+  const pathname = usePathname();
+  const hubLayout = pathname?.startsWith("/admin/onboarding") ?? false;
+  const hubBackHref = hubLayout ? "/admin/onboarding" : "/admin/evaluations";
+
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [allRegistrations, setAllRegistrations] = useState<Record<string, IntegrationRegistration[]>>({});
+  const [correlationSessions, setCorrelationSessions] = useState<CorrelationSessionRow[]>([]);
+  const [toActivateCount, setToActivateCount] = useState(0);
+  const [membersByLogin, setMembersByLogin] = useState<Map<string, ApiMember>>(() => new Map());
   const [loading, setLoading] = useState(true);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [editableMembers, setEditableMembers] = useState<EditableMember[]>([]);
@@ -162,9 +230,36 @@ export default function PresenceRetourPage() {
     try {
       setLoading(true);
 
-      const response = await fetch("/api/admin/integrations/inscriptions-overview", {
-        cache: "no-store",
-      });
+      const [response, correlationRes, membersRes] = await Promise.all([
+        fetch("/api/admin/integrations/inscriptions-overview", { cache: "no-store" }),
+        fetch("/api/admin/integrations/attendance-correlation", { cache: "no-store" }),
+        fetch("/api/admin/members", { cache: "no-store" }),
+      ]);
+
+      if (membersRes.ok) {
+        const membersJson = await membersRes.json();
+        const list: ApiMember[] = membersJson.members || [];
+        const map = new Map<string, ApiMember>();
+        for (const member of list) {
+          const login = (member.twitchLogin || "").trim().toLowerCase();
+          if (login) map.set(login, member);
+        }
+        setMembersByLogin(map);
+      } else {
+        setMembersByLogin(new Map());
+      }
+
+      if (correlationRes.ok) {
+        const corrJson = await correlationRes.json();
+        const rows = Array.isArray(corrJson?.data?.sessions)
+          ? (corrJson.data.sessions as CorrelationSessionRow[])
+          : [];
+        setCorrelationSessions(rows);
+        setToActivateCount(Number(corrJson?.data?.activationSummary?.toActivateCount ?? 0));
+      } else {
+        setCorrelationSessions([]);
+        setToActivateCount(0);
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -339,6 +434,54 @@ export default function PresenceRetourPage() {
     return { totalSessions, totalRegistrations, totalPresent, totalAbsent, attendanceRate };
   }, [integrations, allRegistrations]);
 
+  const sessionsNeedingPresences = useMemo(() => {
+    const now = Date.now();
+    return correlationSessions.filter((s) => {
+      const ts = new Date(s.date).getTime();
+      return Number.isFinite(ts) && ts < now && s.registrationsCount > 0 && s.attendedCount === 0;
+    });
+  }, [correlationSessions]);
+
+  const priorityListRef = useRef<HTMLDivElement>(null);
+  const gestionPriorityRef = useRef<HTMLDivElement>(null);
+  const scrollToPriority = useCallback(() => {
+    priorityListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+  const scrollToGestionPriority = useCallback(() => {
+    gestionPriorityRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const presentNeedingGestion = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: PresentGestionRow[] = [];
+    for (const integration of integrations) {
+      const registrations = allRegistrations[integration.id] || [];
+      for (const reg of registrations) {
+        if (reg.present !== true) continue;
+        const login = (reg.twitchLogin || "").trim().toLowerCase();
+        if (!login || seen.has(login)) continue;
+        seen.add(login);
+        const status = getAnnuaireStatus(membersByLogin.get(login));
+        if (status === "ok") continue;
+        rows.push({
+          twitchLogin: login,
+          displayName: reg.displayName || reg.discordUsername || login,
+          status,
+        });
+      }
+    }
+    rows.sort((a, b) => {
+      const order: Record<AnnuaireStatus, number> = { missing: 0, nouveau: 1, inactif: 2, ok: 3 };
+      return order[a.status] - order[b.status];
+    });
+    return rows;
+  }, [integrations, allRegistrations, membersByLogin]);
+
+  const presentNeedingGestionNouveauCount = useMemo(
+    () => presentNeedingGestion.filter((r) => r.status === "nouveau").length,
+    [presentNeedingGestion]
+  );
+
   const handleIntegrateMembers = async () => {
     const toIntegrate = editableMembers.filter((e) => e.included);
     if (!selectedIntegration || toIntegrate.length === 0) return;
@@ -393,7 +536,11 @@ export default function PresenceRetourPage() {
     }
   };
 
-  const renderSessionCards = (list: Integration[], variant: "future" | "past") => (
+  const renderSessionCards = (
+    list: Integration[],
+    variant: "future" | "past",
+    cardClass: string = sectionCardClass
+  ) => (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {list.map((integration) => {
         const presentCount = getPresentCount(integration.id);
@@ -405,7 +552,7 @@ export default function PresenceRetourPage() {
             key={integration.id}
             type="button"
             onClick={() => handleOpenModal(integration)}
-            className={`group ${sectionCardClass} w-full p-5 text-left transition hover:-translate-y-1 hover:border-indigo-400/40 hover:shadow-[0_16px_44px_rgba(79,70,229,0.2)] ${focusRingClass} ${
+            className={`group ${cardClass} w-full p-5 text-left transition hover:-translate-y-1 hover:border-indigo-400/40 hover:shadow-[0_16px_44px_rgba(79,70,229,0.2)] ${focusRingClass} ${
               variant === "past" ? "opacity-90 saturate-75" : ""
             } ${highlightGap ? "ring-1 ring-amber-400/30" : ""}`}
           >
@@ -455,7 +602,7 @@ export default function PresenceRetourPage() {
             <div className="mt-4 flex items-center justify-between text-sm font-semibold text-indigo-200">
               <span className="flex items-center gap-1">
                 <Users className="h-4 w-4" aria-hidden />
-                Gérer les présents
+                {hubLayout ? "Intégrer les présents" : "Gérer les présents"}
               </span>
               <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
             </div>
@@ -465,7 +612,65 @@ export default function PresenceRetourPage() {
     </div>
   );
 
+  const readySessionsContent =
+    loading ? (
+      <p className="text-sm text-zinc-500" role="status" aria-live="polite">
+        Chargement des sessions…
+      </p>
+    ) : integrations.length === 0 ? (
+      <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
+        <p className="text-sm text-zinc-400">
+          Aucune session avec présences saisies. Commence sur{" "}
+          <Link href="/admin/onboarding/inscriptions" className="text-violet-200 underline">
+            Inscriptions
+          </Link>
+          .
+        </p>
+      </div>
+    ) : filteredIntegrations.length === 0 ? (
+      <p className="text-sm text-zinc-500">
+        Aucun résultat pour « <span className="text-violet-200">{sessionSearch}</span> ».
+      </p>
+    ) : (
+      <div className="space-y-8">
+        {futureIntegrations.length > 0 ? (
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-sky-300/90">À venir</h3>
+            {renderSessionCards(futureIntegrations, "future", hubPanelClass)}
+          </div>
+        ) : null}
+        {pastIntegrations.length > 0 ? (
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">Passées</h3>
+            {renderSessionCards(pastIntegrations, "past", hubPanelClass)}
+          </div>
+        ) : null}
+      </div>
+    );
+
   return (
+    <>
+      {hubLayout ? (
+        <OnboardingPresencesHubView
+          loading={loading}
+          onRefresh={() => void loadData()}
+          sessionsNeedingPresences={sessionsNeedingPresences}
+          stats={{ totalSessions: stats.totalSessions, totalPresent: stats.totalPresent }}
+          toActivateCount={toActivateCount}
+          presentNeedingGestion={presentNeedingGestion}
+          presentNeedingGestionNouveauCount={presentNeedingGestionNouveauCount}
+          readySessionsCount={integrations.length}
+          sessionSearch={sessionSearch}
+          onSessionSearchChange={setSessionSearch}
+          priorityListRef={priorityListRef}
+          gestionPriorityRef={gestionPriorityRef}
+          sessionsListRef={sessionsListRef}
+          onScrollToPriority={scrollToPriority}
+          onScrollToGestionPriority={scrollToGestionPriority}
+          formatDateShort={formatDateShort}
+          readySessionsContent={readySessionsContent}
+        />
+      ) : (
     <div className="space-y-8 p-4 text-white sm:p-6 md:p-8">
       <section className={`${heroShellClass} p-6 md:p-8`}>
         <div className="pointer-events-none absolute -right-24 top-0 h-56 w-56 rounded-full bg-violet-600/18 blur-3xl" aria-hidden />
@@ -473,11 +678,11 @@ export default function PresenceRetourPage() {
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl space-y-4">
             <Link
-              href="/admin/onboarding"
+              href={hubBackHref}
               className={`inline-flex items-center gap-1 text-sm text-indigo-200/90 transition hover:text-white ${focusRingClass} rounded-lg`}
             >
               <ChevronLeft className="h-4 w-4" aria-hidden />
-              Retour au hub onboarding
+              {hubLayout ? "Retour au hub intégration" : "Retour aux évaluations"}
             </Link>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-100/90">
@@ -751,6 +956,9 @@ export default function PresenceRetourPage() {
         </div>
       )}
 
+    </div>
+      )}
+
       {isModalOpen && selectedIntegration && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-md sm:items-center sm:p-6"
@@ -958,7 +1166,18 @@ export default function PresenceRetourPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {editableMembers.map((item, idx) => (
+                    {editableMembers.map((item, idx) => {
+                      const login = item.member.twitchLogin.toLowerCase();
+                      const annuaireStatus = getAnnuaireStatus(membersByLogin.get(login));
+                      const statusTone =
+                        annuaireStatus === "ok"
+                          ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                          : annuaireStatus === "nouveau"
+                            ? "border-amber-400/30 bg-amber-500/10 text-amber-100"
+                            : annuaireStatus === "missing"
+                              ? "border-rose-400/30 bg-rose-500/10 text-rose-100"
+                              : "border-zinc-500/30 bg-zinc-800/50 text-zinc-300";
+                      return (
                       <div
                         key={item.member.id}
                         className={`rounded-2xl border p-4 transition sm:p-5 ${
@@ -967,6 +1186,22 @@ export default function PresenceRetourPage() {
                             : "border-white/10 bg-[#0b0d14]/80 opacity-80"
                         }`}
                       >
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <span className={`rounded-lg border px-2 py-0.5 text-[11px] font-semibold ${statusTone}`}>
+                            {annuaireStatusLabel(annuaireStatus)}
+                          </span>
+                          {annuaireStatus === "nouveau" ? (
+                            <Link
+                              href={`/admin/membres/gestion?search=${encodeURIComponent(login)}`}
+                              className={`text-[11px] font-medium text-violet-300 underline-offset-2 hover:underline ${focusRingClass}`}
+                            >
+                              Gestion
+                            </Link>
+                          ) : null}
+                          {annuaireStatus !== "ok" ? (
+                            <span className="text-[11px] text-zinc-500">« Intégrer » → Affilié + actif</span>
+                          ) : null}
+                        </div>
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                           <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <div>
@@ -1053,7 +1288,8 @@ export default function PresenceRetourPage() {
                           </div>
                         ) : null}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 )}
               </div>
@@ -1061,6 +1297,6 @@ export default function PresenceRetourPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

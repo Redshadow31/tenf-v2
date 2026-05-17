@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireSectionAccessAny } from '@/lib/requireAdmin';
+import { RAIDS_EVENTSUB_SECTION_HREFS } from '@/lib/admin/raidsFiabiliteRbac';
+import { logAction } from '@/lib/admin/logger';
 import { syncRaidTestEventSubSubscriptions } from '@/lib/raidEventsubTest';
 
 function explainSyncError(error: unknown): string {
@@ -21,12 +23,23 @@ function explainSyncError(error: unknown): string {
 
 export async function POST() {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireSectionAccessAny(RAIDS_EVENTSUB_SECTION_HREFS);
     if (!admin) {
-      return NextResponse.json({ error: 'Acces refuse' }, { status: 403 });
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
     const result = await syncRaidTestEventSubSubscriptions();
+    void logAction({
+      action: 'raids.eventsub.sync',
+      resourceType: 'raid_test_eventsub',
+      resourceId: 'sync',
+      newValue: { success: true, ...result },
+      metadata: {
+        sourcePage: '/admin/communaute/engagement/raids-eventsub',
+        actorDiscordId: admin.discordId,
+        actorUsername: admin.username,
+      },
+    });
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     console.error('[admin/engagement/raids-test/sync] POST error:', error);

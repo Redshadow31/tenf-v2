@@ -1,4 +1,4 @@
-import { getRoleBadgeClassName } from "@/lib/roleBadgeSystem";
+import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import { fonctionnementFaqItems } from "@/lib/fonctionnement/faq-data";
 import { FonctionnementFaq } from "@/components/fonctionnement/FonctionnementFaq";
 
@@ -279,11 +279,14 @@ export function IntegrationRolesSection() {
             L&apos;équipe qui organise, anime et veille au bon fonctionnement : accueil, événements, accompagnement et modération.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className={getRoleBadgeClassName("Admin Fondateurs")}>Admin Fondateurs</span>
-            <span className={getRoleBadgeClassName("Admin Coordinateur")}>Admin Coordinateur</span>
-            <span className={getRoleBadgeClassName("Modérateur")}>Modérateurs</span>
-            <span className={getRoleBadgeClassName("Modérateur en formation")}>Modérateur en Formation</span>
-            <span className={getRoleBadgeClassName("Modérateur en pause")}>Modérateur en Pause</span>
+            <span className={getRoleBadgeClassName("Admin")}>{getRoleBadgeLabel("Admin")}</span>
+            <span className={getRoleBadgeClassName("Admin Coordinateur")}>{getRoleBadgeLabel("Admin Coordinateur")}</span>
+            <span className={getRoleBadgeClassName("Modérateur")}>{getRoleBadgeLabel("Modérateur")}</span>
+            <span className={getRoleBadgeClassName("Modérateur en Découverte")}>{getRoleBadgeLabel("Modérateur en Découverte")}</span>
+            <span className={getRoleBadgeClassName("Modérateur en Accompagnement")}>{getRoleBadgeLabel("Modérateur en Accompagnement")}</span>
+            <span className={getRoleBadgeClassName("Modérateur en Autonomie")}>{getRoleBadgeLabel("Modérateur en Autonomie")}</span>
+            <span className={getRoleBadgeClassName("Modérateur en pause")}>{getRoleBadgeLabel("Modérateur en pause")}</span>
+            <span className={getRoleBadgeClassName("Soutien TENF")}>{getRoleBadgeLabel("Soutien TENF")}</span>
           </div>
         </div>
       </div>
