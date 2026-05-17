@@ -61,7 +61,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     const progress = computeQuestionnaireProgress(
       questions.map((q) => ({
         key: q.questionKey,
-        number: q.number,
+        number: q.questionNumber,
         type: q.type,
         isRequired: q.isRequired,
         options: q.options,

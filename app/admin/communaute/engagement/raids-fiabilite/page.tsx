@@ -50,7 +50,7 @@ export default function RaidsFiabiliteLandingPage() {
               </p>
               <h1 className="mt-2 text-[clamp(1.45rem,1.15rem+1.1vw,2rem)] font-semibold tracking-tight text-white">
                 Fiabilité des raids
-              </h1>
+            </h1>
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
                 Comprendre, vérifier et corriger les données raids TENF sans casser la confiance entre membres.
               </p>
@@ -74,8 +74,8 @@ export default function RaidsFiabiliteLandingPage() {
                   Consulter l’historique
                   <Archive className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                 </Link>
-              </div>
-            </header>
+          </div>
+        </header>
 
             {/* 2 — Pourquoi ce pilier existe */}
             <section className={`${panel} p-5 sm:p-6`} aria-labelledby="why-heading">
