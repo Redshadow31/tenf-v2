@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, ClipboardList, Compass, ShieldAlert, UserCog } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  ClipboardList,
+  Compass,
+  ShieldAlert,
+  UserCog,
+} from "lucide-react";
 import { MUI } from "@/components/admin/moderation/moderation-ui";
 import {
   questionnaireCtaLabel,
@@ -76,7 +83,10 @@ export default function StaffHubHeaderAside({
               />
             </li>
             <li>
-              <div className="rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-text)_3%,var(--color-card))] p-3">
+              <Link
+                href="/admin/moderation/staff/questionnaire"
+                className="group block rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-text)_3%,var(--color-card))] p-3 motion-safe:transition-[border-color,box-shadow,transform] motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-violet-400/35 motion-safe:hover:shadow-[0_6px_24px_color-mix(in_srgb,var(--color-primary)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/60"
+              >
                 <div className="flex items-start gap-2.5">
                   <span className={MUI.iconEmerald} aria-hidden>
                     <ClipboardList className="h-4 w-4" />
@@ -92,7 +102,7 @@ export default function StaffHubHeaderAside({
                       </div>
                     ) : (
                       <>
-                        <p className={`mt-0.5 text-sm font-medium ${MUI.textSecondary}`}>
+                        <p className={`mt-0.5 text-sm font-medium tabular-nums ${MUI.textSecondary}`}>
                           {progress
                             ? `${progress.completed} / ${progress.total} questions`
                             : "À remplir · 85 questions"}
@@ -105,16 +115,15 @@ export default function StaffHubHeaderAside({
                             />
                           </div>
                         ) : null}
-                        {moderatorView ? (
-                          <p className={`mt-1.5 text-[11px] font-semibold uppercase tracking-wide ${MUI.textMuted}`}>
-                            {questionnaireCtaLabel(moderatorView)}
-                          </p>
-                        ) : null}
+                        <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 dark:text-violet-300 motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5">
+                          {moderatorView ? questionnaireCtaLabel(moderatorView) : "Commencer"}
+                          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                        </p>
                       </>
                     )}
                   </div>
                 </div>
-              </div>
+              </Link>
             </li>
           </ul>
         </div>

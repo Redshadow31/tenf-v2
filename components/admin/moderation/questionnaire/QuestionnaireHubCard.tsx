@@ -84,7 +84,10 @@ function HubCardShell({
 
   if (featured) {
     return (
-      <article className={`${MUI.featuredRing} w-full`} aria-labelledby="q-hub-banner-title">
+      <article
+        className={`${MUI.featuredRing} group/banner w-full motion-safe:transition-shadow motion-safe:duration-300 motion-safe:hover:shadow-[0_12px_48px_color-mix(in_srgb,var(--color-primary)_18%,transparent)]`}
+        aria-labelledby="q-hub-banner-title"
+      >
         <div
           className={`${MUI.featuredInner} relative overflow-hidden`}
           style={{ padding: pad }}
@@ -166,27 +169,35 @@ function CardBody({
             >
               {description}
             </p>
-            {sub ? <p className={`mt-2 text-sm font-semibold ${MUI.text}`}>{sub}</p> : null}
+            {sub ? (
+              <p className={`mt-2 text-sm font-semibold tabular-nums ${MUI.text}`}>{sub}</p>
+            ) : null}
             {typeof progressPercent === "number" ? (
-              <div
-                className={`mt-3 max-w-md ${MUI.progressTrack}`}
-                role="progressbar"
-                aria-valuenow={progressPercent}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <div className={MUI.progressFill} style={{ width: `${progressPercent}%` }} />
+              <div className="mt-3 max-w-md space-y-1.5">
+                <div className="flex justify-between text-xs font-medium tabular-nums text-[var(--color-text-secondary)]">
+                  <span>Progression</span>
+                  <span>{progressPercent}%</span>
+                </div>
+                <div
+                  className={MUI.progressTrack}
+                  role="progressbar"
+                  aria-valuenow={progressPercent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div className={MUI.progressFill} style={{ width: `${progressPercent}%` }} />
+                </div>
               </div>
             ) : null}
           </div>
         </div>
         <Link
           href={href}
-          className={`${MUI.btnPrimary} w-full shrink-0 lg:w-auto ${loading ? "pointer-events-none opacity-70" : ""}`}
+          className={`${MUI.btnPrimary} w-full shrink-0 motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.99] lg:w-auto ${loading ? "pointer-events-none opacity-70" : ""} ${progressPercent === 0 ? "ring-2 ring-violet-400/40 ring-offset-2 ring-offset-[var(--color-card)]" : ""}`}
           aria-busy={loading || undefined}
         >
           {cta}
-          <ArrowRight className="h-4 w-4" aria-hidden />
+          <ArrowRight className="h-4 w-4 motion-safe:transition-transform motion-safe:group-hover/banner:translate-x-0.5" aria-hidden />
         </Link>
       </div>
     );

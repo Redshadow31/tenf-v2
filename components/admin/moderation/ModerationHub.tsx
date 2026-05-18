@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   ClipboardCheck,
   Compass,
@@ -68,7 +69,7 @@ export default function ModerationHub({
     view === "staff" ? STAFF_ATTENUATE_MODULE_SLUGS : [];
 
   const hubContent = (
-    <div className="space-y-[clamp(0.75rem,1vw,1.15rem)]">
+    <div className={MUI.hubSectionGap}>
         <TodoNowBlock
           view={view}
           charterSigned={charterSigned}
@@ -76,7 +77,9 @@ export default function ModerationHub({
         />
 
         {view === "staff" ? (
-          <QuestionnaireHubCard view="staff" variant="banner" />
+          <div id="questionnaire-priorite" className="scroll-mt-6">
+            <QuestionnaireHubCard view="staff" variant="banner" />
+          </div>
         ) : null}
 
         <section
@@ -170,22 +173,27 @@ function TodoNowBlock({
   const items =
     view === "staff" ? buildStaffTodo(charterSigned) : buildAdminTodo();
 
-  const primaryItems = items.filter((i) => i.emphasis === "primary" || i.urgent);
+  const urgentItems = items.filter((i) => i.urgent);
+  const primaryItems = items.filter((i) => i.emphasis === "primary" && !i.urgent);
   const otherItems = items.filter((i) => i.emphasis !== "primary" && !i.urgent);
 
   return (
-    <section aria-label="À faire maintenant" className="rounded-[clamp(0.85rem,1.2vw,1.2rem)] border" style={muiCardStyle}>
+    <section
+      aria-label="À faire maintenant"
+      className={`rounded-[clamp(0.85rem,1.2vw,1.2rem)] border ${MUI.hubPanelGlow}`}
+      style={muiCardStyle}
+    >
       <header
-        className={MUI.panelHeader}
+        className={`${MUI.panelHeader} bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-primary)_8%,var(--color-card)),color-mix(in_srgb,#f59e0b_4%,var(--color-card)))]`}
         style={{
-          paddingInline: "clamp(0.75rem, 0.6rem + 0.7vw, 1.15rem)",
-          paddingBlock: "clamp(0.55rem, 0.45rem + 0.55vw, 0.85rem)",
+          paddingInline: "clamp(0.85rem, 0.7rem + 0.85vw, 1.25rem)",
+          paddingBlock: "clamp(0.65rem, 0.55rem + 0.6vw, 0.95rem)",
         }}
       >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
             <span className={MUI.iconAmber} aria-hidden>
-              <Target className="h-3.5 w-3.5" />
+              <Target className="h-4 w-4" />
             </span>
             <div>
               <p className={MUI.sectionLabel}>
@@ -193,80 +201,118 @@ function TodoNowBlock({
               </p>
               <h2
                 className={`text-pretty font-bold tracking-tight ${MUI.text}`}
-                style={{ fontSize: "clamp(0.9rem,1.02vw,1.05rem)", lineHeight: 1.2 }}
+                style={{ fontSize: "clamp(1rem,1.15vw,1.2rem)", lineHeight: 1.15 }}
               >
                 À faire maintenant
               </h2>
             </div>
           </div>
           <p
-            className={`max-w-md text-pretty ${MUI.textMuted}`}
-            style={{ fontSize: "clamp(0.7rem,0.78vw,0.8rem)" }}
+            className={`max-w-lg text-pretty leading-relaxed ${MUI.textMuted}`}
+            style={{ fontSize: "clamp(0.72rem,0.8vw,0.85rem)" }}
           >
-            Les priorités ci-dessous changent selon ton état. Les sections plus bas
-            restent le catalogue complet.
+            {view === "staff"
+              ? "Priorités du moment — le questionnaire posture est mis en avant juste en dessous."
+              : "Les priorités ci-dessous changent selon l'état de l'équipe. Le catalogue complet reste en bas de page."}
           </p>
         </div>
       </header>
-      <ul
-        className="grid gap-[clamp(0.4rem,0.6vw,0.6rem)] sm:grid-cols-2 xl:grid-cols-3"
+      <div
+        className="space-y-3"
         style={{
-          paddingInline: "clamp(0.6rem, 0.5rem + 0.6vw, 1rem)",
-          paddingBlock: "clamp(0.6rem, 0.5rem + 0.6vw, 1rem)",
+          paddingInline: "clamp(0.65rem, 0.55rem + 0.65vw, 1.05rem)",
+          paddingBlock: "clamp(0.65rem, 0.55rem + 0.65vw, 1.05rem)",
         }}
       >
-        {primaryItems.map((item) => (
-          <TodoLink key={item.title} item={item} />
-        ))}
-        {otherItems.map((item) => (
-          <TodoLink key={item.title} item={item} muted />
-        ))}
-      </ul>
+        {urgentItems.length > 0 ? (
+          <ul className="grid gap-2">
+            {urgentItems.map((item) => (
+              <TodoLink key={item.title} item={item} size="large" />
+            ))}
+          </ul>
+        ) : null}
+        {primaryItems.length > 0 ? (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {primaryItems.map((item) => (
+              <TodoLink key={item.title} item={item} />
+            ))}
+          </ul>
+        ) : null}
+        {otherItems.length > 0 ? (
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {otherItems.map((item) => (
+              <TodoLink key={item.title} item={item} muted />
+            ))}
+          </ul>
+        ) : null}
+      </div>
     </section>
   );
 }
 
-function TodoLink({ item, muted }: { item: TodoItem; muted?: boolean }) {
+function TodoLink({
+  item,
+  muted,
+  size = "default",
+}: {
+  item: TodoItem;
+  muted?: boolean;
+  size?: "default" | "large";
+}) {
   const rowClass = item.urgent
     ? MUI.todoUrgent
     : muted
       ? MUI.todoMuted
       : MUI.todoPrimary;
 
+  const iconBox =
+    size === "large" ? "h-9 w-9 rounded-xl" : "h-8 w-8 rounded-lg";
+
   return (
     <li>
       <Link
         href={item.href}
         className={
-          "group flex h-full min-h-[3.25rem] items-start gap-2 rounded-xl border px-3 py-2.5 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/60 " +
+          "group flex h-full items-start gap-3 rounded-xl border px-3.5 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/60 " +
+          (size === "large" ? "min-h-[4.25rem] sm:items-center " : "min-h-[3.5rem] ") +
+          MUI.todoCardMotion +
+          " " +
           rowClass
         }
       >
         <span
           aria-hidden
           className={
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border " +
+            `flex shrink-0 items-center justify-center border ${iconBox} ` +
             (item.urgent
               ? "border-rose-400/40 bg-[color-mix(in_srgb,#f43f5e_14%,var(--color-card))] text-rose-700 dark:text-rose-200"
-              : `border-violet-400/30 bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))] text-violet-700 dark:text-violet-200`)
+              : "border-violet-400/30 bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))] text-violet-700 dark:text-violet-200")
           }
         >
-          <item.icon className="h-3.5 w-3.5" aria-hidden />
+          <item.icon className={size === "large" ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
           <p
             className={`line-clamp-2 text-pretty font-bold ${MUI.text}`}
-            style={{ fontSize: "clamp(0.8rem,0.9vw,0.9rem)", lineHeight: 1.25 }}
+            style={{
+              fontSize:
+                size === "large" ? "clamp(0.9rem,1vw,1rem)" : "clamp(0.8rem,0.9vw,0.9rem)",
+              lineHeight: 1.25,
+            }}
           >
             {item.title}
           </p>
           <p
             className={`mt-0.5 line-clamp-2 text-pretty ${MUI.textSecondary}`}
-            style={{ fontSize: "clamp(0.7rem,0.78vw,0.78rem)" }}
+            style={{ fontSize: "clamp(0.7rem,0.78vw,0.8rem)" }}
           >
             {item.subtitle}
           </p>
         </div>
+        <ArrowRight
+          className="mt-0.5 h-4 w-4 shrink-0 text-violet-500/0 transition-[transform,color,opacity] duration-200 group-hover:translate-x-0.5 group-hover:text-violet-400 motion-safe:group-hover:opacity-100 dark:text-violet-300/0 dark:group-hover:text-violet-200 sm:mt-0 sm:opacity-40"
+          aria-hidden
+        />
       </Link>
     </li>
   );
@@ -301,13 +347,6 @@ function buildStaffTodo(charterSigned: boolean): TodoItem[] {
       emphasis: "muted",
     });
   }
-  items.push({
-    title: "Questionnaire posture staff",
-    subtitle: "Voir le bandeau dédié ci-dessous pour commencer ou reprendre.",
-    href: "/admin/moderation/staff/questionnaire",
-    icon: ClipboardCheck,
-    emphasis: "muted",
-  });
   items.push({
     title: "Mes exercices mensuels",
     subtitle: "Compléter les scénarios assignés ce mois-ci.",

@@ -61,6 +61,11 @@ export const MUI = {
     "border-rose-400/40 bg-[color-mix(in_srgb,#f43f5e_10%,var(--color-card))] shadow-[0_2px_12px_color-mix(in_srgb,#f43f5e_12%,transparent)] ring-1 ring-rose-400/20 hover:border-rose-400/55",
   todoMuted:
     "border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-text)_3%,var(--color-card))] opacity-[0.92] hover:opacity-100 hover:border-[color-mix(in_srgb,var(--color-primary)_25%,var(--color-border))]",
+  todoCardMotion:
+    "motion-safe:transition-[transform,box-shadow,border-color,background-color] duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[0_8px_28px_color-mix(in_srgb,var(--color-primary)_14%,transparent)] motion-safe:active:translate-y-0",
+  hubSectionGap: "space-y-[clamp(1.15rem,2.2vw,2rem)]",
+  hubPanelGlow:
+    "shadow-[0_1px_0_color-mix(in_srgb,var(--color-text)_6%,transparent),0_12px_40px_color-mix(in_srgb,var(--color-primary)_8%,transparent)]",
   progressTrack:
     "h-2 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-text)_8%,var(--color-card))]",
   progressFill:
