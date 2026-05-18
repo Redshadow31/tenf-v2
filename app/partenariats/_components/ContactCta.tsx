@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, ExternalLink, MessageCircle } from "lucide-react";
-import { contactSection } from "../_data";
+import { ArrowRight, ExternalLink, MessageCircle, Send } from "lucide-react";
+import { contactSection, PARTENARIATS_ACCENT } from "../_data";
 import { PARTNERSHIP_MODAL_EVENT } from "./partnershipModalEvents";
 import SectionHeader from "./SectionHeader";
 import PartnershipModal from "./PartnershipModal";
@@ -33,14 +33,20 @@ export default function ContactCta() {
 
   return (
     <section id="proposer" className="about-fade-up home-section scroll-mt-28 space-y-5">
-      <SectionHeader kicker={contactSection.kicker} title={contactSection.title} />
+      <SectionHeader kicker={contactSection.kicker} title={contactSection.title} icon={Send} accent={PARTENARIATS_ACCENT} panel />
       <article
-        className="about-reveal rounded-2xl border p-5 sm:rounded-3xl sm:p-8"
+        className="about-reveal relative overflow-hidden rounded-2xl border p-5 sm:rounded-3xl sm:p-8"
         style={{
-          borderColor: "color-mix(in srgb, var(--color-primary) 30%, var(--color-border))",
-          backgroundColor: "color-mix(in srgb, var(--color-primary) 5%, var(--color-card))",
+          borderColor: `${PARTENARIATS_ACCENT}40`,
+          background: `linear-gradient(135deg, ${PARTENARIATS_ACCENT}10 0%, color-mix(in srgb, var(--color-card) 96%, transparent) 100%)`,
+          boxShadow: `0 20px 48px ${PARTENARIATS_ACCENT}12`,
         }}
       >
+        <span
+          className="pointer-events-none absolute inset-x-0 top-0 h-px"
+          style={{ background: `linear-gradient(90deg, transparent, ${PARTENARIATS_ACCENT}88, transparent)` }}
+          aria-hidden
+        />
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl space-y-3">
             <div className="flex items-center gap-3">

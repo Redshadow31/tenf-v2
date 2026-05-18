@@ -2,14 +2,26 @@
 
 import Link from "next/link";
 import {
+  OrganisationStaffLeftRail,
+  OrganisationStaffRightRail,
+  type StaffPageNavId,
+} from "@/components/organisation-staff/OrganisationStaffPublicRails";
+import type { LucideIcon } from "lucide-react";
+import {
   ArrowDown,
   ArrowRight,
   ChevronDown,
+  ChevronRight,
   CircleDot,
+  GitBranch,
   HeartHandshake,
+  HelpCircle,
   LayoutDashboard,
   Lightbulb,
+  MapPin,
+  Shield,
   Sparkles,
+  UserPlus,
   Users,
   Workflow,
 } from "lucide-react";
@@ -24,13 +36,13 @@ import {
 
 type Audience = "public" | "member";
 
-const NAV = [
+const NAV: Array<{ id: StaffPageNavId; label: string }> = [
   { id: "staff-journey", label: "Parcours" },
   { id: "staff-roles", label: "Rôles" },
   { id: "staff-poles", label: "Pôles" },
   { id: "staff-logic", label: "Rôles & pôles" },
   { id: "staff-faq", label: "FAQ" },
-] as const;
+];
 
 const familyToSection: Record<StaffRoleFamily, string> = {
   direction: "staff-roles",
@@ -39,26 +51,47 @@ const familyToSection: Record<StaffRoleFamily, string> = {
   appui: "staff-roles",
 };
 
-const faqItems = [
+const FAQ_ITEMS: Array<{
+  q: string;
+  a: string;
+  tag: string;
+  accent: string;
+  Icon: LucideIcon;
+}> = [
   {
     q: "Je suis nouveau : à qui m'adresser en premier ?",
     a: "Le Pôle Parcours Membres pilote l'accueil et l'intégration ; les modérateurs veillent au cadre. Pour une question précise, le salon adapté sur Discord reste le canal le plus rapide.",
+    tag: "Premiers pas",
+    accent: "#22c55e",
+    Icon: MapPin,
   },
   {
     q: "Quelle différence entre Modérateur TENF et Soutien TENF ?",
     a: "Le Modérateur TENF est un membre confirmé du staff qui fait respecter le cadre et accompagne au quotidien. Le Soutien TENF aide ponctuellement ou régulièrement sur une mission précise, sans exercer de modération active.",
+    tag: "Rôles",
+    accent: "#a855f7",
+    Icon: Shield,
   },
   {
     q: "Quelle différence entre un rôle staff et un pôle de mission ?",
     a: "Le rôle indique ta place dans l'équipe (par exemple : Modérateur TENF). Le pôle indique où tu agis concrètement (par exemple : Pôle Parcours Membres). Une personne peut cumuler un rôle et un ou plusieurs pôles.",
+    tag: "Organisation",
+    accent: "#6366f1",
+    Icon: GitBranch,
   },
   {
     q: "Comment savoir qui fait quoi ?",
     a: "L'organigramme interactif liste les membres du staff, leurs rôles et leurs rattachements aux pôles — idéal pour repérer un contact.",
+    tag: "Organigramme",
+    accent: "#3b82f6",
+    Icon: Users,
   },
   {
     q: "Les pôles recrutent-ils en continu ?",
     a: "Les besoins varient selon les saisons et les projets. Les opportunités sont généralement annoncées sur le serveur ; rester actif et bienveillant est le meilleur premier pas.",
+    tag: "Rejoindre l'équipe",
+    accent: "#f59e0b",
+    Icon: UserPlus,
   },
 ];
 
@@ -102,7 +135,7 @@ export default function OrganisationStaffClient() {
     };
   }, [updateSpy]);
 
-  const goTo = (id: string) => {
+  const goTo = (id: StaffPageNavId) => {
     skipSpyUntil.current = Date.now() + 700;
     setActiveNav(id);
     scrollToId(id);
@@ -124,15 +157,26 @@ export default function OrganisationStaffClient() {
   const totalPoles = STAFF_POLES.length;
 
   return (
-    <main className="relative min-h-screen overflow-hidden py-10 sm:py-12" style={{ backgroundColor: "var(--color-bg)" }}>
+    <main className="org-staff-page relative min-h-screen w-full overflow-x-hidden py-6 sm:py-8 lg:py-10" style={{ backgroundColor: "var(--color-bg)" }}>
       <div className="org-staff-mesh" aria-hidden="true" />
       <div className="org-staff-glow org-staff-glow-left" aria-hidden="true" />
       <div className="org-staff-glow org-staff-glow-right" aria-hidden="true" />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 sm:px-6 lg:px-8">
-        {/* Hero */}
+      <div className="relative z-10 mx-auto w-full max-w-[min(100%,1920px)] px-[clamp(0.65rem,1.35vw,1.85rem)]">
+        <nav
+          className="org-staff-fade-up mb-6 flex flex-wrap items-center gap-2 text-sm"
+          aria-label="Fil d'Ariane"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
+          <Link href="/" className="transition hover:underline" style={{ color: "var(--color-text-secondary)" }}>
+            Accueil
+          </Link>
+          <ChevronRight size={14} className="opacity-50" aria-hidden />
+          <span style={{ color: "var(--color-text)" }}>Staff &amp; organisation</span>
+        </nav>
+
         <section
-          className="relative overflow-hidden rounded-3xl border p-8 sm:p-10 lg:p-14 org-staff-fade-up"
+          className="relative overflow-hidden rounded-3xl border p-8 sm:p-10 lg:p-12 org-staff-fade-up mb-8 lg:mb-10"
           style={{
             borderColor: "var(--color-border)",
             background:
@@ -146,8 +190,7 @@ export default function OrganisationStaffClient() {
                 "radial-gradient(circle, color-mix(in srgb, var(--color-primary) 40%, transparent), transparent 72%)",
             }}
           />
-          <div className="relative grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-            <div>
+          <div className="relative max-w-4xl">
               <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-primary)" }}>
                 Rôles staff &amp; pôles de mission
               </p>
@@ -255,75 +298,18 @@ export default function OrganisationStaffClient() {
                   </Link>
                 )}
               </div>
-            </div>
-
-            {/* Mini stats visuelles */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              {[
-                { label: "Rôles principaux", value: String(totalRoles), hint: "De Fondateur à Contributeur invité" },
-                { label: "Pôles de mission", value: String(totalPoles), hint: "Vision, parcours, animations, outils…" },
-                { label: "Carte live", value: "Organigramme", hint: "Filtres rôle &amp; pôle", link: "/organisation-staff/organigramme" },
-                { label: "Esprit", value: "Bénévolat", hint: "Structure horizontale &amp; chaleureuse" },
-              ].map((card) => (
-                <div
-                  key={card.label}
-                  className="org-staff-stat rounded-2xl border p-4 transition-transform duration-200 hover:-translate-y-0.5"
-                  style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(2,6,23,0.5)" }}
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-secondary)" }}>
-                    {card.label}
-                  </p>
-                  {card.link ? (
-                    <Link
-                      href={card.link}
-                      className="mt-1 block text-xl font-bold hover:underline"
-                      style={{ color: "var(--color-text)" }}
-                    >
-                      {card.value}
-                    </Link>
-                  ) : (
-                    <p className="mt-1 text-xl font-bold" style={{ color: "var(--color-text)" }}>
-                      {card.value}
-                    </p>
-                  )}
-                  <p
-                    className="mt-1 text-xs"
-                    style={{ color: "var(--color-text-secondary)" }}
-                    dangerouslySetInnerHTML={{ __html: card.hint }}
-                  />
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
-        {/* Sticky nav */}
-        <nav
-          className="org-staff-nav sticky top-3 z-30 -mx-1 rounded-2xl border px-2 py-2 shadow-lg sm:top-4"
-          style={{
-            borderColor: "var(--color-border)",
-            backgroundColor: "color-mix(in srgb, var(--color-bg) 82%, transparent)",
-            backdropFilter: "blur(12px)",
-          }}
-          aria-label="Sections de la page"
-        >
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-thin sm:flex-wrap sm:overflow-visible sm:pb-0">
-            {NAV.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => goTo(item.id)}
-                className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-colors sm:text-sm"
-                style={{
-                  backgroundColor: activeNav === item.id ? "var(--color-primary)" : "transparent",
-                  color: activeNav === item.id ? "white" : "var(--color-text-secondary)",
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </nav>
+        <div className="org-staff-workspace grid grid-cols-1 gap-6 lg:grid-cols-[minmax(220px,1fr)_minmax(0,2.4fr)_minmax(250px,1fr)] lg:items-start lg:gap-5 xl:grid-cols-[minmax(240px,18rem)_minmax(0,1fr)_minmax(280px,22rem)] xl:gap-6 2xl:grid-cols-[minmax(260px,20rem)_minmax(0,1fr)_minmax(300px,24rem)]">
+          <aside className="hidden lg:block lg:sticky lg:top-20 lg:z-10 lg:self-start lg:pr-1">
+            <OrganisationStaffLeftRail audience={audience} activeNav={activeNav} onGoTo={goTo} />
+          </aside>
+          <div className="min-w-0 space-y-8">
+            <details className="org-staff-fade-up rounded-2xl border p-4 lg:hidden" style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(2,6,23,0.45)" }}>
+              <summary className="cursor-pointer text-sm font-semibold" style={{ color: "var(--color-text)" }}>Guide &amp; navigation</summary>
+              <div className="mt-4"><OrganisationStaffLeftRail audience={audience} activeNav={activeNav} onGoTo={goTo} /></div>
+            </details>
 
         {/* Parcours visuel — familles de rôles */}
         <section id="staff-journey" className="scroll-mt-28 space-y-6">
@@ -336,18 +322,18 @@ export default function OrganisationStaffClient() {
                 Quatre familles, une équipe alignée
               </h2>
               <p className="mt-2 max-w-2xl text-sm md:text-base" style={{ color: "var(--color-text-secondary)" }}>
-                Clique une famille pour découvrir les rôles correspondants. Sur mobile, fais défiler horizontalement les cartes.
+                Clique une famille pour accéder aux rôles détaillés — la grille s&apos;adapte à la largeur de ton écran.
               </p>
             </div>
           </div>
 
           <div className="relative">
-            <div className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory md:grid md:grid-cols-4 md:gap-4 md:overflow-visible md:pb-0 md:snap-none">
+            <div className="org-staff-family-grid grid gap-4 pb-1 pt-1 grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
               {STAFF_ROLE_FAMILIES.map((family, i) => {
                 const Icon = family.Icon;
                 const count = STAFF_ROLES.filter((r) => r.family === family.key).length;
                 return (
-                  <div key={family.key} className="relative min-w-[78%] snap-center sm:min-w-[260px] md:min-w-0">
+                  <div key={family.key} className="relative min-w-0">
                     {i < STAFF_ROLE_FAMILIES.length - 1 ? (
                       <div
                         className="pointer-events-none absolute right-[-10px] top-[52px] z-0 hidden h-[2px] w-[calc(100%+10px)] md:block"
@@ -408,7 +394,7 @@ export default function OrganisationStaffClient() {
             staff (direction, coordination, modération, appui). Ouvre une carte pour découvrir ses missions concrètes.
           </p>
 
-          <div className="space-y-3">
+          <div className="org-staff-accordion-grid grid gap-3 xl:grid-cols-2">
             {STAFF_ROLES.map((role, i) => {
               const Icon = role.Icon;
               const expanded = openRole === i;
@@ -500,7 +486,7 @@ export default function OrganisationStaffClient() {
             {audience === "member" ? "La ligne « Repère membre » résume l'usage au quotidien." : null}
           </p>
 
-          <div className="space-y-3">
+          <div className="org-staff-accordion-grid grid gap-3 xl:grid-cols-2">
             {STAFF_POLES.map((pole, i) => {
               const Icon = pole.Icon;
               const expanded = openPole === i;
@@ -686,53 +672,156 @@ export default function OrganisationStaffClient() {
         </section>
 
         {/* FAQ */}
-        <section id="staff-faq" className="scroll-mt-28 space-y-4 pb-8">
-          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-            Questions fréquentes
-          </p>
-          <h2 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
-            Membres &amp; curieux : les bases
-          </h2>
-          <div className="space-y-2">
-            {faqItems.map((item, i) => {
+        <section id="staff-faq" className="org-panel-faq org-staff-fade-up scroll-mt-28 pb-4">
+          <div
+            className="relative overflow-hidden rounded-3xl border border-white/[0.07] p-6 shadow-[0_24px_56px_rgba(0,0,0,0.28)] md:p-8"
+            style={{
+              background:
+                "linear-gradient(155deg, rgba(99,102,241,0.14) 0%, rgba(15,23,42,0.55) 38%, rgba(2,6,23,0.92) 100%)",
+            }}
+          >
+            <div
+              className="pointer-events-none absolute -left-16 top-0 h-48 w-48 rounded-full blur-3xl"
+              style={{ background: "radial-gradient(circle, rgba(168,85,247,0.35), transparent 70%)" }}
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/45 to-transparent"
+              aria-hidden
+            />
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-violet-300">
+                  <HelpCircle className="h-3.5 w-3.5" aria-hidden />
+                  Questions fréquentes
+                </p>
+                <h2 className="mt-2 text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
+                  Membres &amp; curieux : les bases
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed md:text-base" style={{ color: "var(--color-text-secondary)" }}>
+                  Les réponses essentielles sur les rôles, les pôles et la façon de contacter l&apos;équipe TENF.
+                </p>
+              </div>
+              <Link
+                href="/organisation-staff/organigramme"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-violet-500/35 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400/50 hover:bg-violet-500/20"
+              >
+                Voir l&apos;organigramme
+                <ArrowRight size={16} aria-hidden />
+              </Link>
+            </div>
+            <div className="org-faq-list relative mt-6 grid gap-3 xl:grid-cols-2">
+            {FAQ_ITEMS.map((item, i) => {
               const open = openFaq === i;
+              const ItemIcon = item.Icon;
               return (
                 <div
                   key={item.q}
-                  className="rounded-2xl border overflow-hidden"
-                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+                  className={`org-faq-item relative overflow-hidden rounded-2xl border transition-all duration-300 ${open ? "org-faq-item--open" : ""}`}
+                  style={{
+                    borderColor: open ? `${item.accent}66` : "rgba(148,163,184,0.2)",
+                    background: open
+                      ? `linear-gradient(135deg, ${item.accent}18 0%, rgba(15,23,42,0.92) 42%, rgba(2,6,23,0.98) 100%)`
+                      : "linear-gradient(135deg, rgba(30,41,59,0.45) 0%, rgba(2,6,23,0.75) 100%)",
+                    boxShadow: open ? `0 14px 36px ${item.accent}22` : "inset 0 1px 0 rgba(255,255,255,0.04)",
+                  }}
                 >
+                  <span
+                    className="pointer-events-none absolute inset-x-0 top-0 h-[2px] opacity-80"
+                    style={{ background: `linear-gradient(90deg, transparent, ${item.accent}, transparent)` }}
+                    aria-hidden
+                  />
                   <button
                     type="button"
                     onClick={() => toggleFaq(i)}
-                    className="flex w-full items-center justify-between gap-4 p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                    className="flex w-full items-start gap-4 p-4 text-left sm:p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
                     aria-expanded={open}
                   >
-                    <span className="font-semibold" style={{ color: "var(--color-text)" }}>
-                      {item.q}
+                    <span
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/[0.06]"
+                      style={{ backgroundColor: `${item.accent}22`, color: item.accent }}
+                    >
+                      <ItemIcon className="h-5 w-5" aria-hidden />
                     </span>
-                    <ChevronDown
-                      size={20}
-                      className="shrink-0 transition-transform duration-200"
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className="inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                        style={{ borderColor: `${item.accent}44`, color: item.accent, backgroundColor: `${item.accent}12` }}
+                      >
+                        {item.tag}
+                      </span>
+                      <span className="mt-2 block text-base font-semibold leading-snug sm:text-[17px]" style={{ color: "var(--color-text)" }}>
+                        {item.q}
+                      </span>
+                    </span>
+                    <span
+                      className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08]"
                       style={{
-                        color: "var(--color-primary)",
-                        transform: open ? "rotate(180deg)" : undefined,
+                        backgroundColor: open ? `${item.accent}25` : "rgba(2,6,23,0.5)",
+                        color: open ? item.accent : "var(--color-text-secondary)",
                       }}
-                      aria-hidden
-                    />
+                    >
+                      <ChevronDown
+                        size={18}
+                        className="transition-transform duration-300"
+                        style={{ transform: open ? "rotate(180deg)" : undefined }}
+                        aria-hidden
+                      />
+                    </span>
                   </button>
-                  {open ? (
-                    <div className="border-t px-5 pb-5 pt-0" style={{ borderColor: "var(--color-border)" }}>
-                      <p className="pt-4 leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                        {item.a}
-                      </p>
+                  <div
+                    className="grid transition-[grid-template-rows] duration-300 ease-out"
+                    style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
+                    aria-hidden={!open}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <div className="border-t px-4 pb-5 pt-0 sm:px-5" style={{ borderColor: `${item.accent}33` }}>
+                        <p className="pt-4 text-sm leading-relaxed sm:text-[15px]" style={{ color: "var(--color-text-secondary)" }}>
+                          {item.a}
+                        </p>
+                      </div>
                     </div>
-                  ) : null}
+                  </div>
                 </div>
               );
             })}
+            </div>
+            <div
+              className="relative mt-6 flex flex-col gap-3 rounded-2xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between"
+              style={{ borderColor: "rgba(148,163,184,0.25)", backgroundColor: "rgba(0,0,0,0.2)" }}
+            >
+              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                <strong style={{ color: "var(--color-text)" }}>Besoin d&apos;aller plus loin ?</strong> Parcours les {totalRoles} rôles et {totalPoles} pôles dans les sections ci-dessus.
+              </p>
+              <button
+                type="button"
+                onClick={() => goTo("staff-roles")}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:-translate-y-0.5"
+                style={{ backgroundColor: "var(--color-primary)", color: "white" }}
+              >
+                Voir les rôles
+                <ArrowDown size={16} className="-rotate-90" aria-hidden />
+              </button>
+            </div>
           </div>
         </section>
+
+            <details
+              className="org-staff-fade-up rounded-2xl border p-4 lg:hidden"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(2,6,23,0.45)" }}
+            >
+              <summary className="cursor-pointer text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                Stats, organigramme &amp; aide
+              </summary>
+              <div className="mt-4">
+                <OrganisationStaffRightRail audience={audience} totalRoles={totalRoles} totalPoles={totalPoles} onGoTo={goTo} />
+              </div>
+            </details>
+          </div>
+          <aside className="hidden lg:block lg:sticky lg:top-20 lg:z-10 lg:self-start lg:pl-1">
+            <OrganisationStaffRightRail audience={audience} totalRoles={totalRoles} totalPoles={totalPoles} onGoTo={goTo} />
+          </aside>
+        </div>
       </div>
 
       <style jsx>{`
@@ -757,14 +846,35 @@ export default function OrganisationStaffClient() {
           animation: orgStaffFloat 9s ease-in-out infinite;
         }
 
+        .org-staff-page {
+          width: 100%;
+        }
+
+        .org-staff-workspace {
+          width: 100%;
+        }
+
+        @media (min-width: 1024px) {
+          .org-staff-workspace > aside {
+            border-radius: 1rem;
+            border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+            background: linear-gradient(
+              180deg,
+              rgba(2, 6, 23, 0.55) 0%,
+              rgba(2, 6, 23, 0.28) 100%
+            );
+            padding: 0.65rem;
+          }
+        }
+
         .org-staff-glow-left {
-          left: -140px;
+          left: max(-80px, calc(50% - 52rem));
           top: 120px;
           background: rgba(59, 130, 246, 0.4);
         }
 
         .org-staff-glow-right {
-          right: -140px;
+          right: max(-80px, calc(50% - 52rem));
           bottom: 80px;
           background: rgba(124, 58, 237, 0.42);
           animation-delay: 1.4s;
@@ -779,6 +889,15 @@ export default function OrganisationStaffClient() {
         .org-staff-stat:focus-within,
         .org-staff-step:focus-visible {
           outline: none;
+        }
+
+        .org-faq-item:hover:not(.org-faq-item--open) {
+          border-color: rgba(148, 163, 184, 0.35);
+          transform: translateY(-1px);
+        }
+
+        .org-faq-item--open {
+          transform: translateY(-2px);
         }
 
         @keyframes orgStaffFadeUp {

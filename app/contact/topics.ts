@@ -44,3 +44,32 @@ export const CONTACT_TOPICS: ContactTopic[] = [
 ];
 
 export const CONTACT_TOPIC_IDS = CONTACT_TOPICS.map((t) => t.id);
+
+const TOPIC_ALIASES: Record<string, string> = {
+  general: "question_generale",
+  question: "question_generale",
+  question_generale: "question_generale",
+  probleme: "probleme_serveur",
+  probleme_serveur: "probleme_serveur",
+  partenariat: "partenariat",
+  partenariats: "partenariat",
+  presse: "presse",
+  media: "presse",
+  signalement: "signalement",
+  soutien: "soutien",
+  don: "soutien",
+  technique: "technique_site",
+  technique_site: "technique_site",
+};
+
+const VALID_TOPIC_IDS = new Set(CONTACT_TOPIC_IDS);
+
+/** Résout un paramètre `?topic=` brut vers un id de motif valide. */
+export function resolveContactTopic(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const key = raw.trim().toLowerCase();
+  if (VALID_TOPIC_IDS.has(key)) return key;
+  const aliased = TOPIC_ALIASES[key];
+  if (aliased && VALID_TOPIC_IDS.has(aliased)) return aliased;
+  return null;
+}

@@ -242,30 +242,57 @@ export const contactSection = {
     "On répond généralement sous 48 à 96 h. Plus tu es concret (projet, dates, attentes, public visé), plus on peut te répondre vite et juste.",
 } as const;
 
+/** Accent visuel principal de la page /partenariats */
+export const PARTENARIATS_ACCENT = "#ec4899";
+
 /** ─── 9. FAQ courte ───────────────────────────────────────────────────── */
-export const faq: ReadonlyArray<{ q: string; a: string }> = [
+export const faq: ReadonlyArray<{
+  q: string;
+  a: string;
+  tag: string;
+  accent: string;
+  icon: LucideIcon;
+}> = [
   {
     q: "Est-ce que TENF accepte tous les partenariats ?",
     a: "Non. On accepte les partenariats utiles, sincères et alignés avec notre charte. On refuse la pub agressive, l'opportunisme, les systèmes de follow forcés et tout ce qui contredit nos valeurs.",
+    tag: "Critères",
+    accent: "#ec4899",
+    icon: HeartHandshake,
   },
   {
     q: "Peut-on proposer un événement commun ?",
     a: "Oui — soirées thématiques, lives coordonnés, raids communs, tournois bienveillants. Plus tu es précis sur le format, les dates et le public visé, mieux on peut étudier.",
+    tag: "Événements",
+    accent: "#a855f7",
+    icon: CalendarHeart,
   },
   {
     q: "Peut-on proposer une action caritative ?",
     a: "Oui, c'est même un de nos axes préférés. L'édition TENF × UPA en faveur de la Ligue contre le cancer en est l'illustration. On regarde la cause, la structure bénéficiaire, le cadre de la collecte.",
+    tag: "Solidarité",
+    accent: "#ef4444",
+    icon: HeartPulse,
   },
   {
     q: "Peut-on faire la promotion d'un outil ou service ?",
     a: "Si l'outil est réellement utile aux streamers, qu'il n'est pas intrusif et que tu acceptes une mise en avant éditoriale honnête (sans spam ni pop-ups), c'est possible.",
+    tag: "Outils",
+    accent: "#6366f1",
+    icon: Wrench,
   },
   {
     q: "TENF accepte-t-il les partenariats avec d'autres serveurs ?",
     a: "Oui, avec les serveurs d'entraide sérieux qui partagent nos valeurs. On préfère construire peu de ponts mais solides.",
+    tag: "Communautés",
+    accent: "#22c55e",
+    icon: Server,
   },
   {
     q: "Comment proposer un partenariat ?",
-    a: "Via la page Contact en choisissant le motif « Partenariat ». Présente le projet, les dates, ce que tu attends de TENF et ce que tu apportes. On répond dans les 48 à 96 h.",
+    a: "Via le formulaire dédié sur cette page (bouton « Proposer un partenariat ») ou la page Contact avec le motif « Partenariat ». Présente le projet, les dates, ce que tu attends de TENF et ce que tu apportes. On répond dans les 48 à 96 h.",
+    tag: "Démarche",
+    accent: "#f59e0b",
+    icon: Target,
   },
 ];

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { resolveCharteViewerProfile } from "@/lib/admin/moderation/charte/charteViewerRole";
+import { memberRepository } from "@/lib/repositories";
 import {
   CHARTER_VERSION,
   getLatestModerationCharterValidationForMember,
@@ -21,6 +23,17 @@ export async function GET() {
   const uniqueValidatedMembers = new Set(entries.map((entry) => entry.validatedMemberDiscordId)).size;
   const viewerValidation = await getLatestModerationCharterValidationForMember(admin.discordId);
 
+  let viewerProfile = resolveCharteViewerProfile({ adminRole: admin.role });
+  try {
+    const member = await memberRepository.findByDiscordId(admin.discordId);
+    viewerProfile = resolveCharteViewerProfile({
+      adminRole: admin.role,
+      staffPeriods: member?.staffPeriods,
+    });
+  } catch (e) {
+    console.warn("[charte-validations] viewerProfile:", e);
+  }
+
   return NextResponse.json({
     success: true,
     charterVersion: CHARTER_VERSION,
@@ -31,6 +44,7 @@ export async function GET() {
       feedbackCount,
     },
     viewerValidation,
+    viewerProfile,
   });
 }
 

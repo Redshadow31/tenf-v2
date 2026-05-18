@@ -1,59 +1,49 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ArrowRight, ChevronDown, HelpCircle } from "lucide-react";
-import { faq, PARTENARIATS_ACCENT } from "../_data";
-import { PARTNERSHIP_MODAL_EVENT } from "./partnershipModalEvents";
-import SectionHeader from "./SectionHeader";
+import { ChevronDown, HelpCircle } from "lucide-react";
+import { CONTACT_ACCENT, contactFaq } from "../_data";
+import ContactSectionHeader from "./ContactSectionHeader";
 
-export default function Faq() {
+export default function ContactFaqPanel() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  function toggleFaq(index: number) {
-    setOpenFaq((prev) => (prev === index ? null : index));
-  }
-
-  function openPartnershipModal() {
-    window.dispatchEvent(new CustomEvent(PARTNERSHIP_MODAL_EVENT));
-  }
-
   return (
-    <section id="faq" className="about-fade-up home-section scroll-mt-28 space-y-5">
+    <section id="contact-faq" className="about-fade-up home-section scroll-mt-28">
       <div
         className="relative overflow-hidden rounded-3xl border border-white/[0.07] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.22)] sm:p-7"
         style={{
           background:
-            "linear-gradient(155deg, rgba(236,72,153,0.12) 0%, rgba(15,23,42,0.5) 40%, color-mix(in srgb, var(--color-card) 96%, transparent) 100%)",
+            "linear-gradient(155deg, rgba(56,189,248,0.12) 0%, rgba(15,23,42,0.5) 40%, color-mix(in srgb, var(--color-card) 96%, transparent) 100%)",
         }}
       >
         <div
           className="pointer-events-none absolute -right-16 -top-12 h-40 w-40 rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(236,72,153,0.35), transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, rgba(56,189,248,0.35), transparent 70%)" }}
           aria-hidden
         />
         <span
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-pink-400/50 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/50 to-transparent"
           aria-hidden
         />
 
         <div className="relative space-y-5">
-          <SectionHeader
-            kicker="9. FAQ courte"
-            title="Les questions qui reviennent"
-            lead="Pour aller plus loin, regarde aussi la charte communautaire et la page « À propos »."
+          <ContactSectionHeader
+            kicker="Questions fréquentes"
+            title="Avant de nous écrire"
+            lead="Les réponses rapides aux doutes les plus courants."
             icon={HelpCircle}
-            accent={PARTENARIATS_ACCENT}
+            accent={CONTACT_ACCENT}
           />
 
-          <ul className="grid gap-3 lg:grid-cols-2">
-            {faq.map((item, i) => {
+          <ul className="contact-faq-list grid gap-3 lg:grid-cols-2">
+            {contactFaq.map((item, i) => {
               const open = openFaq === i;
               const ItemIcon = item.icon;
               return (
                 <li key={item.q}>
                   <div
-                    className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${open ? "shadow-lg" : ""}`}
+                    className={`contact-faq-item relative overflow-hidden rounded-2xl border transition-all duration-300 ${open ? "contact-faq-item--open shadow-lg" : ""}`}
                     style={{
                       borderColor: open ? `${item.accent}55` : "rgba(148,163,184,0.2)",
                       background: open
@@ -69,8 +59,8 @@ export default function Faq() {
                     />
                     <button
                       type="button"
-                      onClick={() => toggleFaq(i)}
-                      className="flex w-full items-start gap-3 p-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500/45 sm:p-5"
+                      onClick={() => setOpenFaq(open ? null : i)}
+                      className="flex w-full items-start gap-3 p-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/45 sm:p-5"
                       aria-expanded={open}
                     >
                       <span
@@ -124,30 +114,6 @@ export default function Faq() {
               );
             })}
           </ul>
-
-          <div
-            className="flex flex-col gap-3 rounded-2xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between"
-            style={{ borderColor: `${PARTENARIATS_ACCENT}35`, backgroundColor: "rgba(0,0,0,0.12)" }}
-          >
-            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              <strong style={{ color: "var(--color-text)" }}>Prêt à proposer ?</strong> Le formulaire dédié prend 5 à 10 minutes.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={openPartnershipModal}
-                className="home-btn-primary inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
-              >
-                Proposer un partenariat
-              </button>
-              <Link
-                href="/charte"
-                className="home-btn-secondary inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold"
-              >
-                Charte <ArrowRight size={14} aria-hidden />
-              </Link>
-            </div>
-          </div>
         </div>
       </div>
     </section>

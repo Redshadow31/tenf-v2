@@ -156,6 +156,17 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
           </div>
 
           <div className="flex min-h-[2.75rem] w-full min-w-0 shrink-0 flex-wrap items-center justify-end gap-[clamp(0.35rem,1vw,0.5rem)] border-t border-white/[0.04] bg-gradient-to-l from-indigo-500/[0.06] via-zinc-950/40 to-[#0b0b12] py-2 pl-3 pr-[clamp(0.75rem,2.5vw,1.5rem)] sm:w-auto sm:min-h-0 sm:border-l sm:border-t-0 sm:border-white/[0.05] sm:py-0 sm:pl-[clamp(0.75rem,2vw,1.25rem)] lg:min-h-[3.25rem]">
+            <Link
+              href="/"
+              title="Retour au site public"
+              aria-label="Retour au site public"
+              className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.02] text-zinc-500 transition hover:border-zinc-400/25 hover:bg-white/[0.04] hover:text-zinc-200 sm:h-10 sm:w-10 ${focusRing}`}
+            >
+              <span className="text-[1.05rem] leading-none text-zinc-400" aria-hidden>
+                ↩
+              </span>
+            </Link>
+
             {canShowSearchShortcut && (
               <Link
                 href="/admin/search"

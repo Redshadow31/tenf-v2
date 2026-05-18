@@ -45,6 +45,8 @@ function MemberSiteLayout({
     "/a-propos",
     "/fonctionnement-tenf/comment-ca-marche",
     "/changelog",
+    "/organisation-staff",
+    "/contact",
   ] as const;
   const FULL_WIDTH_EXACT_PATHS = [
     "/membres",

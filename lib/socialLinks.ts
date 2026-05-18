@@ -41,3 +41,7 @@ export const socialLinks: SocialLink[] = [
  */
 export const DISCORD_INVITE_URL: string =
   socialLinks.find((s) => s.icon === "discord")?.url ?? "https://discord.com/invite/ypn6s9XK8t";
+
+/** Salon tickets du serveur TENF (🎟️・tickets) — canal prioritaire pour les membres. */
+export const DISCORD_TICKETS_CHANNEL_URL =
+  "https://discord.com/channels/535244857891880970/1440543884500533248";

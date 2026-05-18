@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { getStore } from "@netlify/blobs";
 
-export const CHARTER_VERSION = "Charte v2";
+export const CHARTER_VERSION = "Charte v3";
 
 export type ModerationCharterValidationEntry = {
   id: string;

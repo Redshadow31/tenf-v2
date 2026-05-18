@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import AboutPageEnhancer from "@/components/about/AboutPageEnhancer";
 import Hero from "./_components/Hero";
 import WhyPartner from "./_components/WhyPartner";
@@ -10,6 +9,7 @@ import UpaSpotlight from "./_components/UpaSpotlight";
 import PartnersList from "./_components/PartnersList";
 import ContactCta from "./_components/ContactCta";
 import Faq from "./_components/Faq";
+import MoreLinks from "./_components/MoreLinks";
 import { faq } from "./_data";
 
 const PAGE_TITLE = "Partenariats — TENF";
@@ -112,32 +112,7 @@ export default function PartenariatsPage() {
         {/* 9. FAQ courte */}
         <Faq />
 
-        {/* Liens utiles */}
-        <section className="about-fade-up home-section scroll-mt-28 space-y-4">
-          <p className="home-kicker text-xs font-bold uppercase tracking-[0.16em] sm:text-sm">
-            Pour aller plus loin
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
-            <Link href="/charte" className="about-reveal home-step-card rounded-2xl border p-4 sm:p-5">
-              <h3 className="text-sm font-bold sm:text-base">Charte communautaire</h3>
-              <p className="home-muted mt-1.5 text-xs leading-snug sm:text-sm">
-                Les valeurs et règles qui guident chaque partenariat TENF.
-              </p>
-            </Link>
-            <Link href="/a-propos" className="about-reveal home-step-card rounded-2xl border p-4 sm:p-5">
-              <h3 className="text-sm font-bold sm:text-base">À propos de TENF</h3>
-              <p className="home-muted mt-1.5 text-xs leading-snug sm:text-sm">
-                Mieux nous connaître avant d&apos;envoyer une proposition.
-              </p>
-            </Link>
-            <Link href="/partenaire-tenf" className="about-reveal home-step-card rounded-2xl border p-4 sm:p-5">
-              <h3 className="text-sm font-bold sm:text-base">Bilan TENF × UPA</h3>
-              <p className="home-muted mt-1.5 text-xs leading-snug sm:text-sm">
-                Le bilan complet de la première édition commune au profit de la Ligue contre le cancer.
-              </p>
-            </Link>
-          </div>
-        </section>
+        <MoreLinks />
       </div>
 
       <AboutPageEnhancer />

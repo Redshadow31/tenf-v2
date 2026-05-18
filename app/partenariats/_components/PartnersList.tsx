@@ -52,6 +52,8 @@ export default function PartnersList() {
         kicker="7. Partenaires actuels et passés"
         title="Avec qui on a collaboré"
         lead="Cette liste est volontairement courte et n'affiche que des partenariats réellement engagés. Elle évolue à chaque nouvelle collaboration confirmée."
+        icon={HeartHandshake}
+        panel
       />
 
       {!hasPartners && (

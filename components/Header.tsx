@@ -8,6 +8,8 @@ import { ChevronDown, ExternalLink, LogIn, Menu, PanelLeftOpen, Search, Sparkles
 import { memberSidebarNavItemsForMobile } from "@/lib/navigation/memberSidebar";
 import { DISCORD_INVITE_URL, socialLinks, type SocialLink } from "@/lib/socialLinks";
 import { useMemberDesktopNavOptional } from "@/contexts/MemberDesktopNavContext";
+import { NavDropdownPanel, NavMenuItemLink, type NavDropdownGroup } from "@/components/header/NavDropdownMenu";
+import { NAV_GROUP_THEME } from "@/lib/navigation/publicHeaderNavMeta";
 import TENFLogo from "./TENFLogo";
 import ThemeToggle from "./ThemeToggle";
 
@@ -20,19 +22,12 @@ type NavLeaf = {
   description?: string;
 };
 
-type DropdownGroup = {
-  id: string;
-  label: string;
-  description: string;
-  items: NavLeaf[];
-};
-
 // ============================================================
 // Configuration de la navigation
 // ============================================================
 // URL Discord centralisée dans lib/socialLinks → DISCORD_INVITE_URL
 
-const NAV_GROUPS: DropdownGroup[] = [
+const NAV_GROUPS: NavDropdownGroup[] = [
   {
     id: "decouvrir",
     label: "Découvrir",
@@ -618,6 +613,7 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
           >
             {NAV_GROUPS.map((group) => {
               const isOpen = openDropdown === group.id;
+              const theme = NAV_GROUP_THEME[group.id];
               return (
                 <div key={group.id} className="relative">
                   <button
@@ -627,65 +623,23 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
                     aria-expanded={isOpen}
                     aria-haspopup="menu"
                     aria-controls={`nav-menu-${group.id}`}
-                    className="inline-flex items-center gap-1 rounded-xl px-[clamp(0.45rem,0.6vw,0.65rem)] py-[clamp(0.45rem,0.55vw,0.55rem)] text-[clamp(0.8rem,0.72rem+0.25vw,0.95rem)] font-semibold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2"
+                    className="inline-flex items-center gap-1 rounded-xl px-[clamp(0.45rem,0.6vw,0.65rem)] py-[clamp(0.45rem,0.55vw,0.55rem)] text-[clamp(0.8rem,0.72rem+0.25vw,0.95rem)] font-semibold whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2"
                     style={{
-                      color: isOpen ? "var(--color-primary)" : "var(--color-text)",
-                      backgroundColor: isOpen ? "var(--color-surface)" : "transparent",
+                      color: isOpen && theme ? theme.accent : "var(--color-text)",
+                      backgroundColor: isOpen ? `${theme?.accent ?? "var(--color-primary)"}14` : "transparent",
+                      boxShadow: isOpen ? `inset 0 0 0 1px ${theme?.accent ?? "var(--color-primary)"}33` : undefined,
                     }}
                   >
                     <span>{group.label}</span>
                     <ChevronDown
                       size={14}
-                      className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      className={`shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                      style={{ color: isOpen && theme ? theme.accent : "var(--color-text-secondary)" }}
                       aria-hidden
                     />
                   </button>
 
-                  {isOpen && (
-                    <div
-                      id={`nav-menu-${group.id}`}
-                      role="menu"
-                      aria-labelledby={`nav-trigger-${group.id}`}
-                      className="absolute left-1/2 top-full z-30 mt-2 w-80 max-w-[min(20rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border p-2 shadow-2xl"
-                      style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
-                    >
-                      <p
-                        className="px-3 pb-2 pt-1 text-[11px] font-bold uppercase tracking-[0.14em]"
-                        style={{ color: "var(--color-text-secondary)" }}
-                      >
-                        {group.description}
-                      </p>
-                      <ul className="space-y-0.5">
-                        {group.items.map((item) => (
-                          <li key={item.href} role="none">
-                            <Link
-                              href={item.href}
-                              role="menuitem"
-                              onClick={() => setOpenDropdown(null)}
-                              className="block rounded-lg px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2"
-                              style={{ color: "var(--color-text)" }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = "var(--color-card-hover)";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = "transparent";
-                              }}
-                            >
-                              <span className="block text-sm font-semibold">{item.label}</span>
-                              {item.description && (
-                                <span
-                                  className="mt-0.5 block text-xs leading-snug"
-                                  style={{ color: "var(--color-text-secondary)" }}
-                                >
-                                  {item.description}
-                                </span>
-                              )}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {isOpen ? <NavDropdownPanel group={group} pathname={pathname} onClose={() => setOpenDropdown(null)} /> : null}
                 </div>
               );
             })}
@@ -804,69 +758,73 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
               {/* Sections principales */}
               {NAV_GROUPS.map((group) => {
                 const opened = mobileOpenGroups.has(group.id);
+                const theme = NAV_GROUP_THEME[group.id];
+                const GroupIcon = theme?.icon;
                 return (
                   <div
                     key={group.id}
-                    className="overflow-hidden rounded-xl border"
-                    style={{ borderColor: "var(--color-border)" }}
+                    className="overflow-hidden rounded-2xl border"
+                    style={{
+                      borderColor: opened ? `${theme?.accent ?? "var(--color-border)"}44` : "var(--color-border)",
+                      backgroundColor: opened ? `${theme?.accent ?? "transparent"}08` : "transparent",
+                    }}
                   >
                     <button
                       type="button"
                       onClick={() => toggleMobileGroup(group.id)}
                       aria-expanded={opened}
                       aria-controls={`mobile-group-${group.id}`}
-                      className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2"
-                      style={{ color: "var(--color-text)" }}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2"
                     >
-                      <span className="flex flex-col">
-                        <span>{group.label}</span>
-                        <span
-                          className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.14em]"
-                          style={{ color: "var(--color-text-secondary)" }}
-                        >
-                          {group.description}
+                      <span className="flex min-w-0 items-center gap-3">
+                        {theme ? (
+                          <span
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06]"
+                            style={{ backgroundColor: `${theme.accent}18`, color: theme.accent }}
+                          >
+                            <GroupIcon className="h-5 w-5" aria-hidden />
+                          </span>
+                        ) : null}
+                        <span className="flex min-w-0 flex-col">
+                          <span className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+                            {group.label}
+                          </span>
+                          <span className="mt-0.5 text-[11px] font-medium leading-snug" style={{ color: "var(--color-text-secondary)" }}>
+                            {group.description}
+                          </span>
                         </span>
                       </span>
                       <ChevronDown
                         size={16}
-                        className={`shrink-0 transition-transform ${opened ? "rotate-180" : ""}`}
+                        className={`shrink-0 transition-transform duration-200 ${opened ? "rotate-180" : ""}`}
+                        style={{ color: theme?.accent ?? "var(--color-text-secondary)" }}
                         aria-hidden
                       />
                     </button>
-                    {opened && (
+                    {opened && theme ? (
                       <ul
                         id={`mobile-group-${group.id}`}
-                        className="border-t px-2 py-2"
-                        style={{ borderColor: "var(--color-border)" }}
+                        className="space-y-0.5 border-t px-2 py-2"
+                        style={{ borderColor: `${theme.accent}28` }}
                       >
-                        {group.items.map((item) => (
-                          <li key={item.href}>
-                            <Link
-                              href={item.href}
-                              onClick={() => setMobileMenuOpen(false)}
-                              className="block rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2"
-                              style={{ color: "var(--color-text)" }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = "var(--color-card-hover)";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = "transparent";
-                              }}
-                            >
-                              <span className="block font-semibold">{item.label}</span>
-                              {item.description && (
-                                <span
-                                  className="mt-0.5 block text-xs leading-snug"
-                                  style={{ color: "var(--color-text-secondary)" }}
-                                >
-                                  {item.description}
-                                </span>
-                              )}
-                            </Link>
-                          </li>
-                        ))}
+                        {group.items.map((item) => {
+                          const active =
+                            pathname === item.href ||
+                            (item.href !== "/" && Boolean(pathname?.startsWith(`${item.href}/`)));
+                          return (
+                            <li key={item.href}>
+                              <NavMenuItemLink
+                                item={item}
+                                groupTheme={theme}
+                                active={active}
+                                compact
+                                onNavigate={() => setMobileMenuOpen(false)}
+                              />
+                            </li>
+                          );
+                        })}
                       </ul>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}

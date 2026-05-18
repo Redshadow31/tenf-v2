@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, Send, AlertTriangle } from "lucide-react";
-import { CONTACT_TOPICS } from "./topics";
+import { CONTACT_TOPICS, resolveContactTopic } from "./topics";
 import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
 
 type Status = "idle" | "submitting" | "success" | "error";
@@ -11,43 +11,14 @@ type Status = "idle" | "submitting" | "success" | "error";
 const MAX_MESSAGE = 2400;
 const MIN_MESSAGE = 20;
 
-/**
- * Alias courts acceptés dans l'URL `?topic=...` pour permettre des liens
- * externes lisibles. Si le paramètre correspond déjà à un id de
- * CONTACT_TOPICS (ex. "question_generale"), il est utilisé tel quel.
- * Si l'alias / l'id n'existe pas, on garde le comportement par défaut
- * (premier motif de CONTACT_TOPICS).
- */
-const TOPIC_ALIASES: Record<string, string> = {
-  general: "question_generale",
-  question: "question_generale",
-  question_generale: "question_generale",
-  probleme: "probleme_serveur",
-  probleme_serveur: "probleme_serveur",
-  partenariat: "partenariat",
-  partenariats: "partenariat",
-  presse: "presse",
-  media: "presse",
-  signalement: "signalement",
-  soutien: "soutien",
-  don: "soutien",
-  technique: "technique_site",
-  technique_site: "technique_site",
+type ContactFormProps = {
+  /** Sans bordure carte — pour la modale plein écran */
+  embedded?: boolean;
+  /** Motif présélectionné (modale ou lien direct) */
+  initialTopic?: string;
 };
 
-const VALID_TOPIC_IDS = new Set(CONTACT_TOPICS.map((t) => t.id));
-
-/** Résout un paramètre `?topic=` brut vers un id de motif valide, ou null. */
-function resolveTopic(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const key = raw.trim().toLowerCase();
-  if (VALID_TOPIC_IDS.has(key)) return key;
-  const aliased = TOPIC_ALIASES[key];
-  if (aliased && VALID_TOPIC_IDS.has(aliased)) return aliased;
-  return null;
-}
-
-export default function ContactForm() {
+export default function ContactForm({ embedded = false, initialTopic: initialTopicProp }: ContactFormProps) {
   const searchParams = useSearchParams();
   const [pseudo, setPseudo] = useState("");
   const [contact, setContact] = useState("");
@@ -64,9 +35,11 @@ export default function ContactForm() {
   // /signalement, etc.). Comportement par défaut conservé si le paramètre est
   // absent ou inconnu.
   useEffect(() => {
-    const incoming = resolveTopic(searchParams?.get("topic"));
+    const fromUrl = resolveContactTopic(searchParams?.get("topic"));
+    const fromProp = resolveContactTopic(initialTopicProp);
+    const incoming = fromProp ?? fromUrl;
     if (incoming) setTopic(incoming);
-  }, [searchParams]);
+  }, [searchParams, initialTopicProp]);
 
   const remaining = MAX_MESSAGE - message.length;
   const tooShort = message.trim().length > 0 && message.trim().length < MIN_MESSAGE;
@@ -161,8 +134,12 @@ export default function ContactForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border p-5 sm:p-7"
-      style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+      className={embedded ? "space-y-0" : "rounded-2xl border p-5 sm:p-7"}
+      style={
+        embedded
+          ? undefined
+          : { borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }
+      }
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
