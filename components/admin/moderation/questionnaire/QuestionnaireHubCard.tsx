@@ -96,13 +96,13 @@ function HubCardShell({
             className="pointer-events-none absolute inset-y-0 left-0 w-[3px] rounded-l-[inherit] bg-gradient-to-b from-emerald-400/70 via-violet-400/60 to-violet-600/50"
             aria-hidden
           />
-          <motion.div
+          <div
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_85%_0%,color-mix(in_srgb,var(--color-primary)_14%,transparent),transparent_55%)]"
             aria-hidden
           />
           <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/[0.08] blur-3xl" aria-hidden />
           <div className="pointer-events-none absolute -bottom-8 left-1/4 h-28 w-28 rounded-full bg-emerald-500/[0.06] blur-3xl" aria-hidden />
-          <div className="relative">{children}</motion.div>
+          <div className="relative">{children}</div>
         </div>
       </article>
     );
