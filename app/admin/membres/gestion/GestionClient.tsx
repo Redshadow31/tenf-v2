@@ -1625,42 +1625,7 @@ export default function GestionClient() {
     setIsEditModalOpen(true);
   };
 
-  const handleSaveEdit = async (updatedMember: {
-    id: number;
-    avatar: string;
-    nom: string;
-    role: MemberRole;
-    statut: "Actif" | "Inactif";
-    discord: string;
-    discordId?: string;
-    twitch: string;
-    twitchId?: string; // ID Twitch numérique
-    notesInternes?: string;
-    description?: string;
-    badges?: string[];
-    isVip?: boolean;
-    shadowbanLives?: boolean;
-    createdAt?: string;
-    integrationDate?: string;
-    birthday?: string;
-    twitchAffiliateDate?: string;
-    onboardingStatus?: "a_faire" | "en_cours" | "termine";
-    mentorTwitchLogin?: string;
-    primaryLanguage?: string;
-    timezone?: string;
-    countryCode?: string;
-    lastReviewAt?: string;
-    nextReviewAt?: string;
-    parrain?: string;
-    roleHistory?: Array<{
-      fromRole: string;
-      toRole: string;
-      changedAt: string;
-      changedBy: string;
-      reason?: string;
-    }>;
-    roleChangeReason?: string;
-  }) => {
+  const handleSaveEdit = async (updatedMember: Member & { roleChangeReason?: string }) => {
     if (!currentAdmin?.canWrite) {
       pushNotice("error", "Vous n'avez pas la permission de modifier les membres.");
       return;

@@ -3,6 +3,8 @@
  * Extrait de l’ancien monolithe pour faciliter la maintenance.
  */
 
+import type { MemberTimelineEntry } from "@/lib/admin/members-gestion/memberTimeline";
+
 export type MemberRole =
   | "Nouveau"
   | "Affilié"
@@ -67,13 +69,7 @@ export interface Member {
   countryCode?: string;
   lastReviewAt?: string;
   nextReviewAt?: string;
-  roleHistory?: Array<{
-    fromRole: string;
-    toRole: string;
-    changedAt: string;
-    changedBy: string;
-    reason?: string;
-  }>;
+  roleHistory?: MemberTimelineEntry[];
   staffPeriods?: import("@/lib/admin/members-gestion/staffPeriods").StaffPeriod[];
   parrain?: string;
   profileValidationStatus?: "non_soumis" | "en_cours_examen" | "valide";

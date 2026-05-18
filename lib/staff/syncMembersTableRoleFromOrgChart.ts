@@ -1,3 +1,4 @@
+import { createSystemRoleChangeEntry } from "@/lib/admin/members-gestion/memberTimeline";
 import { memberRepository } from "@/lib/repositories";
 import { toCanonicalMemberRole, type MemberRole } from "@/lib/memberRoles";
 import type { OrgChartRoleKey } from "@/lib/staff/orgChartTypes";
@@ -59,13 +60,12 @@ export async function syncMembersTableRoleFromOrgChart(input: {
     roleManuallySet: true,
     roleHistory: [
       ...roleHistory,
-      {
+      createSystemRoleChangeEntry({
         fromRole: member.role,
         toRole: targetRole,
-        changedAt: new Date().toISOString(),
         changedBy: input.actorDiscordId,
         reason: "Synchronisation depuis l'organigramme staff",
-      },
+      }),
     ],
     updatedBy: input.actorDiscordId,
     updatedAt: new Date(),

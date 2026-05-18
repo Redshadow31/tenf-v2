@@ -21,6 +21,13 @@ async function resolveMember(id: string) {
   return member;
 }
 
+function toIsoDate(value: Date | string | null | undefined): string | undefined {
+  if (value == null) return undefined;
+  if (value instanceof Date) return value.toISOString();
+  const s = String(value).trim();
+  return s || undefined;
+}
+
 function csvEscape(value: string): string {
   if (value.includes('"') || value.includes(",") || value.includes("\n")) {
     return `"${value.replace(/"/g, '""')}"`;
@@ -44,8 +51,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     const unified = buildUnifiedMemberJourney({
       timeline,
       staffPeriods: extras.staffPeriods,
-      createdAt: member.createdAt,
-      integrationDate: member.integrationDate,
+      createdAt: toIsoDate(member.createdAt),
+      integrationDate: toIsoDate(member.integrationDate),
     });
 
     const lines = [

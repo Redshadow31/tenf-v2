@@ -120,13 +120,7 @@ export interface MemberData {
   countryCode?: string;
   lastReviewAt?: Date;
   nextReviewAt?: Date;
-  roleHistory?: Array<{
-    fromRole: string;
-    toRole: string;
-    changedAt: string; // ISO date string
-    changedBy: string; // ID Discord ou "admin"
-    reason?: string;
-  }>;
+  roleHistory?: import("@/lib/admin/members-gestion/memberTimeline").MemberTimelineEntry[];
   staffPeriods?: import("@/lib/admin/members-gestion/staffPeriods").StaffPeriod[];
   /** UUID Supabase (si chargé depuis la base). */
   memberId?: string;

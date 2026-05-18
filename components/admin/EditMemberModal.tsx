@@ -83,7 +83,7 @@ interface EditMemberModalProps {
   isOpen: boolean;
   onClose: () => void;
   member: Member;
-  onSave: (member: Member) => void;
+  onSave: (member: Member) => void | Promise<void>;
 }
 
 export default function EditMemberModal({
