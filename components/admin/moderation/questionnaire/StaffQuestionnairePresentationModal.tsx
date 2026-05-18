@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { Q_LAYOUT, QUI } from "@/components/admin/moderation/questionnaire/questionnaire-ui";
+import AnnouncementMarkdown from "@/components/ui/AnnouncementMarkdown";
 import type {
   AdminReviewPayload,
   FinalReviewPayload,
@@ -65,6 +66,10 @@ export type StaffQuestionnairePresentationModalProps = {
   finalReview: FinalReviewPayload;
 };
 
+/** Styles prose alignés sur le rendu Discord (GFM + remark-breaks via AnnouncementMarkdown). */
+const PRESENTATION_MARKDOWN_PROSE =
+  "prose-p:my-2 prose-p:leading-relaxed prose-p:text-zinc-200 prose-headings:font-semibold prose-headings:text-violet-100 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-h2:text-xl prose-strong:text-white prose-em:text-zinc-300 prose-ul:my-2 prose-ol:my-2 prose-li:text-zinc-300 prose-li:marker:text-violet-400 prose-blockquote:border-l-violet-400/50 prose-blockquote:text-zinc-400 prose-a:text-violet-300 prose-a:no-underline hover:prose-a:underline";
+
 function PresentationBlock({
   label,
   children,
@@ -77,6 +82,23 @@ function PresentationBlock({
       <h3 className={QUI.sectionLabel}>{label}</h3>
       <div className="mt-3 text-sm leading-relaxed text-zinc-200 sm:text-base">{children}</div>
     </section>
+  );
+}
+
+function PresentationMarkdown({
+  source,
+  className = "",
+}: {
+  source: string;
+  className?: string;
+}) {
+  const value = source.trim();
+  if (!value) return null;
+  return (
+    <AnnouncementMarkdown
+      content={value}
+      className={`${PRESENTATION_MARKDOWN_PROSE} ${className}`.trim()}
+    />
   );
 }
 
@@ -115,21 +137,21 @@ export default function StaffQuestionnairePresentationModal({
         <div className="space-y-4">
           {hasText(review.internalAnalysisText) ? (
             <PresentationBlock label="Synthèse d'analyse">
-              <p className="whitespace-pre-line">{review.internalAnalysisText}</p>
+              <PresentationMarkdown source={review.internalAnalysisText ?? ""} />
             </PresentationBlock>
           ) : null}
           {analysisFieldsFilled.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2">
               {analysisFieldsFilled.map(({ key, label }) => (
                 <PresentationBlock key={key} label={label}>
-                  <p className="whitespace-pre-line">{(review[key] as string) ?? ""}</p>
+                  <PresentationMarkdown source={(review[key] as string) ?? ""} />
                 </PresentationBlock>
               ))}
             </div>
           ) : null}
           {hasText(review.adminNotes) ? (
             <PresentationBlock label="Notes internes">
-              <p className="whitespace-pre-line">{review.adminNotes}</p>
+              <PresentationMarkdown source={review.adminNotes ?? ""} />
             </PresentationBlock>
           ) : null}
         </div>
@@ -144,9 +166,10 @@ export default function StaffQuestionnairePresentationModal({
       hasContent: hasText(review.memberSummaryText),
       content: hasText(review.memberSummaryText) ? (
         <PresentationBlock label="Synthèse">
-          <p className="whitespace-pre-line text-[length:clamp(0.9375rem,0.85rem+0.35vw,1.0625rem)] leading-relaxed">
-            {review.memberSummaryText}
-          </p>
+          <PresentationMarkdown
+            source={review.memberSummaryText ?? ""}
+            className="prose-base sm:prose-lg prose-p:text-[length:clamp(0.9375rem,0.85rem+0.35vw,1.0625rem)]"
+          />
         </PresentationBlock>
       ) : null,
     };
@@ -176,7 +199,9 @@ export default function StaffQuestionnairePresentationModal({
                 </span>
               </div>
               {hasText(o.description) ? (
-                <p className="mt-2 whitespace-pre-line text-sm text-zinc-300">{o.description}</p>
+                <div className="mt-2">
+                  <PresentationMarkdown source={o.description ?? ""} className="prose-sm" />
+                </div>
               ) : null}
             </li>
           ))}
@@ -199,7 +224,7 @@ export default function StaffQuestionnairePresentationModal({
           </PresentationBlock>
           {hasText(finalReview.finalReviewText) ? (
             <PresentationBlock label="Compte rendu">
-              <p className="whitespace-pre-line">{finalReview.finalReviewText}</p>
+              <PresentationMarkdown source={finalReview.finalReviewText} />
             </PresentationBlock>
           ) : null}
         </div>
