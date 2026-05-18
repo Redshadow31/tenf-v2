@@ -4,7 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, Sparkles } from "lucide-react";
 import ModerationPageShell from "@/components/admin/moderation/ModerationPageShell";
+import { StaffMemberPilotCard } from "@/components/admin/moderation/questionnaire/StaffMemberPilotCard";
+import { Q_LAYOUT, QUI } from "@/components/admin/moderation/questionnaire/questionnaire-ui";
 import { MODERATION_BASE } from "@/lib/moderation/moderationTree";
+import type { StaffPilotProfile } from "@/lib/staff-questionnaire/staffMemberPilotProfile";
 import type {
   AdminReviewPayload,
   FinalReviewPayload,
@@ -108,6 +111,7 @@ export default function StaffQuestionnaireAdminDetailClient({
   }, [load]);
 
   const member = data?.member as Record<string, unknown> | undefined;
+  const staffPilot = data?.staffPilot as StaffPilotProfile | undefined;
   const submission = data?.submission as Record<string, unknown> | undefined;
   const answers = (data?.answers ?? []) as Array<Record<string, unknown>>;
   const progress = data?.progress as
@@ -257,6 +261,8 @@ export default function StaffQuestionnaireAdminDetailClient({
       title={`Questionnaire — ${String(member?.discord_username ?? member?.display_name ?? "")}`}
       description={`Statut : ${String(submission?.status ?? "")}`}
       audienceLabel="Vue admin"
+      hubAccent
+      detachedContent
     >
       {loading ? (
         <div className="flex items-center gap-2 text-zinc-400">
@@ -264,9 +270,20 @@ export default function StaffQuestionnaireAdminDetailClient({
           Chargement…
         </div>
       ) : (
-        <div className="space-y-4">
-          {error ? <p className="text-rose-300 text-sm">{error}</p> : null}
-          {message ? <p className="text-emerald-300 text-sm">{message}</p> : null}
+        <div className={`${Q_LAYOUT.container} space-y-5`}>
+          {error ? <p className={QUI.alertError}>{error}</p> : null}
+          {message ? <p className={QUI.alertSuccess}>{message}</p> : null}
+
+          {staffPilot ? (
+            <StaffMemberPilotCard
+              profile={staffPilot}
+              gestionHref={
+                staffPilot.twitchLogin
+                  ? `/admin/membres/gestion?search=${encodeURIComponent(staffPilot.twitchLogin)}`
+                  : undefined
+              }
+            />
+          ) : null}
 
           {progress ? (
             <div

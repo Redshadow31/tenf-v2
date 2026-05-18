@@ -11,6 +11,7 @@ import {
   listActiveQuestions,
 } from "@/lib/staff-questionnaire/storage";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import { fetchStaffPilotProfile } from "@/lib/staff-questionnaire/staffMemberPilotProfile";
 
 export const dynamic = "force-dynamic";
 
@@ -69,9 +70,12 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       answersRecord,
     );
 
+    const staffPilot = await fetchStaffPilotProfile(submission.memberId);
+
     return NextResponse.json({
       submission,
       member,
+      staffPilot,
       questions,
       answers: answerRows,
       progress,

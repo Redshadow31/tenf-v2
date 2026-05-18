@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -14,6 +15,7 @@ import {
   Save,
   Send,
   Shield,
+  Sparkles,
   Target,
 } from "lucide-react";
 import ModerationPageShell from "@/components/admin/moderation/ModerationPageShell";
@@ -23,7 +25,9 @@ import QuestionField, {
 } from "@/components/admin/moderation/questionnaire/QuestionField";
 import QuestionnaireStatusBadge from "@/components/admin/moderation/questionnaire/QuestionnaireStatusBadge";
 import {
+  Q_LAYOUT,
   qCardStyle,
+  qGlassIntroStyle,
   qSurfaceStyle,
   QUI,
 } from "@/components/admin/moderation/questionnaire/questionnaire-ui";
@@ -93,6 +97,24 @@ const CONSENT_ITEMS = [
   },
 ];
 
+const ASIDE_TIPS = [
+  {
+    n: "1",
+    title: "À ton rythme",
+    body: "Tu peux enregistrer à tout moment et reprendre plus tard — ta progression est conservée.",
+  },
+  {
+    n: "2",
+    title: "Réponses sincères",
+    body: "Il n'y a pas de bonne ou mauvaise réponse : l'objectif est un accompagnement adapté.",
+  },
+  {
+    n: "3",
+    title: "Après l'envoi",
+    body: "L'équipe prépare une synthèse personnalisée ; tu seras notifié quand elle sera disponible.",
+  },
+] as const;
+
 type Phase = "intro" | "wizard" | "summary";
 
 function scrollToQuestionStart(el: HTMLElement | null) {
@@ -125,48 +147,97 @@ function ShellHeaderProgress({
   return (
     <aside
       aria-label="Progression du questionnaire"
-      className="w-full rounded-xl border p-[clamp(0.75rem,1.2vw,1rem)]"
-      style={{
-        ...qSurfaceStyle,
-        backgroundImage:
-          "linear-gradient(145deg, color-mix(in srgb, var(--color-primary) 8%, var(--color-card)) 0%, var(--color-card) 100%)",
-      }}
+      className={`p-[clamp(0.875rem,1.5vw,1.2rem)] ${Q_LAYOUT.heroVisual}`}
     >
-      <QuestionnaireStatusBadge view={moderatorView} />
-      {phase === "wizard" && sectionTotal > 0 ? (
-        <p className={`mt-2 text-sm font-medium leading-snug ${QUI.text}`}>
-          Partie {sectionIndex + 1} / {sectionTotal}
-          {currentSectionTitle ? (
-            <span className={`block sm:inline ${QUI.textSecondary}`}>
-              <span className="hidden sm:inline"> · </span>
-              {currentSectionTitle}
-            </span>
-          ) : null}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[conic-gradient(from_200deg_at_72%_-10%,rgba(167,139,250,0.16),transparent_42%,transparent_58%,rgba(212,175,55,0.12))]"
+      />
+      <div className="relative space-y-3">
+        <span className={`${Q_LAYOUT.badgeViolet} w-fit`}>
+          <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Progression
+        </span>
+        <QuestionnaireStatusBadge view={moderatorView} />
+        {phase === "wizard" && sectionTotal > 0 ? (
+          <p className={`text-sm font-medium leading-snug ${QUI.text}`}>
+            Partie {sectionIndex + 1} / {sectionTotal}
+            {currentSectionTitle ? (
+              <span className={`mt-0.5 block text-xs ${QUI.textSecondary}`}>{currentSectionTitle}</span>
+            ) : null}
+          </p>
+        ) : phase === "intro" ? (
+          <p className={`text-sm ${QUI.textSecondary}`}>Parcours guidé · prêt à commencer</p>
+        ) : null}
+        <dl className="grid grid-cols-3 gap-2 text-[length:clamp(0.65rem,0.58rem+0.22vw,0.775rem)]">
+          <div className={Q_LAYOUT.statCell}>
+            <dt className="font-medium uppercase tracking-wide text-zinc-500">Questions</dt>
+            <dd className="mt-1 text-lg font-semibold tabular-nums text-zinc-50">{liveProgress.total}</dd>
+          </div>
+          <div className={Q_LAYOUT.statCell}>
+            <dt className="font-medium uppercase tracking-wide text-zinc-500">Parties</dt>
+            <dd className="mt-1 text-lg font-semibold tabular-nums text-amber-200/95">
+              {sectionTotal || 12}
+            </dd>
+          </div>
+          <div className={Q_LAYOUT.statCell}>
+            <dt className="font-medium uppercase tracking-wide text-zinc-500">Complété</dt>
+            <dd className="mt-1 text-lg font-semibold tabular-nums text-emerald-200/95">
+              {liveProgress.percent}%
+            </dd>
+          </div>
+        </dl>
+        <p className={`text-xs ${QUI.textMuted}`}>
+          {phase === "wizard" ? (
+            <>Question {currentIndex + 1} / {liveProgress.total}</>
+          ) : (
+            <>
+              {liveProgress.completed} / {liveProgress.total} répondues
+            </>
+          )}
         </p>
-      ) : phase === "intro" ? (
-        <p className={`mt-2 text-sm ${QUI.textSecondary}`}>
-          85 questions · 12 parties · prêt à commencer
-        </p>
-      ) : null}
-      <p className={`mt-1 text-sm ${QUI.textSecondary}`}>
-        Question{" "}
-        {phase === "wizard" ? currentIndex + 1 : liveProgress.completed} sur{" "}
-        {liveProgress.total} · {liveProgress.percent} % complété
-      </p>
-      <div className={`mt-3 ${QUI.progressTrack}`}>
-        <div
-          className={QUI.progressFill}
-          style={{ width: `${liveProgress.percent}%` }}
-          role="progressbar"
-          aria-valuenow={liveProgress.percent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        />
+        <div className={QUI.progressTrack}>
+          <div
+            className={QUI.progressFill}
+            style={{ width: `${liveProgress.percent}%` }}
+            role="progressbar"
+            aria-valuenow={liveProgress.percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
+        {phase === "wizard" && sectionTotal > 0 ? (
+          <SectionStepper statuses={sectionStatuses} />
+        ) : null}
       </div>
-      {phase === "wizard" && sectionTotal > 0 ? (
-        <SectionStepper statuses={sectionStatuses} />
-      ) : null}
     </aside>
+  );
+}
+
+function QuestionnaireAsideTips() {
+  return (
+    <div className={`${Q_LAYOUT.panel} p-4`}>
+      <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-400">
+        <BookOpen className="h-4 w-4 text-violet-300/90" aria-hidden />
+        Bon à savoir
+      </h2>
+      <ol className="mt-3 space-y-3">
+        {ASIDE_TIPS.map((step) => (
+          <li key={step.n} className="flex gap-3 text-sm leading-relaxed text-zinc-400">
+            <span
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-violet-400/30 bg-violet-500/10 text-xs font-bold text-violet-200"
+              aria-hidden
+            >
+              {step.n}
+            </span>
+            <span>
+              <span className="font-medium text-zinc-200">{step.title}</span>
+              <span className="mt-0.5 block">{step.body}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -193,10 +264,10 @@ function SectionStepper({
           className={
             "h-1.5 min-w-[0.35rem] flex-1 rounded-full transition-colors " +
             (status === "active"
-              ? "bg-violet-500"
+              ? "bg-amber-400/90 ring-1 ring-amber-300/40"
               : status === "done"
-                ? "bg-emerald-500"
-                : "bg-[color-mix(in_srgb,var(--color-text)_12%,var(--color-card))]")
+                ? "bg-emerald-500/90"
+                : "bg-zinc-700/80")
           }
         />
       ))}
@@ -449,22 +520,34 @@ export default function StaffQuestionnaireModeratorClient() {
       description="Un parcours guidé, à ton rythme — sauvegarde et envoi à la fin"
       icon={ClipboardList}
       audienceLabel="Vue modérateur"
-      rightSlot={
-        headerProgress ? (
-          <div className="hidden w-full lg:block">{headerProgress}</div>
-        ) : undefined
-      }
+      hubAccent
+      detachedContent
     >
-      {loading ? (
-        <div
-          className={`flex items-center justify-center gap-2 py-12 ${QUI.textSecondary}`}
-        >
-          <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
-          Chargement du questionnaire…
+      <div className={Q_LAYOUT.page}>
+        <div aria-hidden className={Q_LAYOUT.blurBg}>
+          <div className={Q_LAYOUT.blurGradient} />
         </div>
-      ) : (
-        <div className="mx-auto min-w-0 w-full max-w-5xl space-y-[clamp(1rem,2vw,1.5rem)]">
-          {headerProgress ? <div className="lg:hidden">{headerProgress}</div> : null}
+        <div
+          aria-hidden
+          className={Q_LAYOUT.gridLines}
+          style={{
+            backgroundImage:
+              "linear-gradient(104deg,rgba(255,255,255,0.032) 0px,rgba(255,255,255,0.032) 1px,transparent 1px,transparent 74px)",
+            backgroundSize: "clamp(54px,4.2vw,72px) 100%",
+            maskImage: "linear-gradient(180deg,black 0%,transparent 78%)",
+          }}
+        />
+        <div className={Q_LAYOUT.container}>
+          {loading ? (
+            <div
+              className={`flex items-center justify-center gap-2 py-16 ${QUI.textSecondary}`}
+            >
+              <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+              Chargement du questionnaire…
+            </div>
+          ) : (
+            <div className={Q_LAYOUT.mainGrid}>
+              <div className="min-w-0 space-y-6 xl:space-y-[var(--q-gap)]">
           {error ? (
             <p
               id={phase === "wizard" ? fieldErrorId : undefined}
@@ -482,12 +565,17 @@ export default function StaffQuestionnaireModeratorClient() {
 
           {phase === "summary" && publishedSummary ? (
             <section
-              className="rounded-2xl border p-[clamp(1rem,2vw,1.5rem)]"
-              style={qCardStyle}
+              className={`${Q_LAYOUT.glassSection} p-[clamp(1rem,2vw,1.5rem)]`}
             >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={Q_LAYOUT.badgeAmber}>
+                  <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  Synthèse publiée
+                </span>
+              </div>
               <h2
-                className={QUI.heading}
-                style={{ fontSize: "clamp(1rem, 1.2vw, 1.125rem)" }}
+                className={`${QUI.heading} mt-4`}
+                style={{ fontSize: "clamp(1.1rem, 1.35vw, 1.35rem)" }}
               >
                 Ta synthèse personnalisée
               </h2>
@@ -517,8 +605,7 @@ export default function StaffQuestionnaireModeratorClient() {
 
           {phase === "summary" && !publishedSummary && !editable ? (
             <section
-              className={`rounded-2xl border p-[clamp(1rem,2vw,1.5rem)] ${QUI.textSecondary}`}
-              style={qCardStyle}
+              className={`${Q_LAYOUT.glassSection} p-[clamp(1rem,2vw,1.5rem)] ${QUI.textSecondary}`}
             >
               <CheckCircle2
                 className="mb-2 h-8 w-8 text-emerald-500"
@@ -533,20 +620,30 @@ export default function StaffQuestionnaireModeratorClient() {
 
           {phase === "intro" && editable ? (
             <section
-              className="rounded-2xl border p-[clamp(1rem,2vw,1.5rem)] space-y-5"
-              style={qCardStyle}
+              className={`${Q_LAYOUT.panel} space-y-6 p-[clamp(1rem,2vw,1.6rem)]`}
             >
-              <div>
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <span className={Q_LAYOUT.badgeAmber}>
+                    <Target className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Posture staff
+                  </span>
+                  <span className={Q_LAYOUT.badgeViolet}>
+                    <ClipboardList className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Parcours guidé
+                  </span>
+                </div>
+                <p className={Q_LAYOUT.eyebrow}>Avant de commencer</p>
                 <h2
                   className={QUI.heading}
-                  style={{ fontSize: "clamp(1.05rem, 1.35vw, 1.25rem)" }}
+                  style={{ fontSize: "clamp(1.25rem, 1.1rem+0.6vw, 1.75rem)" }}
                 >
-                  Avant de commencer
+                  Ton questionnaire posture
                 </h2>
                 <p
-                  className={`mt-2 flex flex-wrap items-center gap-2 text-sm ${QUI.textSecondary}`}
+                  className={`flex max-w-2xl flex-wrap items-center gap-2 text-sm leading-relaxed ${QUI.textSecondary}`}
                 >
-                  <Clock className="h-4 w-4 shrink-0 text-violet-500" aria-hidden />
+                  <Clock className="h-4 w-4 shrink-0 text-amber-300/90" aria-hidden />
                   Environ 30–45 min · 85 questions · 12 parties · sauvegarde possible à tout
                   moment
                 </p>
@@ -556,13 +653,13 @@ export default function StaffQuestionnaireModeratorClient() {
                 {INTRO_BLOCKS.map(({ icon: Icon, title, body }) => (
                   <div
                     key={title}
-                    className="rounded-xl border p-4"
-                    style={qSurfaceStyle}
+                    className="rounded-xl border border-white/[0.08] p-4"
+                    style={qGlassIntroStyle}
                   >
                     <div className="flex items-start gap-3">
                       <span
                         aria-hidden
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-violet-400/30 bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-card))] text-violet-600 dark:text-violet-300"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-violet-400/30 bg-violet-500/15 text-violet-200"
                       >
                         <Icon className="h-4 w-4" />
                       </span>
@@ -602,7 +699,7 @@ export default function StaffQuestionnaireModeratorClient() {
                   setPhase("wizard");
                   setCurrentIndex(liveProgress.firstIncompleteIndex);
                 }}
-                className="inline-flex min-h-[2.75rem] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-violet-500 to-violet-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:from-violet-400 hover:to-violet-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 disabled:opacity-40 sm:w-auto"
+                className={`${QUI.btnPrimary} w-full sm:w-auto`}
               >
                 Commencer le questionnaire
                 <ArrowRight className="h-4 w-4" aria-hidden />
@@ -612,12 +709,12 @@ export default function StaffQuestionnaireModeratorClient() {
 
           {phase === "wizard" && editable && currentQuestion ? (
             <section
-              className="rounded-2xl border shadow-[0_8px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.35)]"
-              style={qCardStyle}
+              className={`${Q_LAYOUT.glassSection} overflow-hidden shadow-[0_20px_50px_rgba(2,6,23,0.45)]`}
             >
+              <div className={QUI.wizardAccentBar} aria-hidden />
               <div
                 ref={questionAnchorRef}
-                className={`border-b px-5 py-4 sm:px-6 ${QUI.divider} ${QUI.questionEnter}`}
+                className={`border-b border-white/10 px-5 py-5 sm:px-6 ${QUI.questionEnter}`}
               >
                 <p className={QUI.sectionLabel}>{currentQuestion.sectionTitle}</p>
                 <p className={`mt-2 text-sm ${QUI.textMuted}`}>
@@ -651,7 +748,7 @@ export default function StaffQuestionnaireModeratorClient() {
               </div>
 
               <footer
-                className={`flex flex-col gap-3 border-t px-5 py-4 sm:px-6 ${QUI.divider}`}
+                className="flex flex-col gap-3 border-t border-white/10 bg-zinc-950/40 px-5 py-4 sm:px-6"
               >
                 <button
                   type="button"
@@ -712,16 +809,26 @@ export default function StaffQuestionnaireModeratorClient() {
             </section>
           ) : null}
 
-          <p className={`text-center text-xs ${QUI.textMuted}`}>
-            <Link
-              href={MODERATION_STAFF_BASE}
-              className="font-medium text-violet-600 underline-offset-2 hover:text-violet-500 hover:underline dark:text-violet-400 dark:hover:text-violet-300"
-            >
-              ← Retour au centre de modération
-            </Link>
-          </p>
+                <p className={`text-center text-xs ${QUI.textMuted}`}>
+                  <Link
+                    href={MODERATION_STAFF_BASE}
+                    className={`font-medium text-violet-300 underline-offset-2 hover:text-violet-200 hover:underline ${Q_LAYOUT.focusRing} rounded`}
+                  >
+                    ← Retour au centre de modération
+                  </Link>
+                </p>
+              </div>
+
+              {showProgressCard ? (
+                <aside className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto">
+                  {headerProgress}
+                  <QuestionnaireAsideTips />
+                </aside>
+              ) : null}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </ModerationPageShell>
   );
 }

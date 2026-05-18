@@ -20,6 +20,7 @@ import {
   Ticket,
   Users,
 } from "lucide-react";
+import FormationCategoryBadge from "@/components/events/FormationCategoryBadge";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
@@ -35,6 +36,7 @@ type CommunityEvent = {
   ctaLabel?: string;
   ctaUrl?: string;
   seriesName?: string;
+  formationCategory?: string | null;
 };
 
 type ListTab = "upcoming" | "past" | "all";
@@ -533,6 +535,9 @@ export default function MemberEventRegistrationsPage() {
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className="font-bold text-white">{event.title}</p>
+                            {event.category === "Formation" && event.formationCategory ? (
+                              <FormationCategoryBadge formationCategory={event.formationCategory} className="mt-1" />
+                            ) : null}
                             {event.seriesName ? (
                               <p className="mt-0.5 text-xs text-violet-300/80">{event.seriesName}</p>
                             ) : null}

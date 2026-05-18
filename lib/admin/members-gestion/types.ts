@@ -74,6 +74,7 @@ export interface Member {
     changedBy: string;
     reason?: string;
   }>;
+  staffPeriods?: import("@/lib/admin/members-gestion/staffPeriods").StaffPeriod[];
   parrain?: string;
   profileValidationStatus?: "non_soumis" | "en_cours_examen" | "valide";
   isArchived?: boolean;

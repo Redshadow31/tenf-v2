@@ -18,6 +18,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
+import FormationCategoryBadge from "@/components/events/FormationCategoryBadge";
 import MemberSurface from "@/components/member/ui/MemberSurface";
 import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import { buildEventLocationDisplay, type EventLocationLink } from "@/lib/eventLocation";
@@ -35,6 +36,7 @@ type CommunityEvent = {
   isMaskedForAudience?: boolean;
   spotlightStreamerDisplayName?: string;
   seriesName?: string;
+  formationCategory?: string | null;
 };
 
 type RangeFilter = "all" | "week";
@@ -547,6 +549,9 @@ export default function MemberEventsPlanningPage() {
                           {event.title}
                         </h3>
 
+                        {event.category === "Formation" && event.formationCategory ? (
+                          <FormationCategoryBadge formationCategory={event.formationCategory} className="mt-1" />
+                        ) : null}
                         {event.seriesName ? (
                           <p className="text-sm font-medium text-sky-300/90">
                             Fait partie de la série « {event.seriesName} » — tu peux suivre plusieurs épisodes au fil des semaines.

@@ -7,6 +7,7 @@ import { PARIS_TIMEZONE, parisLocalDateTimeToUtcIso, utcIsoToParisDateTimeLocalI
 import { deleteEventSeriesMeta, getEventSeriesMeta, upsertEventSeriesMeta } from '@/lib/eventSeriesStorage';
 import { deleteEventSpotlightMeta, getEventSpotlightMeta, upsertEventSpotlightMeta } from '@/lib/eventSpotlightStorage';
 import { memberRepository, spotlightRepository } from '@/lib/repositories';
+import { isFormationCategoryKey } from '@/lib/events/formationCategories';
 
 function normalizeCategory(value: string): string {
   return value
@@ -23,6 +24,10 @@ function isSpotlightCategory(value: string): boolean {
 function isTrackedSeriesCategory(value: string): boolean {
   const normalized = normalizeCategory(value || "");
   return normalized === "formation" || normalized === "jeux communautaire";
+}
+
+function isFormationCategory(value: string): boolean {
+  return normalizeCategory(value || "") === "formation";
 }
 
 /**
@@ -75,6 +80,7 @@ export async function GET(
       sourceEventId: seriesMeta?.sourceEventId,
       spotlightStreamerLogin: spotlightMeta?.streamerTwitchLogin,
       spotlightStreamerDisplayName: spotlightMeta?.streamerDisplayName,
+      formationCategory: seriesMeta?.formationCategory ?? null,
     };
     return NextResponse.json({ event: formattedEvent });
   } catch (error) {
@@ -126,17 +132,38 @@ export async function PUT(
     if (body.category !== undefined) updates.category = body.category;
     if (body.location !== undefined) updates.location = body.location;
     if (body.isPublished !== undefined) updates.isPublished = body.isPublished;
+    if (body.responsibleDiscordId !== undefined) {
+      const nextResponsible = String(body.responsibleDiscordId || "").trim();
+      if (nextResponsible) updates.createdBy = nextResponsible;
+    }
 
     const updatedEvent = await eventRepository.update(eventId, updates as Parameters<typeof eventRepository.update>[1]);
 
-    if (typeof body.seriesId === 'string' && typeof body.seriesName === 'string') {
+    const nextCategoryForSeries = String(body.category ?? updatedEvent.category ?? existingEvent.category ?? "");
+
+    if (isFormationCategory(nextCategoryForSeries)) {
+      const fc = String(body.formationCategory ?? "").trim();
+      if (body.formationCategory !== undefined && !isFormationCategoryKey(fc)) {
+        return NextResponse.json(
+          { error: "Pour une formation, la catégorie de formation est obligatoire." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (typeof body.seriesId === "string" && typeof body.seriesName === "string") {
       await upsertEventSeriesMeta({
         eventId,
         seriesId: body.seriesId,
         seriesName: body.seriesName,
-        sourceEventId: typeof body.sourceEventId === 'string' ? body.sourceEventId : undefined,
+        sourceEventId: typeof body.sourceEventId === "string" ? body.sourceEventId : undefined,
+        formationCategory: isFormationCategory(nextCategoryForSeries)
+          ? body.formationCategory !== undefined
+            ? String(body.formationCategory || "").trim() || null
+            : undefined
+          : null,
       });
-    } else if (!isTrackedSeriesCategory(String(body.category ?? updatedEvent.category ?? existingEvent.category ?? ""))) {
+    } else if (!isTrackedSeriesCategory(nextCategoryForSeries)) {
       await deleteEventSeriesMeta(eventId);
     }
 
@@ -226,6 +253,7 @@ export async function PUT(
       sourceEventId: seriesMeta?.sourceEventId,
       spotlightStreamerLogin: nextSpotlightMeta?.streamerTwitchLogin,
       spotlightStreamerDisplayName: nextSpotlightMeta?.streamerDisplayName,
+      formationCategory: seriesMeta?.formationCategory ?? null,
     };
 
     const { previousValue, newValue } = prepareAuditValues(existingEvent, formattedEvent);

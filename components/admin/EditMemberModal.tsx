@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import MemberRoleHistoryPanel from "@/components/admin/members-gestion/MemberRoleHistoryPanel";
 
 /** Bloc section formulaire (cohérent dans tout le modal). */
 const EDIT_MODAL_SECTION =
@@ -73,13 +74,8 @@ interface Member {
   countryCode?: string;
   lastReviewAt?: string;
   nextReviewAt?: string;
-  roleHistory?: Array<{
-    fromRole: string;
-    toRole: string;
-    changedAt: string;
-    changedBy: string;
-    reason?: string;
-  }>;
+  roleHistory?: import("@/lib/admin/members-gestion/memberTimeline").MemberTimelineEntry[];
+  staffPeriods?: import("@/lib/admin/members-gestion/staffPeriods").StaffPeriod[];
   parrain?: string; // Pseudo/nom du membre parrain
 }
 
@@ -806,16 +802,14 @@ export default function EditMemberModal({
                         <label className="block text-sm font-semibold text-gray-300">
                           Rôle
                         </label>
-                        {formData.roleHistory && formData.roleHistory.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setShowRoleHistory(true)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-xs font-semibold text-indigo-200 transition hover:bg-indigo-500/20"
-                          >
-                            <History className="h-3.5 w-3.5" aria-hidden />
-                            Historique
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setShowRoleHistory(true)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-xs font-semibold text-indigo-200 transition hover:bg-indigo-500/20"
+                        >
+                          <History className="h-3.5 w-3.5" aria-hidden />
+                          Historique & pilotage
+                        </button>
                       </div>
                       {originalRole === "Communauté" && (
                         <div className="mb-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
@@ -894,6 +888,31 @@ export default function EditMemberModal({
                         <option value="Inactif">Inactif</option>
                       </select>
                     </div>
+
+                    <div className="border-t border-white/[0.06] pt-4">
+                      <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-indigo-200/90">
+                        Historique & périodes de rôle
+                      </h4>
+                      <MemberRoleHistoryPanel
+                        variant="compact"
+                        roleHistory={formData.roleHistory}
+                        staffPeriods={formData.staffPeriods}
+                        currentRole={formData.role}
+                        currentStatut={formData.statut}
+                        createdAt={formData.createdAt}
+                        integrationDate={formData.integrationDate}
+                        editable
+                        showJourneyLinks
+                        memberIdentifier={formData.twitch}
+                        onHistoryChange={(history) =>
+                          setFormData((fd) => ({ ...fd, roleHistory: history }))
+                        }
+                        onStaffPeriodsChange={(periods) =>
+                          setFormData((fd) => ({ ...fd, staffPeriods: periods }))
+                        }
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-sm font-semibold text-gray-300 mb-2">
                         VIP
@@ -1312,16 +1331,18 @@ export default function EditMemberModal({
             role="presentation"
           >
             <div
-              className="max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-indigo-400/25 bg-[#12151f] shadow-2xl shadow-black/50"
+              className="max-h-[88vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-indigo-400/25 bg-[#12151f] shadow-2xl shadow-black/50"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3 border-b border-white/10 bg-[linear-gradient(90deg,rgba(79,70,229,0.2),transparent)] p-5">
                 <div>
                   <h3 className="flex items-center gap-2 text-lg font-bold text-white">
                     <History className="h-5 w-5 text-indigo-300" aria-hidden />
-                    Historique des rôles
+                    Historique des rôles & pilotage staff
                   </h3>
-                  <p className="mt-1 text-xs text-slate-400">Traçabilité des changements de rôle pour ce membre.</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Périodes actives, durées en staff et journal des changements.
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -1332,44 +1353,25 @@ export default function EditMemberModal({
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="max-h-[calc(82vh-5.5rem)] overflow-y-auto p-5">
-                {formData.roleHistory && formData.roleHistory.length > 0 ? (
-                  <ul className="space-y-3">
-                    {formData.roleHistory.map((entry, index) => (
-                      <li
-                        key={index}
-                        className="rounded-xl border border-white/[0.08] border-l-4 border-l-indigo-500/75 bg-[linear-gradient(160deg,rgba(26,28,40,0.92),rgba(14,15,22,0.98))] p-4 shadow-inner shadow-black/20"
-                      >
-                        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                          <p className="font-semibold text-white">
-                            <span className="text-slate-400">{entry.fromRole}</span>
-                            <span className="mx-2 text-indigo-400">→</span>
-                            <span>{entry.toRole}</span>
-                          </p>
-                          <time className="text-xs tabular-nums text-slate-500">
-                            {new Date(entry.changedAt).toLocaleDateString("fr-FR", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </time>
-                        </div>
-                        <p className="text-sm text-slate-400">
-                          <span className="text-slate-600">Par</span> {entry.changedBy}
-                        </p>
-                        {entry.reason ? (
-                          <p className="mt-2 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-sm italic text-slate-300">
-                            {entry.reason}
-                          </p>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="py-12 text-center text-sm text-slate-500">Aucun changement de rôle enregistré pour l’instant.</div>
-                )}
+              <div className="max-h-[calc(88vh-5.5rem)] overflow-y-auto p-5">
+                <MemberRoleHistoryPanel
+                  variant="full"
+                  roleHistory={formData.roleHistory}
+                  staffPeriods={formData.staffPeriods}
+                  currentRole={formData.role}
+                  currentStatut={formData.statut}
+                  createdAt={formData.createdAt}
+                  integrationDate={formData.integrationDate}
+                  editable
+                  showJourneyLinks
+                  memberIdentifier={formData.twitch}
+                  onHistoryChange={(history) =>
+                    setFormData((fd) => ({ ...fd, roleHistory: history }))
+                  }
+                  onStaffPeriodsChange={(periods) =>
+                    setFormData((fd) => ({ ...fd, staffPeriods: periods }))
+                  }
+                />
               </div>
             </div>
           </div>

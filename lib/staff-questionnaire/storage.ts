@@ -444,15 +444,48 @@ export async function getFinalReview(submissionId: string) {
   return data;
 }
 
-export async function listModeratorMembersForQuestionnaire() {
-  const { data, error } = await supabaseAdmin
+const MEMBER_PILOT_SELECT =
+  "id, display_name, discord_username, role, discord_id, twitch_login, is_active, created_at, integration_date, role_history, updated_at";
+
+export async function listModeratorMembersForQuestionnaire(opts?: { includeAlumni?: boolean }) {
+  const { data: byRole, error } = await supabaseAdmin
     .from("members")
-    .select("id, display_name, discord_username, role, discord_id")
+    .select(MEMBER_PILOT_SELECT)
     .in("role", MOD_STAFF_ROLES)
-    .eq("is_active", true)
     .order("display_name");
   if (error) throw error;
-  return data ?? [];
+
+  const merged = new Map<string, Record<string, unknown>>();
+  for (const row of byRole ?? []) {
+    if (!opts?.includeAlumni && row.is_active === false) continue;
+    merged.set(row.id as string, row as Record<string, unknown>);
+  }
+
+  if (opts?.includeAlumni) {
+    const { data: alumniLinks } = await supabaseAdmin
+      .from("staff_members")
+      .select("member_id")
+      .or("is_active.eq.false,left_at.not.is.null");
+
+    const alumniIds = [...new Set((alumniLinks ?? []).map((r) => r.member_id as string).filter(Boolean))];
+    const missingIds = alumniIds.filter((id) => !merged.has(id));
+    if (missingIds.length > 0) {
+      const { data: alumniMembers } = await supabaseAdmin
+        .from("members")
+        .select(MEMBER_PILOT_SELECT)
+        .in("id", missingIds);
+      for (const row of alumniMembers ?? []) {
+        merged.set(row.id as string, row as Record<string, unknown>);
+      }
+    }
+  }
+
+  return Array.from(merged.values()).sort((a, b) =>
+    String(a.display_name ?? a.discord_username ?? "").localeCompare(
+      String(b.display_name ?? b.discord_username ?? ""),
+      "fr",
+    ),
+  );
 }
 
 export async function buildExportRows(templateId: string) {

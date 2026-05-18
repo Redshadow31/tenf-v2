@@ -593,6 +593,7 @@ export default function GestionClient() {
           : new Date(member.nextReviewAt).toISOString()
         : undefined,
       roleHistory: member.roleHistory || [],
+      staffPeriods: member.staffPeriods || [],
       parrain: member.parrain,
       profileValidationStatus: member.profileValidationStatus,
     };
@@ -1698,6 +1699,7 @@ export default function GestionClient() {
       nextReviewAt: updatedMember.nextReviewAt !== undefined ? updatedMember.nextReviewAt : oldMember.nextReviewAt,
       parrain: updatedMember.parrain !== undefined ? updatedMember.parrain : oldMember.parrain,
       roleHistory: updatedMember.roleHistory || oldMember.roleHistory,
+      staffPeriods: updatedMember.staffPeriods ?? oldMember.staffPeriods,
     };
 
     if (mergedMember.role === "Communauté" && mergedMember.statut !== "Inactif") {
@@ -4119,6 +4121,7 @@ export default function GestionClient() {
               lastReviewAt: selectedMember.lastReviewAt,
               nextReviewAt: selectedMember.nextReviewAt,
               roleHistory: selectedMember.roleHistory,
+              staffPeriods: selectedMember.staffPeriods,
               parrain: selectedMember.parrain,
             }}
             onSave={handleSaveEdit}

@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import FormationCategoryBadge from "@/components/events/FormationCategoryBadge";
 import { useCallback, useEffect, useId, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -28,6 +29,7 @@ export type EventDetailModalItem = {
   image?: string;
   date: string;
   category: string;
+  formationCategory?: string | null;
   location?: string;
   ctaLabel?: string;
   ctaUrl?: string;
@@ -219,6 +221,9 @@ export default function EventDetailModal({
           <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${categoryBadgeClass}`}>{categoryLabel}</span>
+              {event.category === "Formation" && event.formationCategory ? (
+                <FormationCategoryBadge formationCategory={event.formationCategory} />
+              ) : null}
               <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusBadge.className}`}>{statusBadge.label}</span>
               {isRegistered && !isPast && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-100">

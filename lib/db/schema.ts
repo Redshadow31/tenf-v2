@@ -129,6 +129,9 @@ export const members = pgTable('members', {
     changedBy: string;
     reason?: string;
   }>>().default([]),
+  staffPeriods: jsonb('staff_periods').$type<
+    import('@/lib/admin/members-gestion/staffPeriods').StaffPeriod[]
+  >().default([]),
   parrain: text('parrain'),
   staffNotificationEmail: text('staff_notification_email'),
 });

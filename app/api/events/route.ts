@@ -11,6 +11,7 @@ import { memberRepository } from "@/lib/repositories";
 import { loadEventSeriesMap, upsertEventSeriesMeta } from "@/lib/eventSeriesStorage";
 import { loadEventSpotlightMap, upsertEventSpotlightMeta } from "@/lib/eventSpotlightStorage";
 import { spotlightRepository } from "@/lib/repositories";
+import { isFormationCategoryKey } from "@/lib/events/formationCategories";
 
 // Activer le cache ISR de 60 secondes pour les requêtes publiques
 // Les requêtes admin (POST, GET avec ?admin=true) ne sont pas mises en cache
@@ -55,6 +56,10 @@ function isSpotlightCategory(value: string): boolean {
 function isTrackedSeriesCategory(value: string): boolean {
   const normalized = normalizeCategory(value || "");
   return normalized === "formation" || normalized === "jeux communautaire";
+}
+
+function isFormationCategory(value: string): boolean {
+  return normalizeCategory(value || "") === "formation";
 }
 
 async function loadFilmPublicAnnouncement(): Promise<PublicAnnouncement> {
@@ -200,7 +205,7 @@ export async function GET(request: NextRequest) {
       .filter((event): event is NonNullable<typeof event> => event !== null);
 
     const [seriesMap, spotlightMap] = await Promise.all([loadEventSeriesMap(), loadEventSpotlightMap()]);
-    const withSeriesEvents = formattedEvents.map((event) => {
+    let withSeriesEvents = formattedEvents.map((event) => {
       const meta = seriesMap[event.id];
       const spotlightMeta = spotlightMap[event.id];
       return {
@@ -210,8 +215,46 @@ export async function GET(request: NextRequest) {
         sourceEventId: meta?.sourceEventId,
         spotlightStreamerLogin: spotlightMeta?.streamerTwitchLogin,
         spotlightStreamerDisplayName: spotlightMeta?.streamerDisplayName,
+        formationCategory: meta?.formationCategory ?? null,
       };
     });
+
+    if (isAdmin) {
+      const discordIds = [
+        ...new Set(
+          withSeriesEvents
+            .map((event) => String(event.createdBy || ""))
+            .filter((id) => /^\d{17,20}$/.test(id))
+        ),
+      ];
+      const nameByDiscord = new Map<string, string>();
+      await Promise.all(
+        discordIds.map(async (discordId) => {
+          try {
+            const member = await memberRepository.findByDiscordId(discordId);
+            if (member) {
+              nameByDiscord.set(
+                discordId,
+                String(member.displayName || member.twitchLogin || discordId).trim()
+              );
+            }
+          } catch {
+            /* ignore */
+          }
+        })
+      );
+      withSeriesEvents = withSeriesEvents.map((event) => {
+        const spotlightLabel = String(event.spotlightStreamerDisplayName || event.spotlightStreamerLogin || "").trim();
+        const fromDiscord = nameByDiscord.get(String(event.createdBy || ""));
+        return {
+          ...event,
+          responsibleDisplayName:
+            (isSpotlightCategory(String(event.category || "")) && spotlightLabel) ||
+            fromDiscord ||
+            undefined,
+        };
+      });
+    }
 
     // Masquage « soirée film » : public uniquement (visiteurs / membres non actifs).
     // Réponses admin (?admin=true + droits planification) : toujours les données réelles.
@@ -298,6 +341,8 @@ export async function POST(request: NextRequest) {
       sourceEventId,
       spotlightStreamerLogin,
       spotlightStreamerDisplayName,
+      responsibleDiscordId,
+      formationCategory,
     } = body;
     
     if (!title || (!date && !startAtUtc && !startAtParisLocal) || !category) {
@@ -326,6 +371,16 @@ export async function POST(request: NextRequest) {
         );
       }
     }
+
+    if (isFormationCategory(String(category || ""))) {
+      const fc = String(formationCategory || "").trim();
+      if (!isFormationCategoryKey(fc)) {
+        return NextResponse.json(
+          { error: "Pour une formation, la catégorie de formation est obligatoire." },
+          { status: 400 }
+        );
+      }
+    }
     
     const resolvedStartAtUtc =
       typeof startAtParisLocal === "string" && startAtParisLocal
@@ -348,7 +403,7 @@ export async function POST(request: NextRequest) {
       location,
       invitedMembers: invitedMembers || [],
       isPublished: isPublished ?? false,
-      createdBy: admin.discordId,
+      createdBy: String(responsibleDiscordId || "").trim() || admin.discordId,
       createdAt: new Date(),
     });
     
@@ -385,6 +440,9 @@ export async function POST(request: NextRequest) {
         seriesId,
         seriesName,
         sourceEventId: typeof sourceEventId === "string" ? sourceEventId : undefined,
+        formationCategory: isFormationCategory(String(category || ""))
+          ? String(formationCategory || "").trim()
+          : null,
       });
     }
 
@@ -428,6 +486,9 @@ export async function POST(request: NextRequest) {
         spotlightStreamerLogin: normalizedSpotlightLogin || undefined,
         spotlightStreamerDisplayName:
           typeof spotlightStreamerDisplayName === "string" ? spotlightStreamerDisplayName : undefined,
+        formationCategory: isFormationCategory(String(category || ""))
+          ? String(formationCategory || "").trim()
+          : null,
       },
       success: true,
     });

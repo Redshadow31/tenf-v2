@@ -127,6 +127,9 @@ export interface MemberData {
     changedBy: string; // ID Discord ou "admin"
     reason?: string;
   }>;
+  staffPeriods?: import("@/lib/admin/members-gestion/staffPeriods").StaffPeriod[];
+  /** UUID Supabase (si chargé depuis la base). */
+  memberId?: string;
   parrain?: string; // Pseudo/nom du membre parrain
   /** E-mail pour notifications staff importantes (saisi sur Mon compte admin) */
   staffNotificationEmail?: string | null;
@@ -1006,15 +1009,17 @@ export async function updateMemberData(
   // Gérer l'historique des rôles si le rôle change
   let roleHistory = existingAdminMember?.roleHistory || existing?.roleHistory || [];
   if (updates.role && existing.role && updates.role !== existing.role) {
+    const { createSystemRoleChangeEntry } = await import(
+      "@/lib/admin/members-gestion/memberTimeline"
+    );
     roleHistory = [
       ...roleHistory,
-      {
+      createSystemRoleChangeEntry({
         fromRole: existing.role,
         toRole: updates.role,
-        changedAt: new Date().toISOString(),
         changedBy: updatedBy || "admin",
         reason: (updates as any).roleChangeReason,
-      },
+      }),
     ];
     updates.roleHistory = roleHistory;
     

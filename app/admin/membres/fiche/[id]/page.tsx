@@ -7,6 +7,7 @@ import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import MemberRoleHistoryPanel from "@/components/admin/members-gestion/MemberRoleHistoryPanel";
 
 type TabKey = "overview" | "journey" | "performance" | "community" | "admin";
 
@@ -404,7 +405,31 @@ export default function MemberFichePage() {
         )}
 
         {activeTab === "journey" && (
-          <section className="rounded-2xl border border-gray-700 bg-[#151922] p-5 space-y-4">
+          <section className="space-y-4">
+            <div className="rounded-2xl border border-indigo-500/20 bg-[#151922] p-5">
+              <h3 className="text-lg font-semibold text-white">Historique des rôles & pilotage staff</h3>
+              <p className="mt-1 text-sm text-gray-400">
+                Périodes actives, durées en staff et journal des changements.
+              </p>
+              <div className="mt-4">
+                <MemberRoleHistoryPanel
+                  variant="full"
+                  roleHistory={member.roleHistory}
+                  staffPeriods={member.staffPeriods}
+                  currentRole={member.role || "Communauté"}
+                  currentStatut={member.isActive !== false ? "Actif" : "Inactif"}
+                  createdAt={member.createdAt}
+                  integrationDate={member.integrationDate}
+                  updatedAt={member.updatedAt}
+                  memberIdentifier={
+                    member.twitchLogin || member.discordId || memberId
+                  }
+                  showJourneyLinks
+                />
+              </div>
+            </div>
+
+            <section className="rounded-2xl border border-gray-700 bg-[#151922] p-5 space-y-4">
             <h3 className="text-lg font-semibold">Parcours et integrations</h3>
             {loadingSections.has("integration") ? (
               <p className="text-gray-400">Chargement des integrations...</p>
@@ -459,6 +484,7 @@ export default function MemberFichePage() {
                 </div>
               </>
             )}
+            </section>
           </section>
         )}
 

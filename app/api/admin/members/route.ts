@@ -1063,17 +1063,19 @@ export async function PUT(request: NextRequest) {
 
     // Gérer roleHistory si le rôle change
     if (updates.role && updates.role !== existingMember.role) {
-      const roleHistory = existingMember.roleHistory || [];
+      const { createSystemRoleChangeEntry, normalizeTimeline } = await import(
+        "@/lib/admin/members-gestion/memberTimeline"
+      );
+      const roleHistory = normalizeTimeline(existingMember.roleHistory as unknown[]);
       updates.roleHistory = [
         ...roleHistory,
-        {
+        createSystemRoleChangeEntry({
           fromRole: existingMember.role,
           toRole: updates.role,
-          changedAt: new Date().toISOString(),
           changedBy: admin.discordId || "admin",
           reason: (updates as any).roleChangeReason,
-        },
-      ];
+        }),
+      ] as typeof existingMember.roleHistory;
     }
 
     // Ajouter updatedBy et updatedAt

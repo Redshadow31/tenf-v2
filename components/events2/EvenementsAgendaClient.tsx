@@ -21,6 +21,7 @@ import {
 import EventDateTime from "@/components/EventDateTime";
 import { formatEventDateTimeInTimezone, getBrowserTimezone } from "@/lib/timezone";
 import EventDetailModal from "@/components/events2/EventDetailModal";
+import FormationCategoryBadge from "@/components/events/FormationCategoryBadge";
 import type { EventLocationLink } from "@/lib/eventLocation";
 
 // ============================================================
@@ -39,6 +40,7 @@ type EventItem = {
   ctaUrl?: string;
   isMaskedForAudience?: boolean;
   remainingSeats?: number | null;
+  formationCategory?: string | null;
 };
 
 const statusFilters = [
@@ -583,6 +585,9 @@ export default function EvenementsAgendaClient() {
           <EventDateTime startUtc={event.date} className="text-sm text-gray-400" />
 
           <div className="flex flex-wrap gap-1.5">
+            {event.category === "Formation" && event.formationCategory ? (
+              <FormationCategoryBadge formationCategory={event.formationCategory} />
+            ) : null}
             {urgency ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
                 <Sparkles className="h-3 w-3" aria-hidden />

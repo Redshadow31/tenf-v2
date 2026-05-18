@@ -10,6 +10,8 @@ export type EventSeriesMeta = {
   seriesId: string;
   seriesName: string;
   sourceEventId?: string;
+  /** Uniquement pour les événements « Formation » — clé `FormationCategoryKey`. */
+  formationCategory?: string | null;
   updatedAt: string;
 };
 
@@ -67,6 +69,7 @@ export async function upsertEventSeriesMeta(meta: {
   seriesId: string;
   seriesName: string;
   sourceEventId?: string;
+  formationCategory?: string | null;
 }): Promise<void> {
   const eventId = String(meta.eventId || "").trim();
   const seriesId = String(meta.seriesId || "").trim();
@@ -74,11 +77,20 @@ export async function upsertEventSeriesMeta(meta: {
   if (!eventId || !seriesId || !seriesName) return;
 
   const seriesMap = await loadSeriesMapRaw();
+  const previous = seriesMap[eventId];
+  const nextFormationCategory =
+    meta.formationCategory !== undefined
+      ? meta.formationCategory
+        ? String(meta.formationCategory).trim() || null
+        : null
+      : previous?.formationCategory ?? null;
+
   seriesMap[eventId] = {
     eventId,
     seriesId,
     seriesName,
     sourceEventId: meta.sourceEventId ? String(meta.sourceEventId).trim() : undefined,
+    formationCategory: nextFormationCategory,
     updatedAt: new Date().toISOString(),
   };
   await saveSeriesMapRaw(seriesMap);

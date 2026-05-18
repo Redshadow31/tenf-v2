@@ -620,6 +620,7 @@ export class MemberRepository {
    */
   private mapToMemberData(row: any): MemberData {
     return {
+      memberId: row.id || undefined,
       twitchLogin: row.twitch_login,
       twitchId: row.twitch_id || undefined,
       twitchUrl: row.twitch_url,
@@ -657,6 +658,7 @@ export class MemberRepository {
       lastReviewAt: row.last_review_at ? new Date(row.last_review_at) : undefined,
       nextReviewAt: row.next_review_at ? new Date(row.next_review_at) : undefined,
       roleHistory: row.role_history || undefined,
+      staffPeriods: row.staff_periods || undefined,
       parrain: row.parrain || undefined,
       staffNotificationEmail: row.staff_notification_email ?? undefined,
     };
@@ -730,6 +732,7 @@ export class MemberRepository {
         : member.nextReviewAt;
     }
     if (member.roleHistory !== undefined) record.role_history = member.roleHistory;
+    if (member.staffPeriods !== undefined) record.staff_periods = member.staffPeriods;
     if (member.parrain !== undefined) record.parrain = member.parrain;
     if (member.staffNotificationEmail !== undefined) {
       record.staff_notification_email =

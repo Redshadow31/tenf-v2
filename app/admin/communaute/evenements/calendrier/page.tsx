@@ -33,6 +33,11 @@ import {
   Wine,
   X,
 } from "lucide-react";
+import FormationCategoryField from "@/components/admin/evenements/FormationCategoryField";
+import EventResponsiblePicker, { type EventResponsibleMember } from "@/components/admin/evenements/EventResponsiblePicker";
+import FormationCategoryBadge from "@/components/events/FormationCategoryBadge";
+import type { FormationCategoryKey } from "@/lib/events/formationCategories";
+import { isFormationCategoryKey } from "@/lib/events/formationCategories";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   PARIS_TIMEZONE,
@@ -52,10 +57,12 @@ type CommunityEvent = {
   image?: string;
   isPublished?: boolean;
   createdBy?: string;
+  responsibleDisplayName?: string;
   spotlightStreamerLogin?: string;
   spotlightStreamerDisplayName?: string;
   seriesId?: string;
   seriesName?: string;
+  formationCategory?: string | null;
 };
 
 type EventForm = {
@@ -69,13 +76,13 @@ type EventForm = {
   spotlightStreamerDisplayName: string;
   seriesId: string;
   seriesName: string;
+  responsibleDiscordId: string;
+  responsibleDisplayName: string;
+  responsibleTwitchLogin: string;
+  formationCategory: FormationCategoryKey | "";
 };
 
-type MemberSearchResult = {
-  twitchLogin: string;
-  displayName: string;
-  isActive?: boolean;
-};
+type MemberSearchResult = EventResponsibleMember;
 
 type CategorySeriesOption = {
   seriesId: string;
@@ -93,6 +100,10 @@ const DEFAULT_FORM: EventForm = {
   spotlightStreamerDisplayName: "",
   seriesId: "",
   seriesName: "",
+  responsibleDiscordId: "",
+  responsibleDisplayName: "",
+  responsibleTwitchLogin: "",
+  formationCategory: "",
 };
 
 const panelClass =
@@ -146,6 +157,8 @@ function normalizeResponsible(raw?: string): string {
 }
 
 function getEventResponsible(event: CommunityEvent): string {
+  const labeled = String(event.responsibleDisplayName || "").trim();
+  if (labeled) return labeled;
   if (event.category === "Spotlight") {
     const spotlightResponsible = String(event.spotlightStreamerDisplayName || event.spotlightStreamerLogin || "").trim();
     if (spotlightResponsible) return spotlightResponsible;
@@ -153,12 +166,22 @@ function getEventResponsible(event: CommunityEvent): string {
   return normalizeResponsible(event.createdBy);
 }
 
+function hasEventResponsible(form: EventForm): boolean {
+  if (form.responsibleDiscordId.trim()) return true;
+  if (form.responsibleTwitchLogin.trim() && form.responsibleDisplayName.trim()) return true;
+  if (form.category === "Spotlight" && form.spotlightStreamerLogin.trim()) return true;
+  return false;
+}
+
 function isFormValid(form: EventForm): boolean {
-  if (!form.title.trim() || !form.dateParisLocal) return false;
+  if (!form.title.trim() || !form.dateParisLocal || !hasEventResponsible(form)) return false;
   if (form.category === "Spotlight") {
     return Boolean(form.spotlightStreamerLogin.trim());
   }
-  if (form.category === "Formation" || form.category === "Jeux communautaire") {
+  if (form.category === "Formation") {
+    return Boolean(form.seriesName.trim()) && isFormationCategoryKey(form.formationCategory);
+  }
+  if (form.category === "Jeux communautaire") {
     return Boolean(form.seriesName.trim());
   }
   return true;
@@ -201,9 +224,9 @@ export default function CommunauteEvenementsCalendrierPage() {
   const [form, setForm] = useState<EventForm>(DEFAULT_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [spotlightSearch, setSpotlightSearch] = useState("");
-  const [spotlightResults, setSpotlightResults] = useState<MemberSearchResult[]>([]);
-  const [spotlightLoading, setSpotlightLoading] = useState(false);
+  const [responsibleSearch, setResponsibleSearch] = useState("");
+  const [responsibleResults, setResponsibleResults] = useState<MemberSearchResult[]>([]);
+  const [responsibleLoading, setResponsibleLoading] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "published" | "draft">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -241,35 +264,37 @@ export default function CommunauteEvenementsCalendrierPage() {
   }, []);
 
   useEffect(() => {
-    const shouldSearch = modalOpen && form.category === "Spotlight" && spotlightSearch.trim().length >= 2;
+    const shouldSearch = modalOpen && responsibleSearch.trim().length >= 2;
     if (!shouldSearch) {
-      setSpotlightResults([]);
-      setSpotlightLoading(false);
+      setResponsibleResults([]);
+      setResponsibleLoading(false);
       return;
     }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(async () => {
       try {
-        setSpotlightLoading(true);
+        setResponsibleLoading(true);
         const response = await fetch(
-          `/api/members/search?q=${encodeURIComponent(spotlightSearch.trim())}&includeInactive=true&includeCommunity=true`,
+          `/api/members/search?q=${encodeURIComponent(responsibleSearch.trim())}&includeInactive=true&includeCommunity=true`,
           { cache: "no-store", signal: controller.signal }
         );
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
         const members = Array.isArray(payload?.members) ? payload.members : [];
-        setSpotlightResults(
-          members.map((member: any) => ({
+        setResponsibleResults(
+          members.map((member: { twitchLogin?: string; displayName?: string; discordId?: string; discordUsername?: string; isActive?: boolean }) => ({
             twitchLogin: String(member.twitchLogin || "").toLowerCase(),
             displayName: String(member.displayName || member.twitchLogin || ""),
+            discordId: member.discordId ? String(member.discordId) : undefined,
+            discordUsername: member.discordUsername ? String(member.discordUsername) : undefined,
             isActive: member.isActive !== false,
           }))
         );
       } catch {
-        setSpotlightResults([]);
+        setResponsibleResults([]);
       } finally {
-        setSpotlightLoading(false);
+        setResponsibleLoading(false);
       }
     }, 200);
 
@@ -277,7 +302,7 @@ export default function CommunauteEvenementsCalendrierPage() {
       controller.abort();
       clearTimeout(timeoutId);
     };
-  }, [modalOpen, form.category, spotlightSearch]);
+  }, [modalOpen, responsibleSearch]);
 
   const categorySeriesOptions = useMemo(() => {
     if (form.category !== "Formation" && form.category !== "Jeux communautaire") return [];
@@ -302,13 +327,19 @@ export default function CommunauteEvenementsCalendrierPage() {
     setForm(DEFAULT_FORM);
     setImageFile(null);
     setImagePreview(null);
-    setSpotlightSearch("");
-    setSpotlightResults([]);
+    setResponsibleSearch("");
+    setResponsibleResults([]);
     setModalTab("infos");
     setModalOpen(true);
   };
 
   const openEditModal = (event: CommunityEvent) => {
+    const isSpotlight = event.category === "Spotlight";
+    const responsibleDisplayName =
+      event.responsibleDisplayName ||
+      (isSpotlight ? event.spotlightStreamerDisplayName : "") ||
+      "";
+    const responsibleTwitchLogin = isSpotlight ? event.spotlightStreamerLogin || "" : "";
     setModalMode("edit");
     setEditingEventId(event.id);
     setForm({
@@ -322,14 +353,52 @@ export default function CommunauteEvenementsCalendrierPage() {
       spotlightStreamerDisplayName: event.spotlightStreamerDisplayName || "",
       seriesId: event.seriesId || "",
       seriesName: event.seriesName || "",
+      formationCategory:
+        event.category === "Formation" && event.formationCategory && isFormationCategoryKey(event.formationCategory)
+          ? event.formationCategory
+          : "",
+      responsibleDiscordId: /^\d{17,20}$/.test(String(event.createdBy || "")) ? String(event.createdBy) : "",
+      responsibleDisplayName: responsibleDisplayName || "",
+      responsibleTwitchLogin,
     });
     setImageFile(null);
     setImagePreview(event.image || null);
-    setSpotlightSearch(event.spotlightStreamerLogin || "");
-    setSpotlightResults([]);
+    setResponsibleSearch("");
+    setResponsibleResults([]);
     setModalTab("infos");
     setModalOpen(true);
   };
+
+  const pickResponsibleMember = useCallback((member: MemberSearchResult) => {
+    setForm((prev) => {
+      const next: EventForm = {
+        ...prev,
+        responsibleDiscordId: member.discordId || "",
+        responsibleDisplayName: member.displayName,
+        responsibleTwitchLogin: member.twitchLogin,
+      };
+      if (prev.category === "Spotlight") {
+        next.spotlightStreamerLogin = member.twitchLogin;
+        next.spotlightStreamerDisplayName = member.displayName;
+      }
+      return next;
+    });
+    setResponsibleSearch("");
+    setResponsibleResults([]);
+  }, []);
+
+  const clearResponsibleMember = useCallback(() => {
+    setForm((prev) => ({
+      ...prev,
+      responsibleDiscordId: "",
+      responsibleDisplayName: "",
+      responsibleTwitchLogin: "",
+      spotlightStreamerLogin: prev.category === "Spotlight" ? "" : prev.spotlightStreamerLogin,
+      spotlightStreamerDisplayName: prev.category === "Spotlight" ? "" : prev.spotlightStreamerDisplayName,
+    }));
+    setResponsibleSearch("");
+    setResponsibleResults([]);
+  }, []);
 
   const closeModal = useCallback(() => {
     if (saving) return;
@@ -338,7 +407,9 @@ export default function CommunauteEvenementsCalendrierPage() {
 
   const submitModal = async () => {
     if (!isFormValid(form)) {
-      setError("Titre et date sont obligatoires. Pour un Spotlight, renseignez aussi le membre mis en avant.");
+      setError(
+        "Titre, date, responsable et champs du type sont obligatoires (catégorie de formation pour les formations, membre pour Spotlight, etc.)."
+      );
       return;
     }
     try {
@@ -383,6 +454,12 @@ export default function CommunauteEvenementsCalendrierPage() {
         seriesId: isTrackedCategory ? normalizedSeriesId : undefined,
         seriesName: isTrackedCategory ? normalizedSeriesName : undefined,
         sourceEventId: isTrackedCategory && normalizedSeriesId ? editingEventId || undefined : undefined,
+        responsibleDiscordId: form.responsibleDiscordId.trim() || undefined,
+        responsibleDisplayName: form.responsibleDisplayName.trim() || undefined,
+        formationCategory:
+          form.category === "Formation" && isFormationCategoryKey(form.formationCategory)
+            ? form.formationCategory
+            : undefined,
       };
       const response =
         modalMode === "create"
@@ -442,31 +519,47 @@ export default function CommunauteEvenementsCalendrierPage() {
     return { published, draft, topCategories, responsibleCount };
   }, [events]);
 
-  const spotlightManualLogin = useMemo(() => parseTwitchLoginInput(spotlightSearch), [spotlightSearch]);
+  const responsibleManualLogin = useMemo(() => parseTwitchLoginInput(responsibleSearch), [responsibleSearch]);
 
-  const spotlightExactMatch = useMemo(
+  const responsibleExactMatch = useMemo(
     () =>
       Boolean(
-        spotlightManualLogin &&
-          spotlightResults.some((m) => m.twitchLogin.toLowerCase() === spotlightManualLogin)
+        responsibleManualLogin &&
+          responsibleResults.some((m) => m.twitchLogin.toLowerCase() === responsibleManualLogin)
       ),
-    [spotlightManualLogin, spotlightResults]
+    [responsibleManualLogin, responsibleResults]
   );
 
-  const showSpotlightManualButton =
-    form.category === "Spotlight" &&
-    !form.spotlightStreamerLogin &&
-    !spotlightLoading &&
-    spotlightManualLogin !== null &&
-    !spotlightExactMatch;
+  const responsibleSelected = useMemo(() => {
+    if (form.responsibleDisplayName.trim() || form.responsibleTwitchLogin.trim()) {
+      return {
+        displayName: form.responsibleDisplayName.trim() || form.responsibleTwitchLogin,
+        twitchLogin: form.responsibleTwitchLogin.trim() || undefined,
+        discordId: form.responsibleDiscordId.trim() || undefined,
+      };
+    }
+    if (form.category === "Spotlight" && form.spotlightStreamerLogin.trim()) {
+      return {
+        displayName: form.spotlightStreamerDisplayName.trim() || form.spotlightStreamerLogin,
+        twitchLogin: form.spotlightStreamerLogin,
+      };
+    }
+    return null;
+  }, [form]);
 
-  const showSpotlightSpellHint =
+  const showResponsibleManualButton =
     form.category === "Spotlight" &&
-    !form.spotlightStreamerLogin &&
-    !spotlightLoading &&
-    spotlightSearch.trim().length >= 2 &&
-    spotlightManualLogin === null &&
-    spotlightResults.length === 0;
+    !hasEventResponsible(form) &&
+    !responsibleLoading &&
+    responsibleManualLogin !== null &&
+    !responsibleExactMatch;
+
+  const showResponsibleSpellHint =
+    !hasEventResponsible(form) &&
+    !responsibleLoading &&
+    responsibleSearch.trim().length >= 2 &&
+    responsibleManualLogin === null &&
+    responsibleResults.length === 0;
 
   const displayedEvents = useMemo(() => {
     let list = [...events];
@@ -1012,6 +1105,11 @@ export default function CommunauteEvenementsCalendrierPage() {
                       <Clock className="h-3 w-3 shrink-0" aria-hidden />
                       {dateLabel}
                     </p>
+                    {event.category === "Formation" && event.formationCategory ? (
+                      <div className="mt-2">
+                        <FormationCategoryBadge formationCategory={event.formationCategory} />
+                      </div>
+                    ) : null}
                     {event.seriesName ? (
                       <p className="mt-2 text-xs text-violet-200/90">Série : {event.seriesName}</p>
                     ) : null}
@@ -1214,6 +1312,41 @@ export default function CommunauteEvenementsCalendrierPage() {
               </div>
             </div>
 
+            <div className="shrink-0 border-b border-white/10 px-5 py-4">
+              <EventResponsiblePicker
+                selected={responsibleSelected}
+                search={responsibleSearch}
+                onSearchChange={setResponsibleSearch}
+                results={responsibleResults}
+                loading={responsibleLoading}
+                onPick={pickResponsibleMember}
+                onClear={clearResponsibleMember}
+                manualTwitchLogin={responsibleManualLogin}
+                showManualButton={showResponsibleManualButton}
+                showSpellHint={showResponsibleSpellHint}
+                onPickManual={() => {
+                  if (!responsibleManualLogin) return;
+                  const display = responsibleSearch.trim().replace(/^@+/, "");
+                  setForm((prev) => ({
+                    ...prev,
+                    responsibleDiscordId: "",
+                    responsibleDisplayName: display,
+                    responsibleTwitchLogin: responsibleManualLogin,
+                    spotlightStreamerLogin: prev.category === "Spotlight" ? responsibleManualLogin : prev.spotlightStreamerLogin,
+                    spotlightStreamerDisplayName:
+                      prev.category === "Spotlight" ? display : prev.spotlightStreamerDisplayName,
+                  }));
+                  setResponsibleSearch("");
+                  setResponsibleResults([]);
+                }}
+                hint={
+                  form.category === "Spotlight"
+                    ? "Pour un Spotlight, le responsable est aussi le membre mis en avant sur l'agenda et les Lives."
+                    : "Pilote affiché sur le calendrier staff pour les relances et le suivi interne."
+                }
+              />
+            </div>
+
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
               {modalTab === "infos" ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1286,16 +1419,24 @@ export default function CommunauteEvenementsCalendrierPage() {
                             key={c.value}
                             type="button"
                             onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                category: c.value,
-                                spotlightStreamerLogin: c.value === "Spotlight" ? prev.spotlightStreamerLogin : "",
-                                spotlightStreamerDisplayName: c.value === "Spotlight" ? prev.spotlightStreamerDisplayName : "",
-                                seriesId:
-                                  c.value === "Formation" || c.value === "Jeux communautaire" ? prev.seriesId : "",
-                                seriesName:
-                                  c.value === "Formation" || c.value === "Jeux communautaire" ? prev.seriesName : "",
-                              }))
+                              setForm((prev) => {
+                                const next: EventForm = {
+                                  ...prev,
+                                  category: c.value,
+                                  seriesId:
+                                    c.value === "Formation" || c.value === "Jeux communautaire" ? prev.seriesId : "",
+                                  seriesName:
+                                    c.value === "Formation" || c.value === "Jeux communautaire" ? prev.seriesName : "",
+                                  formationCategory: c.value === "Formation" ? prev.formationCategory : "",
+                                  spotlightStreamerLogin: "",
+                                  spotlightStreamerDisplayName: "",
+                                };
+                                if (c.value === "Spotlight" && prev.responsibleTwitchLogin) {
+                                  next.spotlightStreamerLogin = prev.responsibleTwitchLogin;
+                                  next.spotlightStreamerDisplayName = prev.responsibleDisplayName;
+                                }
+                                return next;
+                              })
                             }
                             className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${focusRingClass} ${
                               sel
@@ -1312,107 +1453,61 @@ export default function CommunauteEvenementsCalendrierPage() {
                     </div>
                   </div>
                   {form.category === "Spotlight" ? (
-                    <div className="md:col-span-2 rounded-xl border border-indigo-300/30 bg-indigo-300/10 p-3">
-                      <label className="mb-2 block text-sm text-indigo-100">Membre mis en avant (Spotlight) *</label>
-                      {form.spotlightStreamerLogin ? (
-                        <div className="mb-2 flex items-center justify-between rounded-lg border border-indigo-200/35 bg-[#0f1424] px-3 py-2">
-                          <div>
-                            <p className="text-sm text-white">{form.spotlightStreamerDisplayName || form.spotlightStreamerLogin}</p>
-                            <p className="text-xs text-slate-400">@{form.spotlightStreamerLogin}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                spotlightStreamerLogin: "",
-                                spotlightStreamerDisplayName: "",
-                              }))
-                            }
-                            className="rounded-md border border-slate-500/40 px-2 py-1 text-xs text-slate-300 hover:text-white"
-                          >
-                            Changer
-                          </button>
-                        </div>
-                      ) : null}
-                      <input
-                        type="text"
-                        value={spotlightSearch}
-                        onChange={(e) => setSpotlightSearch(e.target.value)}
-                        className="w-full rounded-lg border border-[#353a50] bg-[#0f1424] px-3 py-2 text-sm text-white outline-none focus:border-indigo-300/45"
-                        placeholder="Rechercher un membre (pseudo Twitch)"
-                      />
-                      <p className="mt-1 text-xs text-slate-400">
-                        Cliquez une ligne dans les resultats pour valider le membre. La saisie seule ne suffit pas.
-                      </p>
-                      {spotlightLoading ? (
-                        <p className="mt-2 text-xs text-slate-300">Recherche en cours…</p>
-                      ) : null}
-                      {spotlightResults.length > 0 ? (
-                        <div className="mt-2 max-h-44 space-y-2 overflow-y-auto">
-                          {spotlightResults.map((member) => (
-                            <button
-                              key={member.twitchLogin}
-                              type="button"
-                              onClick={() =>
-                                setForm((prev) => ({
-                                  ...prev,
-                                  spotlightStreamerLogin: member.twitchLogin,
-                                  spotlightStreamerDisplayName: member.displayName,
-                                }))
-                              }
-                              className="w-full rounded-lg border border-[#353a50] bg-[#121623]/80 px-3 py-2 text-left hover:border-indigo-300/45"
-                            >
-                              <p className="text-sm text-white">{member.displayName}</p>
-                              <p className="text-xs text-slate-400">@{member.twitchLogin}</p>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                      {showSpotlightManualButton ? (
-                        <div className="mt-2 rounded-lg border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
-                          <p>
-                            {spotlightResults.length === 0
-                              ? "Aucun membre TENF ne correspond exactement à ce login."
-                              : "Ce login exact n’apparaît pas dans les résultats ci-dessus."}{" "}
-                            Pour une interview sur une chaîne invitée ou partenaire, vous pouvez l’associer manuellement.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!spotlightManualLogin) return;
-                              const display = spotlightSearch.trim().replace(/^@+/, "");
-                              setForm((prev) => ({
-                                ...prev,
-                                spotlightStreamerLogin: spotlightManualLogin,
-                                spotlightStreamerDisplayName: display,
-                              }));
-                              setSpotlightSearch("");
-                              setSpotlightResults([]);
-                            }}
-                            className="mt-2 rounded-md border border-amber-200/40 bg-amber-200/10 px-2 py-1 text-xs font-medium text-amber-50 hover:bg-amber-200/20"
-                          >
-                            Utiliser @{spotlightManualLogin} comme chaine mise en avant
-                          </button>
-                        </div>
-                      ) : null}
-                      {showSpotlightSpellHint ? (
-                        <div className="mt-2 rounded-lg border border-slate-600/40 bg-slate-800/50 px-3 py-2 text-xs text-slate-300">
-                          Aucun résultat. Vérifiez l’orthographe du login Twitch (4 à 25 caractères, minuscules, chiffres,
-                          underscore) ou ajoutez la fiche membre dans l’admin. Le nom réel de la chaîne peut différer (ex.{" "}
-                          <span className="text-slate-200">upa_events</span>).
-                        </div>
-                      ) : null}
-                      <p className="mt-2 text-xs text-indigo-100/80">
-                        Si l’événement est publié en catégorie Spotlight, la mise en avant Lives est programmée automatiquement de l’heure de début à +2 h.
-                      </p>
+                    <div className="md:col-span-2 rounded-lg border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">
+                      La mise en avant Lives est programmée automatiquement de l&apos;heure de début à +2 h lorsque l&apos;événement est publié.
                     </div>
                   ) : null}
-                  {form.category === "Formation" || form.category === "Jeux communautaire" ? (
+                  {form.category === "Formation" ? (
+                    <div className="md:col-span-2 space-y-4 rounded-xl border border-cyan-300/30 bg-cyan-300/10 p-3">
+                      <FormationCategoryField
+                        value={form.formationCategory}
+                        onChange={(formationCategory) => setForm((prev) => ({ ...prev, formationCategory }))}
+                      />
+                      <div>
+                        <label className="mb-2 block text-sm text-cyan-100">Parcours de formation *</label>
+                        <select
+                          value={form.seriesId}
+                          onChange={(e) => {
+                            const selected = categorySeriesOptions.find((item) => item.seriesId === e.target.value);
+                            setForm((prev) => ({
+                              ...prev,
+                              seriesId: e.target.value,
+                              seriesName: selected?.seriesName || prev.seriesName,
+                            }));
+                          }}
+                          className="w-full rounded-lg border border-[#353a50] bg-[#0f1424] px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/45"
+                        >
+                          <option value="">Nouvelle serie</option>
+                          {categorySeriesOptions.map((option) => (
+                            <option key={option.seriesId} value={option.seriesId}>
+                              {option.seriesName}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="mt-2">
+                          <input
+                            type="text"
+                            value={form.seriesName}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                seriesName: e.target.value,
+                                seriesId: prev.seriesId || buildSeriesId(form.category, e.target.value),
+                              }))
+                            }
+                            className="w-full rounded-lg border border-[#353a50] bg-[#0f1424] px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/45"
+                            placeholder="Nom de la formation (ex. : OBS débutant)"
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-cyan-100/85">
+                          Réutilisez une série existante pour suivre l&apos;évolution des sessions dans le temps.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                  {form.category === "Jeux communautaire" ? (
                     <div className="md:col-span-2 rounded-xl border border-cyan-300/30 bg-cyan-300/10 p-3">
-                      <label className="mb-2 block text-sm text-cyan-100">
-                        {form.category === "Formation" ? "Parcours de formation" : "Jeu suivi"} *
-                      </label>
+                      <label className="mb-2 block text-sm text-cyan-100">Jeu suivi *</label>
                       <select
                         value={form.seriesId}
                         onChange={(e) => {
@@ -1440,24 +1535,15 @@ export default function CommunauteEvenementsCalendrierPage() {
                             setForm((prev) => ({
                               ...prev,
                               seriesName: e.target.value,
-                              seriesId:
-                                prev.seriesId ||
-                                buildSeriesId(
-                                  form.category,
-                                  e.target.value
-                                ),
+                              seriesId: prev.seriesId || buildSeriesId(form.category, e.target.value),
                             }))
                           }
                           className="w-full rounded-lg border border-[#353a50] bg-[#0f1424] px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/45"
-                          placeholder={
-                            form.category === "Formation"
-                              ? "Nom de la formation (ex. : OBS débutant)"
-                              : "Nom du jeu (ex: Mario Kart 8)"
-                          }
+                          placeholder="Nom du jeu (ex: Mario Kart 8)"
                         />
                       </div>
                       <p className="mt-2 text-xs text-cyan-100/85">
-                        Réutilisez une série existante pour suivre l’évolution des sessions dans le temps (engagement, performances, tendances).
+                        Réutilisez une série existante pour suivre l&apos;évolution des sessions dans le temps.
                       </p>
                     </div>
                   ) : null}
@@ -1562,13 +1648,32 @@ export default function CommunauteEvenementsCalendrierPage() {
                       <p className="text-sm leading-relaxed text-slate-300">
                         {form.description || "Les membres verront ce paragraphe sur la fiche : ajoutez un ton clair et les infos pratiques (lien vocal, prérequis…)."}
                       </p>
-                      {form.category === "Spotlight" ? (
+                      <p className="rounded-lg border border-indigo-500/25 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-100">
+                        <span className="font-semibold text-white">Responsable :</span>{" "}
+                        {responsibleSelected?.displayName || "— sélectionnez un membre ci-dessus"}
+                      </p>
+                      {form.category === "Spotlight" && form.spotlightStreamerLogin ? (
                         <p className="rounded-lg border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">
-                          <span className="font-semibold text-white">Mis en avant :</span>{" "}
-                          {form.spotlightStreamerDisplayName || form.spotlightStreamerLogin || "— sélectionnez un membre dans l’onglet Contenu"}
+                          <span className="font-semibold text-white">Spotlight Lives :</span> @
+                          {form.spotlightStreamerLogin}
                         </p>
                       ) : null}
-                      {(form.category === "Formation" || form.category === "Jeux communautaire") ? (
+                      {form.category === "Formation" ? (
+                        <div className="space-y-2">
+                          {form.formationCategory ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs text-cyan-200/90">Catégorie :</span>
+                              <FormationCategoryBadge formationCategory={form.formationCategory} />
+                            </div>
+                          ) : (
+                            <p className="text-xs text-amber-200/90">Catégorie de formation — à choisir</p>
+                          )}
+                          <p className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
+                            <span className="font-semibold text-white">Parcours :</span> {form.seriesName || "— à renseigner"}
+                          </p>
+                        </div>
+                      ) : null}
+                      {form.category === "Jeux communautaire" ? (
                         <p className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
                           <span className="font-semibold text-white">Série suivie :</span> {form.seriesName || "— à renseigner"}
                         </p>
@@ -1582,7 +1687,7 @@ export default function CommunauteEvenementsCalendrierPage() {
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-black/20 px-5 py-4">
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span className={`inline-flex h-2 w-2 rounded-full ${isFormValid(form) ? "bg-emerald-400" : "bg-amber-400"}`} aria-hidden />
-                {isFormValid(form) ? "Formulaire prêt à être enregistré" : "Complétez les champs obligatoires (titre, date, règles selon le type)"}
+                {isFormValid(form) ? "Formulaire prêt à être enregistré" : "Complétez titre, date, responsable et champs selon le type"}
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
