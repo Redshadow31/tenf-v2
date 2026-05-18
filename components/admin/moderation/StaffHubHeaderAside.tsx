@@ -49,21 +49,15 @@ export default function StaffHubHeaderAside({
       {canPilot && viewToggle ? <ViewToggleBar {...viewToggle} /> : null}
 
       {view === "staff" ? (
-        <div className={`${MUI.card} overflow-hidden`}>
-          <div
-            className="border-b border-[var(--color-border)] px-3.5 py-2.5"
-            style={{
-              background:
-                "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-card)) 0%, color-mix(in srgb, #10b981 6%, var(--color-card)) 100%)",
-            }}
-          >
+        <div className={`${MUI.glassPanel} overflow-hidden`}>
+          <div className={`border-b px-3.5 py-3 ${MUI.panelHeader} ${MUI.glassHeader}`}>
             <p className={MUI.sectionLabel}>Ton espace staff</p>
-            <p className={`mt-0.5 text-sm font-semibold ${MUI.text}`}>
+            <p className={`mt-1 text-sm font-medium ${MUI.text}`}>
               État en un coup d&apos;œil
             </p>
           </div>
 
-          <ul className="space-y-3 p-3.5" role="list">
+          <ul className="space-y-2.5 p-3.5" role="list">
             <li>
               <StatusTile
                 icon={charterSigned ? CheckCircle2 : ShieldAlert}
@@ -72,8 +66,8 @@ export default function StaffHubHeaderAside({
                 value={charterSigned ? "Signée" : "À signer"}
                 valueClass={
                   charterSigned
-                    ? "text-emerald-700 dark:text-emerald-300"
-                    : "text-rose-700 dark:text-rose-300"
+                    ? "text-emerald-700/95 dark:text-emerald-300/90"
+                    : "text-rose-700/95 dark:text-rose-300/90"
                 }
                 href={
                   charterSigned
@@ -85,14 +79,14 @@ export default function StaffHubHeaderAside({
             <li>
               <Link
                 href="/admin/moderation/staff/questionnaire"
-                className="group block rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-text)_3%,var(--color-card))] p-3 motion-safe:transition-[border-color,box-shadow,transform] motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-violet-400/35 motion-safe:hover:shadow-[0_6px_24px_color-mix(in_srgb,var(--color-primary)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/60"
+                className={`group block p-3 ${MUI.glassInset} ${MUI.todoCardMotion} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/50`}
               >
                 <div className="flex items-start gap-2.5">
                   <span className={MUI.iconEmerald} aria-hidden>
                     <ClipboardList className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className={`text-xs font-semibold ${MUI.text}`}>
+                    <p className={`text-xs font-medium ${MUI.text}`}>
                       Questionnaire posture
                     </p>
                     {loading ? (
@@ -102,20 +96,26 @@ export default function StaffHubHeaderAside({
                       </div>
                     ) : (
                       <>
-                        <p className={`mt-0.5 text-sm font-medium tabular-nums ${MUI.textSecondary}`}>
+                        <p className={`mt-1 text-sm font-normal tabular-nums ${MUI.textSecondary}`}>
                           {progress
                             ? `${progress.completed} / ${progress.total} questions`
                             : "À remplir · 85 questions"}
                         </p>
                         {progress ? (
-                          <div className={`mt-2 ${MUI.progressTrack}`} role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
+                          <div
+                            className={`mt-2.5 ${MUI.progressTrack}`}
+                            role="progressbar"
+                            aria-valuenow={progressPercent}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                          >
                             <div
                               className={MUI.progressFill}
                               style={{ width: `${progressPercent}%` }}
                             />
                           </div>
                         ) : null}
-                        <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 dark:text-violet-300 motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5">
+                        <p className="mt-2.5 inline-flex items-center gap-1 text-xs font-medium text-violet-600/90 dark:text-violet-300/85 motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5">
                           {moderatorView ? questionnaireCtaLabel(moderatorView) : "Commencer"}
                           <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                         </p>
@@ -153,8 +153,8 @@ function StatusTile({
         <Icon className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className={`text-xs ${MUI.textMuted}`}>{label}</p>
-        <p className={`text-sm font-bold ${valueClass}`}>{value}</p>
+        <p className={`text-xs font-normal ${MUI.textMuted}`}>{label}</p>
+        <p className={`text-sm font-semibold ${valueClass}`}>{value}</p>
       </div>
     </>
   );
@@ -163,7 +163,7 @@ function StatusTile({
     return (
       <Link
         href={href}
-        className="flex items-center gap-2.5 rounded-xl border border-rose-400/30 bg-[color-mix(in_srgb,#f43f5e_6%,var(--color-card))] p-3 transition hover:border-rose-400/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400/60"
+        className={`flex items-center gap-2.5 p-3 ${MUI.glassInset} border-rose-400/20 bg-rose-500/[0.05] ${MUI.todoCardMotion} hover:border-rose-400/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400/50`}
       >
         {inner}
       </Link>
@@ -171,7 +171,7 @@ function StatusTile({
   }
 
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-text)_3%,var(--color-card))] p-3">
+    <div className={`flex items-center gap-2.5 p-3 ${MUI.glassInset}`}>
       {inner}
     </div>
   );
@@ -194,7 +194,7 @@ function ViewToggleBar({ current, onChange }: ViewToggleProps) {
             aria-selected={isActive}
             onClick={() => onChange(v)}
             className={
-              "inline-flex min-h-[2.35rem] flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 sm:flex-none sm:px-3.5 " +
+              "inline-flex min-h-[2.35rem] flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/50 sm:flex-none sm:px-3.5 " +
               (isActive ? MUI.toggleActive : MUI.toggleIdle)
             }
           >
@@ -210,4 +210,3 @@ function ViewToggleBar({ current, onChange }: ViewToggleProps) {
     </div>
   );
 }
-

@@ -19,7 +19,7 @@ import {
   Target,
   UserCog,
 } from "lucide-react";
-import { MUI, muiCardStyle } from "@/components/admin/moderation/moderation-ui";
+import { MUI } from "@/components/admin/moderation/moderation-ui";
 import ModerationPageShell from "@/components/admin/moderation/ModerationPageShell";
 import ModerationGroupCard from "@/components/admin/moderation/ModerationGroupCard";
 import QuestionnaireHubCard from "@/components/admin/moderation/questionnaire/QuestionnaireHubCard";
@@ -69,7 +69,15 @@ export default function ModerationHub({
     view === "staff" ? STAFF_ATTENUATE_MODULE_SLUGS : [];
 
   const hubContent = (
-    <div className={MUI.hubSectionGap}>
+    <div className="relative isolate">
+      {view === "staff" ? (
+        <div className={MUI.hubAmbient} aria-hidden>
+          <div className="absolute -left-24 top-8 h-72 w-72 rounded-full bg-violet-500/[0.12] blur-3xl" />
+          <div className="absolute -right-16 top-1/2 h-56 w-56 rounded-full bg-emerald-500/[0.08] blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-48 w-48 rounded-full bg-indigo-500/[0.06] blur-3xl" />
+        </div>
+      ) : null}
+      <div className={`relative ${MUI.hubSectionGap}`}>
         <TodoNowBlock
           view={view}
           charterSigned={charterSigned}
@@ -84,14 +92,14 @@ export default function ModerationHub({
 
         <section
           aria-labelledby="moderation-hub-groups"
-          className="space-y-[clamp(0.55rem,0.75vw,0.85rem)]"
+          className={`${MUI.glassPanel} space-y-[clamp(0.65rem,0.85vw,1rem)] p-[clamp(0.75rem,1vw,1.15rem)]`}
         >
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
               <p className={MUI.sectionLabel}>Sections</p>
               <h2
                 id="moderation-hub-groups"
-                className={`text-pretty font-bold tracking-tight ${MUI.text}`}
+                className={`text-pretty font-semibold tracking-tight ${MUI.text}`}
                 style={{ fontSize: "clamp(0.95rem,1.1vw,1.15rem)" }}
               >
                 {view === "admin"
@@ -132,6 +140,7 @@ export default function ModerationHub({
             {view === "admin" ? <QuestionnaireHubCard view="admin" variant="card" /> : null}
           </div>
         </section>
+      </div>
     </div>
   );
 
@@ -180,11 +189,10 @@ function TodoNowBlock({
   return (
     <section
       aria-label="À faire maintenant"
-      className={`rounded-[clamp(0.85rem,1.2vw,1.2rem)] border ${MUI.hubPanelGlow}`}
-      style={muiCardStyle}
+      className={`${MUI.glassPanel} ${MUI.hubPanelGlow}`}
     >
       <header
-        className={`${MUI.panelHeader} bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-primary)_8%,var(--color-card)),color-mix(in_srgb,#f59e0b_4%,var(--color-card)))]`}
+        className={`${MUI.panelHeader} ${MUI.glassHeader}`}
         style={{
           paddingInline: "clamp(0.85rem, 0.7rem + 0.85vw, 1.25rem)",
           paddingBlock: "clamp(0.65rem, 0.55rem + 0.6vw, 0.95rem)",
@@ -200,7 +208,7 @@ function TodoNowBlock({
                 {view === "staff" ? `Bonjour ${username}` : `Pilotage ${username}`}
               </p>
               <h2
-                className={`text-pretty font-bold tracking-tight ${MUI.text}`}
+                className={`text-pretty font-semibold tracking-tight ${MUI.text}`}
                 style={{ fontSize: "clamp(1rem,1.15vw,1.2rem)", lineHeight: 1.15 }}
               >
                 À faire maintenant
@@ -285,15 +293,15 @@ function TodoLink({
           className={
             `flex shrink-0 items-center justify-center border ${iconBox} ` +
             (item.urgent
-              ? "border-rose-400/40 bg-[color-mix(in_srgb,#f43f5e_14%,var(--color-card))] text-rose-700 dark:text-rose-200"
-              : "border-violet-400/30 bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))] text-violet-700 dark:text-violet-200")
+              ? "border-rose-400/25 bg-rose-500/[0.1] text-rose-700 dark:text-rose-200/95"
+              : "border-violet-400/20 bg-violet-500/[0.08] text-violet-700 dark:text-violet-200/95")
           }
         >
           <item.icon className={size === "large" ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
           <p
-            className={`line-clamp-2 text-pretty font-bold ${MUI.text}`}
+            className={`line-clamp-2 text-pretty font-semibold ${MUI.text}`}
             style={{
               fontSize:
                 size === "large" ? "clamp(0.9rem,1vw,1rem)" : "clamp(0.8rem,0.9vw,0.9rem)",

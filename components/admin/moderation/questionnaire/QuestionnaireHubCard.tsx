@@ -85,7 +85,7 @@ function HubCardShell({
   if (featured) {
     return (
       <article
-        className={`${MUI.featuredRing} group/banner w-full motion-safe:transition-shadow motion-safe:duration-300 motion-safe:hover:shadow-[0_12px_48px_color-mix(in_srgb,var(--color-primary)_18%,transparent)]`}
+        className={`${MUI.featuredRing} group/banner w-full motion-safe:transition-[box-shadow,transform] motion-safe:duration-500 motion-safe:ease-out motion-safe:hover:shadow-[0_20px_56px_color-mix(in_srgb,var(--color-primary)_16%,transparent)]`}
         aria-labelledby="q-hub-banner-title"
       >
         <div
@@ -93,11 +93,16 @@ function HubCardShell({
           style={{ padding: pad }}
         >
           <div
-            className="pointer-events-none absolute inset-y-0 left-0 w-1 rounded-l-[inherit] bg-gradient-to-b from-emerald-400 via-violet-500 to-violet-700"
+            className="pointer-events-none absolute inset-y-0 left-0 w-[3px] rounded-l-[inherit] bg-gradient-to-b from-emerald-400/70 via-violet-400/60 to-violet-600/50"
             aria-hidden
           />
-          <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] blur-2xl" aria-hidden />
-          <div className="relative">{children}</div>
+          <motion.div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_85%_0%,color-mix(in_srgb,var(--color-primary)_14%,transparent),transparent_55%)]"
+            aria-hidden
+          />
+          <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/[0.08] blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute -bottom-8 left-1/4 h-28 w-28 rounded-full bg-emerald-500/[0.06] blur-3xl" aria-hidden />
+          <div className="relative">{children}</motion.div>
         </div>
       </article>
     );
@@ -149,14 +154,12 @@ function CardBody({
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-violet-500 dark:text-violet-300" aria-hidden />
-              <span className={`text-[10px] font-bold uppercase tracking-[0.16em] ${MUI.sectionLabel}`}>
-                Priorité formation
-              </span>
+              <span className={MUI.sectionLabel}>Priorité formation</span>
             </div>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <h3
                 id={titleId}
-                className={`text-pretty font-bold ${MUI.text}`}
+                className={`text-pretty font-semibold ${MUI.text}`}
                 style={{ fontSize: "clamp(1rem,1.15vw,1.2rem)" }}
               >
                 {title}
@@ -170,7 +173,7 @@ function CardBody({
               {description}
             </p>
             {sub ? (
-              <p className={`mt-2 text-sm font-semibold tabular-nums ${MUI.text}`}>{sub}</p>
+              <p className={`mt-2 text-sm font-medium tabular-nums ${MUI.text}`}>{sub}</p>
             ) : null}
             {typeof progressPercent === "number" ? (
               <div className="mt-3 max-w-md space-y-1.5">
@@ -193,7 +196,7 @@ function CardBody({
         </div>
         <Link
           href={href}
-          className={`${MUI.btnPrimary} w-full shrink-0 motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.99] lg:w-auto ${loading ? "pointer-events-none opacity-70" : ""} ${progressPercent === 0 ? "ring-2 ring-violet-400/40 ring-offset-2 ring-offset-[var(--color-card)]" : ""}`}
+          className={`${MUI.btnPrimary} w-full shrink-0 motion-safe:transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.99] lg:w-auto ${loading ? "pointer-events-none opacity-70" : ""} ${progressPercent === 0 ? "ring-1 ring-violet-400/35 ring-offset-2 ring-offset-transparent" : ""}`}
           aria-busy={loading || undefined}
         >
           {cta}

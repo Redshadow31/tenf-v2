@@ -34,15 +34,11 @@ export default function ModerationGroupCard({
   return (
     <article
       className={
-        "group/card relative flex h-full flex-col overflow-hidden rounded-[clamp(0.85rem,1.2vw,1.25rem)] border transition-shadow " +
-        (allInactive ? "opacity-[0.9]" : "hover:shadow-[0_8px_28px_color-mix(in_srgb,var(--color-primary)_8%,transparent)]")
+        `group/card relative flex h-full flex-col overflow-hidden ${MUI.card} motion-safe:transition-shadow motion-safe:duration-300 ` +
+        (allInactive ? "opacity-[0.88]" : "motion-safe:hover:shadow-[0_12px_40px_color-mix(in_srgb,var(--color-primary)_10%,transparent)]")
       }
-      style={{
-        borderColor: "var(--color-border)",
-        backgroundColor: "var(--color-card)",
-      }}
     >
-      <div className={`h-1 w-full ${accentBar} opacity-80`} aria-hidden />
+      <div className={`h-0.5 w-full ${accentBar} opacity-70`} aria-hidden />
 
       <header
         className={MUI.panelHeader}
@@ -59,7 +55,7 @@ export default function ModerationGroupCard({
             />
             <div className="min-w-0">
               <h2
-                className={`line-clamp-2 text-pretty font-bold tracking-tight ${MUI.text}`}
+                className={`line-clamp-2 text-pretty font-semibold tracking-tight ${MUI.text}`}
                 style={{ fontSize: "clamp(0.95rem,1.05vw,1.12rem)", lineHeight: 1.25 }}
               >
                 {group.label}
