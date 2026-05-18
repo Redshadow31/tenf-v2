@@ -14,7 +14,15 @@ export const Q_LAYOUT = {
   container:
     "mx-auto w-full max-w-[min(1720px,calc(100vw-2*clamp(0.6rem,1.75vw,1.75rem)))] px-[clamp(0.75rem,2vw,2.35rem)] pb-12 pt-2 sm:pt-3",
   mainGrid:
-    "grid min-w-0 grid-cols-1 gap-6 [--q-sidebar:min(100%,clamp(17rem,24vw,25rem))] xl:grid-cols-[minmax(0,1fr)_var(--q-sidebar)] xl:items-start xl:gap-[clamp(1.35rem,2.6vw,2.85rem)]",
+    "grid min-w-0 grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_min(18rem,22vw)] 2xl:items-start 2xl:gap-[clamp(1rem,2vw,1.75rem)]",
+  tableScroll:
+    "w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]",
+  tableBase:
+    "w-full table-fixed border-collapse text-[length:clamp(0.625rem,0.65rem+0.2vw,0.8125rem)] leading-snug",
+  tableCell:
+    "px-[clamp(0.3rem,0.45vw,0.6rem)] py-[clamp(0.35rem,0.5vw,0.55rem)] align-top",
+  tableHead:
+    "px-[clamp(0.3rem,0.45vw,0.6rem)] py-[clamp(0.4rem,0.55vw,0.65rem)] text-left text-[length:clamp(0.5625rem,0.6rem+0.15vw,0.6875rem)] font-semibold uppercase tracking-[0.06em] text-zinc-500",
   panel:
     "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]",
   glassSection:

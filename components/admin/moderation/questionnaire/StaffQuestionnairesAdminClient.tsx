@@ -429,23 +429,59 @@ export default function StaffQuestionnairesAdminClient() {
                     ) : null}
                   </section>
                 ) : (
-                  <section className={`${Q_LAYOUT.glassSection} overflow-hidden`}>
+                  <section className={`${Q_LAYOUT.glassSection} min-w-0`}>
                     <div className={QUI.wizardAccentBar} aria-hidden />
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[52rem] text-left text-sm">
+                    <p className="sr-only">
+                      Tableau responsive : faites défiler horizontalement si toutes les colonnes ne sont pas visibles.
+                    </p>
+                    <div className={Q_LAYOUT.tableScroll}>
+                      <table className={Q_LAYOUT.tableBase}>
+                        <colgroup>
+                          <col className="w-8" />
+                          <col style={{ width: "11%" }} />
+                          <col style={{ width: "11%" }} />
+                          <col style={{ width: "14%" }} />
+                          <col style={{ width: "9%" }} />
+                          <col style={{ width: "13%" }} />
+                          <col style={{ width: "7%" }} />
+                          <col style={{ width: "7%" }} />
+                          <col style={{ width: "6%" }} />
+                          <col style={{ width: "6%" }} />
+                          <col style={{ width: "8%" }} />
+                        </colgroup>
                         <thead>
-                          <tr className="border-b border-white/10 bg-zinc-950/50 text-xs uppercase tracking-[0.08em] text-zinc-500">
-                            <th className="px-4 py-3 font-semibold w-8" />
-                            <th className="px-4 py-3 font-semibold">Pseudo</th>
-                            <th className="px-4 py-3 font-semibold">Rôle</th>
-                            <th className="px-4 py-3 font-semibold">Parcours staff</th>
-                            <th className="px-4 py-3 font-semibold">Statut</th>
-                            <th className="px-4 py-3 font-semibold">Progression</th>
-                            <th className="px-4 py-3 font-semibold">Début</th>
-                            <th className="px-4 py-3 font-semibold">Soumission</th>
-                            <th className="px-4 py-3 font-semibold">Synthèse</th>
-                            <th className="px-4 py-3 font-semibold">Objectifs</th>
-                            <th className="px-4 py-3 font-semibold">Actions</th>
+                          <tr className="border-b border-white/10 bg-zinc-950/50">
+                            <th className={Q_LAYOUT.tableHead} scope="col" />
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Pseudo
+                            </th>
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Rôle
+                            </th>
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Parcours
+                            </th>
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Statut
+                            </th>
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Prog.
+                            </th>
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Début
+                            </th>
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Soum.
+                            </th>
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Synth.
+                            </th>
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Obj.
+                            </th>
+                            <th className={Q_LAYOUT.tableHead} scope="col">
+                              Action
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -454,7 +490,7 @@ export default function StaffQuestionnairesAdminClient() {
                             <tr
                               className="border-b border-white/[0.04] transition hover:bg-violet-500/[0.04]"
                             >
-                              <td className="px-2 py-3">
+                              <td className={Q_LAYOUT.tableCell}>
                                 <button
                                   type="button"
                                   onClick={() => void toggleExpanded(r.memberId)}
@@ -467,11 +503,21 @@ export default function StaffQuestionnairesAdminClient() {
                                   />
                                 </button>
                               </td>
-                              <td className="px-4 py-3 font-medium text-zinc-100">{r.pseudo}</td>
-                              <td className="px-4 py-3 text-zinc-400">{r.roleStaff}</td>
-                              <td className="px-4 py-3 text-xs text-zinc-400">
+                              <td
+                                className={`${Q_LAYOUT.tableCell} max-w-0 truncate font-medium text-zinc-100`}
+                                title={r.pseudo}
+                              >
+                                {r.pseudo}
+                              </td>
+                              <td
+                                className={`${Q_LAYOUT.tableCell} max-w-0 truncate text-zinc-400`}
+                                title={r.roleStaff}
+                              >
+                                {r.roleStaff}
+                              </td>
+                              <td className={`${Q_LAYOUT.tableCell} text-xs text-zinc-400`}>
                                 {r.staffPilot ? (
-                                  <div className="space-y-0.5">
+                                  <div className="line-clamp-3 space-y-0.5 break-words">
                                     <p className="font-medium text-violet-200/90">
                                       {r.staffPilot.alumniStatusLabel}
                                     </p>
@@ -490,7 +536,7 @@ export default function StaffQuestionnairesAdminClient() {
                                   "—"
                                 )}
                               </td>
-                              <td className="px-4 py-3">
+                              <td className={Q_LAYOUT.tableCell}>
                                 <QuestionnaireStatusBadge
                                   label={
                                     ADMIN_STATUS_LABELS[
@@ -500,7 +546,7 @@ export default function StaffQuestionnairesAdminClient() {
                                   tone="violet"
                                 />
                               </td>
-                              <td className="min-w-[10rem] px-4 py-3">
+                              <td className={Q_LAYOUT.tableCell}>
                                 {r.submissionId ? (
                                   <div className="space-y-1.5">
                                     <div className="flex justify-between text-xs text-zinc-500">
@@ -520,7 +566,7 @@ export default function StaffQuestionnairesAdminClient() {
                                       />
                                     </div>
                                     {r.inProgress && r.updatedAt ? (
-                                      <p className="text-[10px] text-zinc-600">
+                                      <p className="hidden text-[10px] text-zinc-600 2xl:block">
                                         MAJ {new Date(r.updatedAt).toLocaleDateString("fr-FR")}
                                       </p>
                                     ) : null}
@@ -529,30 +575,30 @@ export default function StaffQuestionnairesAdminClient() {
                                   <span className={QUI.textMuted}>—</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-zinc-500">
+                              <td className={`${Q_LAYOUT.tableCell} whitespace-nowrap text-zinc-500`}>
                                 {r.startedAt
                                   ? new Date(r.startedAt).toLocaleDateString("fr-FR")
                                   : "—"}
                               </td>
-                              <td className="px-4 py-3 text-zinc-500">
+                              <td className={`${Q_LAYOUT.tableCell} whitespace-nowrap text-zinc-500`}>
                                 {r.submittedAt
                                   ? new Date(r.submittedAt).toLocaleDateString("fr-FR")
                                   : "—"}
                               </td>
-                              <td className="px-4 py-3">
+                              <td className={Q_LAYOUT.tableCell}>
                                 <YesNoPill value={r.summaryPublished} />
                               </td>
-                              <td className="px-4 py-3">
+                              <td className={Q_LAYOUT.tableCell}>
                                 <YesNoPill value={r.objectivesDefined} />
                               </td>
-                              <td className="px-4 py-3">
+                              <td className={Q_LAYOUT.tableCell}>
                                 {r.submissionId ? (
                                   <Link
                                     href={`/admin/moderation/staff/questionnaires/${r.submissionId}`}
-                                    className={`inline-flex items-center gap-1 text-sm font-medium text-violet-300 hover:text-violet-200 ${Q_LAYOUT.focusRing} rounded`}
+                                    className={`inline-flex items-center gap-0.5 text-[length:inherit] font-medium text-violet-300 hover:text-violet-200 ${Q_LAYOUT.focusRing} rounded`}
                                   >
                                     Ouvrir
-                                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                                    <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
                                   </Link>
                                 ) : (
                                   <span className={QUI.textMuted}>—</span>
@@ -561,7 +607,7 @@ export default function StaffQuestionnairesAdminClient() {
                             </tr>
                             {expandedMemberId === r.memberId ? (
                               <tr className="border-b border-white/[0.04] bg-violet-500/[0.03]">
-                                <td colSpan={10} className="px-4 py-4">
+                                <td colSpan={11} className="px-4 py-4">
                                   {profileLoading ? (
                                     <div className="flex items-center gap-2 text-sm text-zinc-500">
                                       <Loader2 className="h-4 w-4 animate-spin" />
