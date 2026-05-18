@@ -44,7 +44,7 @@ const NAV: Array<{ id: StaffPageNavId; label: string }> = [
   { id: "staff-faq", label: "FAQ" },
 ];
 
-const familyToSection: Record<StaffRoleFamily, string> = {
+const familyToSection: Record<StaffRoleFamily, StaffPageNavId> = {
   direction: "staff-roles",
   coordination: "staff-roles",
   moderation: "staff-roles",
