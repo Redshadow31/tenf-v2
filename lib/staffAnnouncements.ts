@@ -5,6 +5,7 @@ import {
   AUDIENCE_ADMIN_ACCESS,
   AUDIENCE_COMMUNITY_BROADCAST,
 } from "@/lib/memberNotifications";
+import { normalizeMemberNotificationLink } from "@/lib/notifications/format";
 import { absoluteSiteUrl } from "@/lib/siteBaseUrl";
 import { listDashboardStaffDiscordIds } from "@/lib/staffDashboardDiscordRecipients";
 
@@ -58,6 +59,10 @@ function defaultNotificationLink(audience: DbAnnouncementAudience): string {
   return audience === "staff" ? "/admin/mon-compte" : "/member/notifications";
 }
 
+function sanitizeAnnouncementLink(link: string | null | undefined): string | null {
+  return normalizeMemberNotificationLink(link);
+}
+
 function notificationAudienceForDb(audience: DbAnnouncementAudience): string {
   return audience === "staff" ? AUDIENCE_ADMIN_ACCESS : AUDIENCE_COMMUNITY_BROADCAST;
 }
@@ -98,7 +103,7 @@ async function insertMemberNotificationForAnnouncement(
 ): Promise<string> {
   const dedupeKey = `staff.announcement.${announcementId}`;
   const audience = notificationAudienceForDb(params.audience);
-  const link = params.link?.trim() || defaultNotificationLink(params.audience);
+  const link = sanitizeAnnouncementLink(params.link) || defaultNotificationLink(params.audience);
   const now = new Date().toISOString();
   const { data, error } = await supabaseAdmin
     .from("member_notifications")
@@ -138,7 +143,7 @@ async function syncNotificationRow(
   },
 ): Promise<void> {
   const now = new Date().toISOString();
-  const link = params.link?.trim() || defaultNotificationLink(params.audience);
+  const link = sanitizeAnnouncementLink(params.link) || defaultNotificationLink(params.audience);
 
   const { data: prev, error: fetchMetaErr } = await supabaseAdmin
     .from("member_notifications")
@@ -244,7 +249,7 @@ export async function createStaffAnnouncement(params: {
     .insert({
       title,
       body,
-      link: params.link?.trim() || null,
+      link: sanitizeAnnouncementLink(params.link),
       image_url: imageUrl,
       audience,
       author_discord_id: params.authorDiscordId,
@@ -333,7 +338,8 @@ export async function updateStaffAnnouncement(
   const audience: DbAnnouncementAudience = row.audience === "community" ? "community" : "staff";
   const title = params.title !== undefined ? params.title.trim() : row.title;
   const body = params.body !== undefined ? params.body.trim() : row.body;
-  const link = params.link !== undefined ? params.link?.trim() || null : row.link;
+  const link =
+    params.link !== undefined ? sanitizeAnnouncementLink(params.link) : sanitizeAnnouncementLink(row.link);
   const imageUrl =
     params.imageUrl !== undefined ? params.imageUrl?.trim() || null : row.image_url;
   const isActive = params.isActive !== undefined ? params.isActive : row.is_active;

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/db/supabase";
+import { normalizeMemberNotificationLink } from "@/lib/notifications/format";
 
 const PROFILE_VALIDATION_DEDUPE_KEY = "admin.profile-validation.pending";
 
@@ -211,7 +212,7 @@ export async function listMemberNotifications(
       type: notification.type,
       title: notification.title,
       message: notification.message,
-      link: notification.link,
+      link: normalizeMemberNotificationLink(notification.link),
       createdAt: notification.created_at,
       updatedAt: notification.updated_at,
       isRead,

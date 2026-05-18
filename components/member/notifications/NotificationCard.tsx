@@ -4,7 +4,12 @@ import Link from "next/link";
 import { ArrowRight, Check, CheckCheck, ExternalLink, Loader2, Maximize2 } from "lucide-react";
 import AnnouncementMarkdown from "@/components/ui/AnnouncementMarkdown";
 import { classifyNotification } from "@/lib/notifications/classification";
-import { formatAbsoluteFr, formatRelativeFr, isInternalLink } from "@/lib/notifications/format";
+import {
+  formatAbsoluteFr,
+  formatRelativeFr,
+  isInternalLink,
+  normalizeMemberNotificationLink,
+} from "@/lib/notifications/format";
 import type { NotificationItem } from "@/components/member/notifications/types";
 
 type NotificationCardProps = {
@@ -27,7 +32,8 @@ export default function NotificationCard({
   const Icon = descriptor.icon;
   const rel = formatRelativeFr(notification.updatedAt);
   const abs = formatAbsoluteFr(notification.updatedAt);
-  const isInternal = isInternalLink(notification.link);
+  const actionHref = normalizeMemberNotificationLink(notification.link);
+  const isInternal = isInternalLink(actionHref);
 
   const actionLabel = (() => {
     if (descriptor.category === "agenda") return "Voir l’événement";
@@ -231,10 +237,10 @@ export default function NotificationCard({
               (isAnnouncement ? "border-amber-500/15" : "border-white/[0.06]")
             }
           >
-            {notification.link ? (
+            {actionHref ? (
               isInternal ? (
                 <Link
-                  href={notification.link}
+                  href={actionHref}
                   onClick={handleLinkClick}
                   className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl px-3 py-1.5 text-[clamp(0.8rem,0.9vw,0.875rem)] font-bold text-white shadow-md transition hover:brightness-110"
                   style={{ backgroundColor: "var(--color-primary)" }}
@@ -244,7 +250,7 @@ export default function NotificationCard({
                 </Link>
               ) : (
                 <a
-                  href={notification.link}
+                  href={actionHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={handleLinkClick}

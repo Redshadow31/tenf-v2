@@ -69,6 +69,7 @@ const PERSONAL_AUDIENCES = new Set(["member_direct"]);
 const TYPE_MAP: Record<string, { category: NotificationCategoryUI; label: string; actionable: boolean }> = {
   server_announcement: { category: "annonce", label: "Annonce", actionable: false },
   profile_validation_pending: { category: "staff", label: "Profils à valider", actionable: true },
+  staff_questionnaire_submitted: { category: "staff", label: "Questionnaire staff", actionable: true },
   registration_reminder_eve: { category: "agenda", label: "Rappel agenda", actionable: true },
   registration_reminder_day: { category: "agenda", label: "Rappel agenda", actionable: true },
 };

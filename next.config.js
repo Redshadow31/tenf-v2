@@ -11,6 +11,16 @@ const nextConfig = {
         permanent: false,
       },
       {
+        source: '/admin/moderation/staff/petits-travaux/questionnaires-posture/:submissionId',
+        destination: '/admin/moderation/staff/questionnaires/:submissionId',
+        permanent: false,
+      },
+      {
+        source: '/admin/members/gestion',
+        destination: '/admin/membres/gestion',
+        permanent: true,
+      },
+      {
         source: '/communaute/partenaires',
         destination: '/partenaire-tenf',
         permanent: true,
