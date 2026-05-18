@@ -29,6 +29,11 @@ export function canEditQuestionnaireAnalysis(admin: AuthenticatedAdmin): boolean
   return ANALYSIS_EDIT_ROLES.has(admin.role);
 }
 
+/** Consultation en mode présentation des analyses enregistrées (fiche admin). */
+export function canViewQuestionnairePresentation(admin: AuthenticatedAdmin): boolean {
+  return ANALYSIS_EDIT_ROLES.has(admin.role);
+}
+
 export function canExportStaffQuestionnaire(admin: AuthenticatedAdmin): boolean {
   return canManageStaffQuestionnaireAdmin(admin);
 }

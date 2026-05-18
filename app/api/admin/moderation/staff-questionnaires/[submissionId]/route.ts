@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isNextResponse, requireQuestionnaireAdminAuth } from "@/lib/staff-questionnaire/api-auth";
+import { canViewQuestionnairePresentation } from "@/lib/staff-questionnaire/permissions";
 import { generateInternalAnalysisDraft } from "@/lib/staff-questionnaire/analysis-generator";
 import { computeQuestionnaireProgress } from "@/lib/staff-questionnaire/question-utils";
 import {
@@ -82,6 +83,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       review,
       objectives,
       finalReview,
+      permissions: {
+        canViewPresentation: canViewQuestionnairePresentation(auth),
+      },
     });
   } catch (error) {
     console.error("[staff-questionnaires detail GET]", error);

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Download, Loader2, Sparkles } from "lucide-react";
+import { Download, Loader2, MonitorPlay, Sparkles } from "lucide-react";
+import StaffQuestionnairePresentationModal from "@/components/admin/moderation/questionnaire/StaffQuestionnairePresentationModal";
 import ModerationPageShell from "@/components/admin/moderation/ModerationPageShell";
 import { StaffMemberPilotCard } from "@/components/admin/moderation/questionnaire/StaffMemberPilotCard";
 import { Q_LAYOUT, QUI } from "@/components/admin/moderation/questionnaire/questionnaire-ui";
@@ -55,6 +56,8 @@ export default function StaffQuestionnaireAdminDetailClient({
     finalReviewText: "",
     decision: "OBSERVATION",
   });
+  const [presentationOpen, setPresentationOpen] = useState(false);
+  const [canViewPresentation, setCanViewPresentation] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,6 +102,7 @@ export default function StaffQuestionnaireAdminDetailClient({
           decision: json.finalReview.decision as StaffQuestionnaireFinalDecision,
         });
       }
+      setCanViewPresentation(Boolean(json.permissions?.canViewPresentation));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
@@ -286,6 +290,16 @@ export default function StaffQuestionnaireAdminDetailClient({
           ) : null}
 
           <div className="flex flex-wrap gap-2">
+            {canViewPresentation ? (
+              <button
+                type="button"
+                onClick={() => setPresentationOpen(true)}
+                className={`${QUI.btnPrimary} inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold`}
+              >
+                <MonitorPlay className="h-4 w-4 shrink-0" aria-hidden />
+                Mode présentation
+              </button>
+            ) : null}
             <a
               href={`/api/admin/moderation/staff-questionnaires/${submissionId}/export`}
               className={`${QUI.btnSave} inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold`}
@@ -604,6 +618,18 @@ export default function StaffQuestionnaireAdminDetailClient({
           )}
         </div>
       )}
+
+      {canViewPresentation ? (
+        <StaffQuestionnairePresentationModal
+          open={presentationOpen}
+          onClose={() => setPresentationOpen(false)}
+          memberName={String(member?.discord_username ?? member?.display_name ?? "")}
+          roleStaff={member?.role ? String(member.role) : undefined}
+          review={review}
+          objectives={objectives}
+          finalReview={finalReview}
+        />
+      ) : null}
     </ModerationPageShell>
   );
 }
