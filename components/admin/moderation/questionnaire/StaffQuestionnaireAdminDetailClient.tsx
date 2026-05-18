@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Sparkles } from "lucide-react";
+import { Download, Loader2, Sparkles } from "lucide-react";
 import ModerationPageShell from "@/components/admin/moderation/ModerationPageShell";
 import { StaffMemberPilotCard } from "@/components/admin/moderation/questionnaire/StaffMemberPilotCard";
 import { Q_LAYOUT, QUI } from "@/components/admin/moderation/questionnaire/questionnaire-ui";
@@ -284,6 +284,23 @@ export default function StaffQuestionnaireAdminDetailClient({
               }
             />
           ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`/api/admin/moderation/staff-questionnaires/${submissionId}/export`}
+              className={`${QUI.btnSave} inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold`}
+            >
+              <Download className="h-4 w-4 shrink-0" aria-hidden />
+              Export CSV (cette personne)
+            </a>
+            <a
+              href={`/api/admin/moderation/staff-questionnaires/${submissionId}/export-free-text`}
+              className={`${Q_LAYOUT.subtleBtn} inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold`}
+            >
+              <Download className="h-4 w-4 shrink-0" aria-hidden />
+              Réponses libres (CSV)
+            </a>
+          </div>
 
           {progress ? (
             <div

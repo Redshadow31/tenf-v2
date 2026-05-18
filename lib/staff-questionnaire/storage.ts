@@ -488,10 +488,13 @@ export async function listModeratorMembersForQuestionnaire(opts?: { includeAlumn
   );
 }
 
-export async function buildExportRows(templateId: string) {
+export async function buildExportRows(templateId: string, filterSubmissionId?: string) {
   const templateIdResolved = templateId || (await ensureStaffQuestionnaireTemplateSeeded());
   const questions = await listActiveQuestions(templateIdResolved);
-  const submissions = await listAdminSubmissions(templateIdResolved);
+  let submissions = await listAdminSubmissions(templateIdResolved);
+  if (filterSubmissionId) {
+    submissions = submissions.filter((s) => s.id === filterSubmissionId);
+  }
 
   const rows: Record<string, string>[] = [];
   for (const sub of submissions) {
@@ -529,11 +532,14 @@ export async function buildExportRows(templateId: string) {
   return rows;
 }
 
-export async function buildFreeTextExportRows(templateId: string) {
+export async function buildFreeTextExportRows(templateId: string, filterSubmissionId?: string) {
   const templateIdResolved = templateId || (await ensureStaffQuestionnaireTemplateSeeded());
   const questions = await listActiveQuestions(templateIdResolved);
   const textQuestions = questions.filter((q) => q.type === "TEXT_LONG" || q.type === "TEXT_SHORT");
-  const submissions = await listAdminSubmissions(templateIdResolved);
+  let submissions = await listAdminSubmissions(templateIdResolved);
+  if (filterSubmissionId) {
+    submissions = submissions.filter((s) => s.id === filterSubmissionId);
+  }
   const rows: Record<string, string>[] = [];
 
   for (const sub of submissions) {
