@@ -4,12 +4,14 @@ import { canViewQuestionnairePresentation } from "@/lib/staff-questionnaire/perm
 import { generateInternalAnalysisDraft } from "@/lib/staff-questionnaire/analysis-generator";
 import { computeQuestionnaireProgress } from "@/lib/staff-questionnaire/question-utils";
 import {
+  canAdminReopenSubmission,
   getAdminReview,
   getAnswersMap,
   getFinalReview,
   getObjectives,
   getSubmissionById,
   listActiveQuestions,
+  reopenSubmissionForEditing,
 } from "@/lib/staff-questionnaire/storage";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { fetchStaffPilotProfile } from "@/lib/staff-questionnaire/staffMemberPilotProfile";
@@ -85,10 +87,41 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       finalReview,
       permissions: {
         canViewPresentation: canViewQuestionnairePresentation(auth),
+        canReopen: canAdminReopenSubmission(submission),
       },
     });
   } catch (error) {
     console.error("[staff-questionnaires detail GET]", error);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const auth = await requireQuestionnaireAdminAuth();
+  if (isNextResponse(auth)) return auth;
+
+  try {
+    const { submissionId } = await params;
+    const body = await request.json();
+    if (body?.action !== "reopen") {
+      return NextResponse.json({ error: "Action non supportée" }, { status: 400 });
+    }
+
+    const submission = await getSubmissionById(submissionId);
+    if (!submission) {
+      return NextResponse.json({ error: "Soumission introuvable" }, { status: 404 });
+    }
+    if (!canAdminReopenSubmission(submission)) {
+      return NextResponse.json(
+        { error: "Ce questionnaire ne peut plus être rouvert (synthèse déjà publiée ou dossier clos)." },
+        { status: 400 },
+      );
+    }
+
+    const updated = await reopenSubmissionForEditing(submissionId);
+    return NextResponse.json({ ok: true, submission: updated });
+  } catch (error) {
+    console.error("[staff-questionnaires reopen]", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }

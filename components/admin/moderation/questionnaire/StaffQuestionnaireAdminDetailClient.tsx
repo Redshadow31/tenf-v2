@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Download, Loader2, MonitorPlay, Sparkles } from "lucide-react";
+import { Download, Loader2, MonitorPlay, RotateCcw, Sparkles } from "lucide-react";
 import StaffQuestionnairePresentationModal from "@/components/admin/moderation/questionnaire/StaffQuestionnairePresentationModal";
 import ModerationPageShell from "@/components/admin/moderation/ModerationPageShell";
 import { StaffMemberPilotCard } from "@/components/admin/moderation/questionnaire/StaffMemberPilotCard";
@@ -122,6 +122,36 @@ export default function StaffQuestionnaireAdminDetailClient({
     | { completed: number; total: number; percent: number }
     | undefined;
   const answeredCount = answers.filter((a) => a.answered).length;
+  const canReopen = Boolean(
+    (data?.permissions as { canReopen?: boolean } | undefined)?.canReopen,
+  );
+
+  async function reopenQuestionnaire() {
+    if (
+      !window.confirm(
+        "Rouvrir ce questionnaire ? Le modérateur pourra à nouveau le compléter et l'envoyer.",
+      )
+    ) {
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/moderation/staff-questionnaires/${submissionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reopen" }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Échec de la réouverture");
+      setMessage("Questionnaire rouvert — le modérateur peut reprendre le parcours.");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function generateAnalysisDraft() {
     setSaving(true);
@@ -290,6 +320,17 @@ export default function StaffQuestionnaireAdminDetailClient({
           ) : null}
 
           <div className="flex flex-wrap gap-2">
+            {canReopen ? (
+              <button
+                type="button"
+                onClick={() => void reopenQuestionnaire()}
+                disabled={saving}
+                className={`${Q_LAYOUT.subtleBtn} inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-amber-200`}
+              >
+                <RotateCcw className="h-4 w-4 shrink-0" aria-hidden />
+                Rouvrir le questionnaire
+              </button>
+            ) : null}
             {canViewPresentation ? (
               <button
                 type="button"

@@ -12,6 +12,7 @@ import {
   Filter,
   Loader2,
   RefreshCw,
+  RotateCcw,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import ModerationPageShell from "@/components/admin/moderation/ModerationPageShe
 import QuestionnaireStatusBadge from "@/components/admin/moderation/questionnaire/QuestionnaireStatusBadge";
 import { Q_LAYOUT, QUI } from "@/components/admin/moderation/questionnaire/questionnaire-ui";
 import { MODERATION_BASE } from "@/lib/moderation/moderationTree";
+import { PHANTOM_SUBMISSION_MAX_PERCENT } from "@/lib/staff-questionnaire/question-utils";
 import { ADMIN_STATUS_LABELS } from "@/lib/staff-questionnaire/status-labels";
 import type { StaffQuestionnaireSubmissionStatus } from "@/lib/staff-questionnaire/types";
 
@@ -168,6 +170,51 @@ export default function StaffQuestionnairesAdminClient() {
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [expandedProfile, setExpandedProfile] = useState<StaffPilotProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [reopeningId, setReopeningId] = useState<string | null>(null);
+
+  function canReopenRow(r: Row): boolean {
+    if (!r.submissionId || r.summaryPublished) return false;
+    return (
+      r.status === "SUBMITTED" ||
+      r.status === "ADMIN_REVIEW" ||
+      r.status === "INTERNAL_ANALYSIS_DONE" ||
+      r.status === "MEMBER_SUMMARY_READY"
+    );
+  }
+
+  function isSuspectSubmittedRow(r: Row): boolean {
+    return (
+      r.status === "SUBMITTED" &&
+      r.progressTotal > 0 &&
+      r.progressPercent < PHANTOM_SUBMISSION_MAX_PERCENT
+    );
+  }
+
+  async function reopenSubmission(submissionId: string) {
+    if (
+      !window.confirm(
+        "Rouvrir ce questionnaire ? Le modérateur pourra à nouveau le compléter et l'envoyer.",
+      )
+    ) {
+      return;
+    }
+    setReopeningId(submissionId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/moderation/staff-questionnaires/${submissionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reopen" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Échec de la réouverture");
+      await loadRows();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setReopeningId(null);
+    }
+  }
 
   async function loadRows() {
     setLoading(true);
@@ -593,13 +640,35 @@ export default function StaffQuestionnairesAdminClient() {
                               </td>
                               <td className={Q_LAYOUT.tableCell}>
                                 {r.submissionId ? (
-                                  <Link
-                                    href={`/admin/moderation/staff/questionnaires/${r.submissionId}`}
-                                    className={`inline-flex items-center gap-0.5 text-[length:inherit] font-medium text-violet-300 hover:text-violet-200 ${Q_LAYOUT.focusRing} rounded`}
-                                  >
-                                    Ouvrir
-                                    <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-                                  </Link>
+                                  <div className="flex flex-col gap-1">
+                                    <Link
+                                      href={`/admin/moderation/staff/questionnaires/${r.submissionId}`}
+                                      className={`inline-flex items-center gap-0.5 text-[length:inherit] font-medium text-violet-300 hover:text-violet-200 ${Q_LAYOUT.focusRing} rounded`}
+                                    >
+                                      Ouvrir
+                                      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+                                    </Link>
+                                    {canReopenRow(r) ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => void reopenSubmission(r.submissionId!)}
+                                        disabled={reopeningId === r.submissionId}
+                                        className={`inline-flex items-center gap-0.5 text-[length:inherit] font-medium ${isSuspectSubmittedRow(r) ? "text-amber-300 hover:text-amber-200" : "text-zinc-400 hover:text-zinc-200"} ${Q_LAYOUT.focusRing} rounded disabled:opacity-50`}
+                                        title={
+                                          isSuspectSubmittedRow(r)
+                                            ? "Soumis mais progression très faible — probable erreur"
+                                            : "Rouvrir pour permettre une nouvelle saisie"
+                                        }
+                                      >
+                                        {reopeningId === r.submissionId ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                        ) : (
+                                          <RotateCcw className="h-3 w-3 shrink-0" aria-hidden />
+                                        )}
+                                        Rouvrir
+                                      </button>
+                                    ) : null}
+                                  </div>
                                 ) : (
                                   <span className={QUI.textMuted}>—</span>
                                 )}

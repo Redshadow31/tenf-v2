@@ -9,6 +9,7 @@ import type {
   SubmissionConsents,
 } from "./types";
 import { ensureStaffQuestionnaireTemplateSeeded } from "./seed";
+import { isPhantomLockedSubmission } from "./question-utils";
 
 const MOD_STAFF_ROLES = [
   "Modérateur",
@@ -86,13 +87,41 @@ function mapSubmission(row: Record<string, unknown>): DbSubmission {
 }
 
 export async function getMemberIdByDiscordId(discordId: string): Promise<string | null> {
+  const normalized = String(discordId || "").trim();
+  if (!normalized) return null;
+
   const { data, error } = await supabaseAdmin
     .from("members")
-    .select("id")
-    .eq("discord_id", discordId)
-    .maybeSingle();
+    .select("id, is_active, role, updated_at")
+    .eq("discord_id", normalized);
   if (error) throw error;
-  return (data?.id as string) ?? null;
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    is_active: boolean | null;
+    role: string | null;
+    updated_at: string | null;
+  }>;
+  if (rows.length === 0) return null;
+  if (rows.length === 1) return rows[0]!.id;
+
+  console.warn(
+    `[staff-questionnaire] ${rows.length} fiches membres pour discord_id=${normalized}, sélection automatique`,
+  );
+  const staffRank = (role: string | null) => {
+    const i = MOD_STAFF_ROLES.indexOf(role ?? "");
+    return i >= 0 ? i : 999;
+  };
+  rows.sort((a, b) => {
+    const aActive = a.is_active !== false;
+    const bActive = b.is_active !== false;
+    if (aActive !== bActive) return aActive ? -1 : 1;
+    const ra = staffRank(a.role);
+    const rb = staffRank(b.role);
+    if (ra !== rb) return ra - rb;
+    return String(b.updated_at ?? "").localeCompare(String(a.updated_at ?? ""));
+  });
+  return rows[0]!.id;
 }
 
 export async function listActiveQuestions(templateId: string): Promise<DbQuestion[]> {
@@ -169,6 +198,68 @@ export async function getAnswersMap(
 
 export function isSubmissionEditable(status: StaffQuestionnaireSubmissionStatus): boolean {
   return status === "DRAFT" || status === "IN_PROGRESS";
+}
+
+export function canAdminReopenSubmission(submission: DbSubmission): boolean {
+  if (submission.memberSummaryPublishedAt) return false;
+  return (
+    submission.status === "SUBMITTED" ||
+    submission.status === "ADMIN_REVIEW" ||
+    submission.status === "INTERNAL_ANALYSIS_DONE" ||
+    submission.status === "MEMBER_SUMMARY_READY"
+  );
+}
+
+export async function reopenSubmissionForEditing(submissionId: string): Promise<DbSubmission> {
+  const { data, error } = await supabaseAdmin
+    .from("staff_questionnaire_submissions")
+    .update({
+      status: "IN_PROGRESS",
+      submitted_at: null,
+      reviewed_by_id: null,
+    })
+    .eq("id", submissionId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return mapSubmission(data as Record<string, unknown>);
+}
+
+/** Réouvre une soumission marquée envoyée alors que la progression réelle est quasi nulle. */
+export async function repairPhantomLockedSubmissionIfNeeded(
+  submission: DbSubmission,
+  questions: DbQuestion[],
+  answers: Map<string, { answerText: string | null; answerJson: Record<string, unknown> | null }>,
+): Promise<DbSubmission> {
+  if (isSubmissionEditable(submission.status)) return submission;
+
+  let completed = 0;
+  for (const q of questions) {
+    const a = answers.get(q.questionKey);
+    if (!a) continue;
+    if (q.type === "TEXT_LONG" || q.type === "TEXT_SHORT") {
+      if (a.answerText?.trim()) completed += 1;
+    } else if (q.type === "THREE_FIELDS") {
+      const fields = (a.answerJson?.fields as string[] | undefined) ?? [];
+      if (fields.filter((f) => f?.trim()).length >= 3) completed += 1;
+    } else if (q.type === "SCALE_1_5") {
+      if (a.answerJson?.value !== undefined && a.answerJson?.value !== null) completed += 1;
+    } else if (q.type === "SINGLE_CHOICE") {
+      if (a.answerJson?.choice) completed += 1;
+    } else if (q.type === "MULTIPLE_CHOICE") {
+      const sel = a.answerJson?.selected as string[] | undefined;
+      if (sel && sel.length > 0) completed += 1;
+    }
+  }
+
+  if (!isPhantomLockedSubmission(submission.status, completed, questions.length)) {
+    return submission;
+  }
+
+  console.warn(
+    `[staff-questionnaire] Réouverture soumission fantôme ${submission.id} (${completed}/${questions.length} réponses, statut ${submission.status})`,
+  );
+  return reopenSubmissionForEditing(submission.id);
 }
 
 export async function saveSubmissionAnswers(

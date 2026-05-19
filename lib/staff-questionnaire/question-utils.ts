@@ -33,6 +33,20 @@ export function isQuestionAnswered(q: QuestionLike, answer?: AnswerLike | null):
   return false;
 }
 
+/** Progression en dessous de ce seuil = soumission verrouillée probablement erronée. */
+export const PHANTOM_SUBMISSION_MAX_PERCENT = 10;
+
+export function isPhantomLockedSubmission(
+  status: string,
+  completed: number,
+  total: number,
+): boolean {
+  if (status !== "SUBMITTED") return false;
+  if (total <= 0) return false;
+  const percent = Math.round((completed / total) * 100);
+  return percent < PHANTOM_SUBMISSION_MAX_PERCENT;
+}
+
 export function computeQuestionnaireProgress(
   questions: QuestionLike[],
   answers: Record<string, AnswerLike | undefined>,

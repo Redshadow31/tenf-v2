@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isNextResponse, requireModeratorQuestionnaireAuth } from "@/lib/staff-questionnaire/api-auth";
 import { mapSubmissionToModeratorView, MODERATOR_STATUS_LABELS } from "@/lib/staff-questionnaire/status-labels";
+import { computeQuestionnaireProgress } from "@/lib/staff-questionnaire/question-utils";
 import { ensureStaffQuestionnaireTemplateSeeded } from "@/lib/staff-questionnaire/seed";
 import {
   getAnswersMap,
@@ -8,6 +9,7 @@ import {
   getOrCreateSubmission,
   isSubmissionEditable,
   listActiveQuestions,
+  repairPhantomLockedSubmissionIfNeeded,
 } from "@/lib/staff-questionnaire/storage";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +25,13 @@ export async function GET() {
       return NextResponse.json({ error: "Profil membre introuvable" }, { status: 404 });
     }
 
-    const submission = await getOrCreateSubmission(memberId, templateId);
     const questions = await listActiveQuestions(templateId);
-    const answers = await getAnswersMap(submission.id);
+    let submission = await getOrCreateSubmission(memberId, templateId);
+    let answers = await getAnswersMap(submission.id);
+    submission = await repairPhantomLockedSubmissionIfNeeded(submission, questions, answers);
+    if (isSubmissionEditable(submission.status)) {
+      answers = await getAnswersMap(submission.id);
+    }
 
     const moderatorView = mapSubmissionToModeratorView(submission.status);
     const statusMeta = MODERATOR_STATUS_LABELS[moderatorView];
@@ -36,22 +42,15 @@ export async function GET() {
       answersPayload[k] = v;
     });
 
-    const completedCount = questions.filter((q) => {
-      const a = answers.get(q.questionKey);
-      if (!a) return false;
-      if (q.type === "TEXT_LONG" || q.type === "TEXT_SHORT") return Boolean(a.answerText?.trim());
-      if (q.type === "THREE_FIELDS") {
-        const fields = (a.answerJson?.fields as string[] | undefined) ?? [];
-        return fields.filter((f) => f?.trim()).length >= 3;
-      }
-      if (q.type === "SCALE_1_5") return Boolean(a.answerJson?.value);
-      if (q.type === "SINGLE_CHOICE") return Boolean(a.answerJson?.choice);
-      if (q.type === "MULTIPLE_CHOICE") {
-        const sel = a.answerJson?.selected as string[] | undefined;
-        return Boolean(sel && sel.length > 0);
-      }
-      return false;
-    }).length;
+    const questionLikes = questions.map((q) => ({
+      key: q.questionKey,
+      number: q.questionNumber,
+      type: q.type,
+      isRequired: q.isRequired,
+      options: q.options,
+    }));
+    const progressResult = computeQuestionnaireProgress(questionLikes, answersPayload);
+    const completedCount = progressResult.completed;
 
     return NextResponse.json({
       submission: {
