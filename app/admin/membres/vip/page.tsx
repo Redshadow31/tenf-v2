@@ -587,16 +587,12 @@ export default function GestionVipPage() {
       });
 
       if (response.ok) {
-        // Mettre à jour la liste du blob pour que le KPI et la liste s'affichent immédiatement
+        const payload = await response.json();
         setVipMonthLogins(vipLogins);
-        // Synchroniser aussi avec l'historique VIP (fichier / autre stockage)
-        for (const login of vipLogins) {
-          await addVipToMonth(login, selectedMonth);
-        }
 
         setMessage({
           type: "success",
-          text: `${vipLogins.length} VIP enregistré(s) pour ${formatMonthKey(selectedMonth)}. Les VIP sont maintenant synchronisés sur tout le site.`,
+          text: `${vipLogins.length} VIP enregistré(s) pour ${formatMonthKey(selectedMonth)} (blob + historique + Supabase: ${payload.supabaseCount ?? "—"}). La page publique /vip se met à jour sous ~30 s.`,
         });
 
         await loadMembers();

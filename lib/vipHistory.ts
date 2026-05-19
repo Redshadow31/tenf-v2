@@ -133,6 +133,20 @@ export function getVipHistoryByMonth(): Record<string, string[]> {
 /**
  * Ajoute une entrée VIP pour un mois donné
  */
+/**
+ * Remplace toutes les entrées d'un mois dans le fichier JSON local.
+ */
+export function replaceMonthInVipHistory(month: string, logins: string[]): void {
+  const normalized = Array.from(
+    new Set(logins.map((l) => l.toLowerCase().trim()).filter(Boolean))
+  );
+  const history = loadVipHistory().filter((entry) => entry.month !== month);
+  for (const login of normalized) {
+    history.push({ login, month });
+  }
+  saveVipHistory(history);
+}
+
 export function addVipEntry(login: string, month: string): void {
   const history = loadVipHistory();
   const loginLower = login.toLowerCase();

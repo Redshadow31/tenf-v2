@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { memberRepository, vipRepository } from '@/lib/repositories';
-import { getTwitchUsers } from '@/lib/twitch';
-import { getVipBadgeText, getConsecutiveVipMonths } from '@/lib/vipHistory';
-import { buildTwitchAvatarMap, extractUniqueTwitchLogins, resolveMemberAvatar } from '@/lib/memberAvatar';
+import { NextResponse } from "next/server";
+import { memberRepository } from "@/lib/repositories";
+import { getTwitchUsers } from "@/lib/twitch";
+import { getVipBadgeText, getConsecutiveVipMonths } from "@/lib/vipHistory";
+import { buildTwitchAvatarMap, extractUniqueTwitchLogins, resolveMemberAvatar } from "@/lib/memberAvatar";
+import { resolveMonthVipLogins } from "@/lib/vipCurrentMonthLogins";
 
-export const runtime = 'nodejs';
-// Cache ISR de 30 secondes pour les membres VIP
+export const runtime = "nodejs";
 export const revalidate = 30;
 
 interface VipMember {
@@ -21,88 +21,67 @@ interface VipMember {
 }
 
 /**
- * Récupère les membres VIP Elite depuis Supabase
- * Priorité : VIP du mois actuel (vip_history) > Membres avec isVip=true
+ * VIP affichés sur /vip
+ * Priorité : snapshot vip-month (admin) > vip-history.json > Supabase > is_vip (sans limite 50)
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Essayer de récupérer les VIP du mois actuel depuis Supabase
-    const currentMonthVips = await vipRepository.findCurrentMonth();
-    
+    const vipLogins = await resolveMonthVipLogins();
     let vipMemberData;
-    
-    if (currentMonthVips && currentMonthVips.length > 0) {
-      // Utiliser les VIP du mois actuel depuis Supabase
-      const vipLogins = currentMonthVips.map(vip => vip.twitchLogin.toLowerCase());
-      // Récupérer tous les membres (limite élevée pour filtrage VIP)
-      const allMembers = await memberRepository.findAll(1000, 0);
-      vipMemberData = allMembers.filter((member) => 
-        member.isActive !== false && 
-        vipLogins.includes(member.twitchLogin?.toLowerCase() || '')
+    let source = "vip_month_snapshot";
+
+    if (vipLogins.length > 0) {
+      const loginSet = new Set(vipLogins);
+      const allMembers = await memberRepository.findAllBatched(2000, 50000);
+      vipMemberData = allMembers.filter(
+        (member) =>
+          member.isActive !== false &&
+          loginSet.has((member.twitchLogin || "").toLowerCase())
       );
-      console.log(`[VIP Members API] Utilisation des VIP du mois actuel (${currentMonthVips.length} membres)`);
+      console.log(
+        `[VIP Members API] Snapshot mois (${vipLogins.length} logins, ${vipMemberData.length} membres actifs)`
+      );
     } else {
-      // Fallback : utiliser tous les membres VIP depuis Supabase
-      vipMemberData = await memberRepository.findVip();
-      console.log(`[VIP Members API] Utilisation des membres avec isVip=true (${vipMemberData.length} membres)`);
+      source = "is_vip_flag";
+      vipMemberData = await memberRepository.findVip(500, 0);
+      console.log(`[VIP Members API] Fallback is_vip (${vipMemberData.length} membres)`);
     }
-    
+
     if (vipMemberData.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         members: [],
-        message: 'Aucun membre VIP Elite trouvé dans le dashboard'
+        message: "Aucun membre VIP trouvé",
+        source,
       });
     }
 
-    // Récupérer tous les logins Twitch uniques
     const twitchLogins = extractUniqueTwitchLogins(vipMemberData);
-    
-    // Récupérer tous les avatars Twitch en batch
     const twitchUsers = await getTwitchUsers(twitchLogins);
-    
-    // Créer un map pour un accès rapide par login
     const avatarMap = buildTwitchAvatarMap(twitchUsers);
-    
-    // Mapper vers le format attendu par la page VIP
+
     const vipMembers: VipMember[] = vipMemberData.map((member) => {
       const normalizedLogin = member.twitchLogin.toLowerCase();
       const twitchAvatar = avatarMap.get(normalizedLogin);
       const avatar = resolveMemberAvatar(member, twitchAvatar);
 
-      // Calculer le badge VIP+N
-      const vipBadge = getVipBadgeText(member.twitchLogin);
-      const consecutiveMonths = getConsecutiveVipMonths(member.twitchLogin);
-
       return {
-        discordId: member.discordId || '',
+        discordId: member.discordId || "",
         username: member.discordUsername || member.displayName,
-        avatar: avatar,
+        avatar,
         displayName: member.displayName || member.siteUsername || member.twitchLogin,
         twitchLogin: member.twitchLogin,
         twitchUrl: member.twitchUrl,
-        twitchAvatar: twitchAvatar,
-        vipBadge: vipBadge,
-        consecutiveMonths: consecutiveMonths,
+        twitchAvatar,
+        vipBadge: getVipBadgeText(member.twitchLogin),
+        consecutiveMonths: getConsecutiveVipMonths(member.twitchLogin),
       };
     });
 
-    console.log(`Found ${vipMembers.length} VIP Elite members from dashboard`);
-
-    const response = NextResponse.json({ members: vipMembers });
-
-    // Headers de cache pour Next.js ISR (30 secondes)
-    response.headers.set(
-      'Cache-Control',
-      'public, s-maxage=30, stale-while-revalidate=60'
-    );
-
+    const response = NextResponse.json({ members: vipMembers, source, count: vipMembers.length });
+    response.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
     return response;
   } catch (error) {
-    console.error('Error fetching VIP members:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error("Error fetching VIP members:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

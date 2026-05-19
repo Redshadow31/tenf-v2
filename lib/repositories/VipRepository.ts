@@ -72,6 +72,40 @@ export class VipRepository {
   }
 
   /**
+   * Remplace toutes les entrées VIP d'un mois (sync après enregistrement admin).
+   */
+  async replaceMonth(month: string, twitchLogins: string[]): Promise<number> {
+    const monthDate = `${month}-01`;
+    const normalized = Array.from(
+      new Set(twitchLogins.map((l) => l.toLowerCase().trim()).filter(Boolean))
+    );
+
+    const { error: deleteError } = await supabaseAdmin
+      .from("vip_history")
+      .delete()
+      .eq("month", monthDate);
+
+    if (deleteError) throw deleteError;
+    if (normalized.length === 0) return 0;
+
+    const records = normalized.map((login) => ({
+      month: monthDate,
+      twitch_login: login,
+      display_name: login,
+      consecutive_months: 1,
+    }));
+
+    const chunkSize = 100;
+    for (let i = 0; i < records.length; i += chunkSize) {
+      const chunk = records.slice(i, i + chunkSize);
+      const { error: insertError } = await supabaseAdmin.from("vip_history").insert(chunk);
+      if (insertError) throw insertError;
+    }
+
+    return normalized.length;
+  }
+
+  /**
    * Supprime une entrée VIP
    */
   async delete(id: string): Promise<void> {
