@@ -31,6 +31,9 @@ export const hubSectionTitleClass = "font-semibold tracking-tight text-white";
 export const hubSectionLabelClass =
   "text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-violet-200/80";
 
+export const hubMembersLogoClass =
+  "h-[clamp(7rem,20vw,12rem)] w-auto max-w-[min(100%,32rem)] object-contain object-center drop-shadow-[0_12px_40px_rgba(0,0,0,0.55)] sm:max-w-[38rem] lg:h-[clamp(9rem,24vw,15rem)] lg:max-w-[min(50vw,28rem)] xl:h-[clamp(10rem,26vw,17rem)] lg:object-left";
+
 /** Pastille filtre cockpit (hub membres, actions, postulations) */
 export function cockpitFilterChipClass(active: boolean): string {
   return `rounded-lg border px-3 py-2 text-xs font-semibold transition ${hubFocusRingClass} ${

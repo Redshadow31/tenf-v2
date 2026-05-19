@@ -1,13 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ListChecks, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { formatModeratorDisplayName } from "@/lib/moderation/hubWelcome";
 import {
   hubCardClass,
   hubFocusRingClass,
   hubGhostButtonClass,
+  hubMembersLogoClass,
   hubPrimaryButtonClass,
-  hubSectionLabelClass,
 } from "./membersHubStyles";
 
 type Props = {
@@ -20,6 +22,8 @@ type Props = {
   onRefresh: () => void;
 };
 
+const bodyStyle = { fontSize: "clamp(0.82rem, 0.78rem + 0.15vw, 0.95rem)" } as const;
+
 export default function MembersHubHeader({
   username,
   roleLabel,
@@ -29,6 +33,7 @@ export default function MembersHubHeader({
   partial,
   onRefresh,
 }: Props) {
+  const displayName = formatModeratorDisplayName(username);
   const generatedLabel = generatedAt
     ? new Date(generatedAt).toLocaleString("fr-FR", {
         day: "2-digit",
@@ -43,11 +48,23 @@ export default function MembersHubHeader({
       className={`relative overflow-hidden ${hubCardClass}`}
       style={{ padding: "clamp(1.15rem, 0.95rem + 0.7vw, 1.9rem)" }}
     >
-      <div className="pointer-events-none absolute -right-24 -top-20 h-64 w-64 rounded-full bg-indigo-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-rose-500/[0.06] blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 -top-20 h-64 w-64 rounded-full bg-indigo-500/15 blur-3xl" aria-hidden />
+      <div className="pointer-events-none absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-fuchsia-500/[0.08] blur-3xl" />
 
-      <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-        <div className="min-w-0 max-w-3xl flex-1">
+      <div className="relative grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-8">
+        <div className="flex shrink-0 justify-center lg:justify-start">
+          <Image
+            src="/images/membres/hub-gestion-membres-logo.png"
+            alt="Gestion des membres — Hub TENF"
+            width={1024}
+            height={1024}
+            priority
+            unoptimized
+            className={hubMembersLogoClass}
+          />
+        </div>
+
+        <div className="min-w-0 max-w-3xl">
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.11em] text-zinc-200/90">
               Membres TENF
@@ -57,27 +74,21 @@ export default function MembersHubHeader({
               Cockpit staff
             </span>
           </div>
-          <h1
-            className="mt-2 font-semibold tracking-tight text-white"
-            style={{
-              fontSize: "clamp(1.35rem, 1.1rem + 0.9vw, 1.85rem)",
-              lineHeight: 1.15,
-              wordBreak: "normal",
-              overflowWrap: "break-word",
-            }}
-          >
-            Gestion des membres
-          </h1>
-          <p
-            className="mt-2 text-slate-300/90"
-            style={{
-              fontSize: "clamp(0.82rem, 0.78rem + 0.15vw, 0.95rem)",
-              lineHeight: 1.55,
-              maxWidth: "62ch",
-            }}
-          >
-            Validation, suivi, qualité des profils et reconnaissance des créateurs TENF. Ce hub
-            répond à trois questions : ce qui bloque, l'état de la communauté, où aller pour agir.
+          <p className="mt-2 text-[length:clamp(0.6875rem,0.625rem+0.25vw,0.8125rem)] uppercase tracking-[0.12em] text-violet-200/95">
+            Pilotage communauté
+          </p>
+          <p className="mt-2 text-pretty leading-snug text-white" style={bodyStyle}>
+            <span
+              className="font-semibold tracking-tight text-white"
+              style={{ fontSize: "clamp(1.15rem,0.95rem+0.55vw,1.65rem)" }}
+            >
+              Bonjour {displayName},
+            </span>
+          </p>
+          <p className="mt-2 max-w-[62ch] text-pretty leading-[1.55] text-slate-300/90" style={bodyStyle}>
+            Tu es sur le hub <strong className="font-medium text-zinc-200">Gestion des membres TENF</strong>
+            . Validation, suivi, qualité des profils et reconnaissance des créateurs — ce cockpit répond à trois
+            questions : ce qui bloque, l&apos;état de la communauté, où aller pour agir.
           </p>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[0.72rem] text-slate-400">
@@ -100,7 +111,7 @@ export default function MembersHubHeader({
           </div>
         </div>
 
-        <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:min-w-[12rem] sm:items-end">
+        <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:min-w-[12rem] lg:items-end">
           <button
             type="button"
             onClick={onRefresh}

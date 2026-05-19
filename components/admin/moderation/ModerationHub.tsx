@@ -14,7 +14,6 @@ import {
   Megaphone,
   ScrollText,
   ShieldAlert,
-  ShieldCheck,
   Sparkles,
   Target,
   UserCog,
@@ -24,6 +23,7 @@ import ModerationPageShell from "@/components/admin/moderation/ModerationPageShe
 import ModerationGroupCard from "@/components/admin/moderation/ModerationGroupCard";
 import QuestionnaireHubCard from "@/components/admin/moderation/questionnaire/QuestionnaireHubCard";
 import { QuestionnaireHubProvider } from "@/components/admin/moderation/questionnaire/QuestionnaireHubContext";
+import ModerationHubWelcome from "@/components/admin/moderation/ModerationHubWelcome";
 import StaffHubHeaderAside from "@/components/admin/moderation/StaffHubHeaderAside";
 import {
   MODERATION_BASE,
@@ -68,6 +68,17 @@ export default function ModerationHub({
   const attenuateModuleSlugs =
     view === "staff" ? STAFF_ATTENUATE_MODULE_SLUGS : [];
 
+  const hubWelcome = useMemo(
+    () => (
+      <ModerationHubWelcome
+        view={view}
+        username={username}
+        charterSigned={charterSigned}
+      />
+    ),
+    [view, username, charterSigned],
+  );
+
   const hubContent = (
     <div className="relative isolate">
       {view === "staff" ? (
@@ -92,26 +103,20 @@ export default function ModerationHub({
 
         <section
           aria-labelledby="moderation-hub-groups"
-          className={`${MUI.glassPanel} space-y-[clamp(0.65rem,0.85vw,1rem)] p-[clamp(0.75rem,1vw,1.15rem)]`}
+          className={`${MUI.hubSectionsPanel} space-y-[clamp(0.85rem,1.1vw,1.25rem)]`}
         >
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.06] pb-4">
             <div className="min-w-0">
-              <p className={MUI.sectionLabel}>Sections</p>
-              <h2
-                id="moderation-hub-groups"
-                className={`text-pretty font-semibold tracking-tight ${MUI.text}`}
-                style={{ fontSize: "clamp(0.95rem,1.1vw,1.15rem)" }}
-              >
+              <p className={MUI.asideSectionLabel}>Sections</p>
+              <h2 id="moderation-hub-groups" className={`mt-2 text-pretty ${MUI.hubSectionTitle}`}>
                 {view === "admin"
                   ? "Tout ce que tu peux piloter"
                   : "Tout ce qui te concerne en tant que modérateur"}
               </h2>
-              <p
-                className={`mt-1 max-w-[65ch] text-pretty ${MUI.textMuted}`}
-                style={{ fontSize: "clamp(0.72rem,0.8vw,0.82rem)" }}
-              >
-                Catalogue complet des modules — les priorités du moment sont listées
-                ci-dessus.
+              <p className={MUI.hubSectionLead}>
+                {view === "staff"
+                  ? "Parcours les modules par thème : documentation, exercices et outils Discord. Les éléments prioritaires restent listés au-dessus."
+                  : "Catalogue complet des modules — les priorités du moment sont listées ci-dessus."}
               </p>
             </div>
             {view === "staff" && canPilot ? (
@@ -128,7 +133,7 @@ export default function ModerationHub({
             ) : null}
           </div>
 
-          <div className="grid gap-[clamp(0.55rem,0.85vw,1rem)] sm:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-[clamp(0.75rem,1.1vw,1.25rem)] sm:grid-cols-2 2xl:grid-cols-3">
             {groups.map((group) => (
               <ModerationGroupCard
                 key={group.slug}
@@ -148,9 +153,10 @@ export default function ModerationHub({
     <ModerationPageShell
       breadcrumb={breadcrumb}
       title="Centre de modération TENF"
-      description="Charte, exercices, annonces staff, comptes-rendus et suivi des actions. Hub unique pour piloter et opérer la modération du serveur."
-      icon={ShieldCheck}
+      titleLogo="/images/moderation/centre-moderation-tenf.png?v=glass-v2"
+      description={hubWelcome}
       audienceLabel={view === "admin" ? "Vue admin" : "Vue modérateur"}
+      hubAccent
       detachedContent
       rightSlot={
         <StaffHubHeaderAside

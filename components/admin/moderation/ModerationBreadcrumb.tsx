@@ -8,6 +8,8 @@ export type ModerationBreadcrumbItem = {
 
 type Props = {
   items: ModerationBreadcrumbItem[];
+  /** Liens et séparateurs adoucis (header hub vitré). */
+  hubAccent?: boolean;
 };
 
 /**
@@ -15,7 +17,7 @@ type Props = {
  * - Le dernier item est considéré comme la page courante (non cliquable).
  * - Scalable au zoom : tailles via clamp().
  */
-export default function ModerationBreadcrumb({ items }: Props) {
+export default function ModerationBreadcrumb({ items, hubAccent = false }: Props) {
   if (!items.length) return null;
   return (
     <nav aria-label="Fil d'Ariane" className="min-w-0">
@@ -30,7 +32,12 @@ export default function ModerationBreadcrumb({ items }: Props) {
               {item.href && !isLast ? (
                 <Link
                   href={item.href}
-                  className="truncate rounded px-1 py-[1px] font-medium text-[var(--color-text-secondary)] transition hover:bg-[color-mix(in_srgb,var(--color-text)_6%,var(--color-card))] hover:text-[var(--color-text)]"
+                  className={
+                    "truncate rounded-md px-1.5 py-0.5 font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/40 " +
+                    (hubAccent
+                      ? "text-[var(--color-text-secondary)] hover:bg-white/[0.06] hover:text-[var(--color-text)]"
+                      : "text-[var(--color-text-secondary)] hover:bg-[color-mix(in_srgb,var(--color-text)_6%,var(--color-card))] hover:text-[var(--color-text)]")
+                  }
                 >
                   {item.label}
                 </Link>

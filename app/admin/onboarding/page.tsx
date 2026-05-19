@@ -1,7 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import OnboardingHubWelcome from "@/components/admin/onboarding/OnboardingHubWelcome";
+import { ONBUI, todoActionTone } from "@/components/admin/onboarding/onboarding-ui";
+import { getDiscordUser } from "@/lib/discord";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
@@ -85,14 +89,15 @@ type DashboardData = {
 /*  Styles                                                                   */
 /* ------------------------------------------------------------------------- */
 
-const panelClass =
-  "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]";
+const panelClass = ONBUI.glassPanel;
 const heroVisualClass =
-  "relative isolate overflow-hidden rounded-2xl border border-violet-500/20 bg-zinc-950/70 ring-1 ring-inset ring-violet-500/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
+  "relative isolate overflow-hidden rounded-2xl border border-rose-500/20 bg-zinc-950/70 ring-1 ring-inset ring-rose-500/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
 const hubSubtleBtnClass =
-  "inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-950/25 px-3 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-900/30";
+  "inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl border border-rose-500/25 bg-rose-950/25 px-3 py-2 text-sm font-medium text-rose-100 transition hover:border-rose-400/40 hover:bg-rose-900/30";
 const focusRingClass =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";
+const hubOnboardingLogoClass =
+  "h-[clamp(7rem,20vw,12rem)] w-auto max-w-[min(100%,32rem)] object-contain object-center drop-shadow-[0_12px_40px_rgba(0,0,0,0.55)] sm:max-w-[38rem] lg:h-[clamp(9rem,24vw,15rem)] lg:max-w-[min(50vw,28rem)] xl:h-[clamp(10rem,26vw,17rem)] lg:object-left";
 
 const EMPTY_CORRELATION: AttendanceSnapshot = {
   sessionsPastCount: 0,
@@ -271,6 +276,10 @@ const asideReminders = [
 /* ------------------------------------------------------------------------- */
 
 export default function OnboardingHubPage() {
+  const [username, setUsername] = useState("");
+  const todoRef = useRef<HTMLElement>(null);
+  const nextSessionRef = useRef<HTMLElement>(null);
+
   const [data, setData] = useState<DashboardData>({
     loading: true,
     error: null,
@@ -401,6 +410,20 @@ export default function OnboardingHubPage() {
     void loadDashboard();
   }, [loadDashboard]);
 
+  useEffect(() => {
+    void getDiscordUser()
+      .then((user) => setUsername(user?.username ?? ""))
+      .catch(() => setUsername(""));
+  }, []);
+
+  const scrollToTodo = useCallback(() => {
+    todoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const scrollToNextSession = useCallback(() => {
+    nextSessionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   const sessionsWithMissingAttendance = useMemo(
     () =>
       data.correlation.sessions.filter((s) => s.registrationsCount > 0 && s.attendedCount === 0),
@@ -442,7 +465,7 @@ export default function OnboardingHubPage() {
       detail: string;
       count?: number;
       icon: LucideIcon;
-      tone: string;
+      tone: keyof typeof todoActionTone;
     }> = [];
 
     if (data.draftSessions > 0) {
@@ -453,7 +476,7 @@ export default function OnboardingHubPage() {
         detail: "Invisible côté membre tant que non publié.",
         count: data.draftSessions,
         icon: FileText,
-        tone: "border-indigo-400/35 bg-indigo-500/8 text-indigo-100",
+        tone: "indigo",
       });
     }
 
@@ -464,7 +487,7 @@ export default function OnboardingHubPage() {
         label: "Staff incomplet",
         detail: `Moins de ${MIN_MODERATORS} modérateurs sur la prochaine session.`,
         icon: ShieldCheck,
-        tone: "border-amber-400/35 bg-amber-500/8 text-amber-100",
+        tone: "amber",
       });
     }
 
@@ -476,7 +499,7 @@ export default function OnboardingHubPage() {
         detail: "Sessions passées avec inscrits mais aucune présence enregistrée.",
         count: sessionsWithMissingAttendanceCount,
         icon: ClipboardCheck,
-        tone: "border-rose-400/35 bg-rose-500/8 text-rose-100",
+        tone: "rose",
       });
     }
 
@@ -488,7 +511,7 @@ export default function OnboardingHubPage() {
         detail: "Membres présents à l'annuaire mais pas encore activés.",
         count: data.correlation.activationSummary.toActivateCount,
         icon: Zap,
-        tone: "border-amber-400/35 bg-amber-500/8 text-amber-100",
+        tone: "amber",
       });
     }
 
@@ -500,7 +523,7 @@ export default function OnboardingHubPage() {
         detail: "Fiches en attente de validation côté administration.",
         count: data.profileValidationPending,
         icon: UserCheck,
-        tone: "border-sky-400/35 bg-sky-500/8 text-sky-100",
+        tone: "sky",
       });
     }
 
@@ -575,21 +598,34 @@ export default function OnboardingHubPage() {
     return steps;
   }, [data]);
 
+  const hasPriorityActions = todoNow.length > 0;
+
   return (
-    <div className="relative isolate min-h-[calc(100vh-4rem)] min-w-0 scroll-smooth pb-12 text-white selection:bg-violet-500/35 [--onb-gap:clamp(1rem,1.55vw,1.85rem)]">
+    <div className="relative isolate min-h-[calc(100vh-4rem)] min-w-0 scroll-smooth pb-12 text-white selection:bg-rose-500/35 [--onb-gap:clamp(1rem,1.55vw,1.85rem)]">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-[max(-4rem,calc(-6vw))] top-[-3rem] -z-10 h-[clamp(260px,35vw,480px)] overflow-hidden blur-3xl"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_24%_-10%,rgba(167,139,250,0.28),transparent_54%),radial-gradient(ellipse_at_86%_22%,rgba(99,102,241,0.12),transparent_48%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_24%_-10%,rgba(244,63,94,0.26),transparent_54%),radial-gradient(ellipse_at_86%_22%,rgba(167,139,250,0.14),transparent_48%),radial-gradient(ellipse_at_52%_100%,rgba(56,189,248,0.08),transparent_52%)]" />
       </div>
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 -z-20 h-[min(820px,100vh)]"
+        style={{
+          backgroundImage:
+            "linear-gradient(104deg,rgba(255,255,255,0.032) 0px,rgba(255,255,255,0.032) 1px,transparent 1px,transparent 74px)",
+          backgroundSize: "clamp(54px,4.2vw,72px) 100%",
+          opacity: 0.21,
+          maskImage: "linear-gradient(180deg,black 0%,transparent 78%)",
+        }}
+      />
 
-      <div className="mx-auto w-full max-w-[min(1720px,calc(100vw-2*clamp(0.6rem,1.75vw,1.75rem)))] px-[clamp(0.75rem,2vw,2.35rem)] pb-12 pt-2 sm:pt-3">
+      <div className="mx-auto w-full max-w-[min(1680px,calc(100vw-2*clamp(0.6rem,1.75vw,1.75rem)))] px-[clamp(0.75rem,2vw,2.35rem)] pb-12 pt-2 sm:pt-3">
         <div className="grid min-w-0 grid-cols-1 gap-6 [--onb-sidebar:min(100%,clamp(17rem,24vw,25rem))] xl:grid-cols-[minmax(0,1fr)_var(--onb-sidebar)] xl:items-start xl:gap-[clamp(1.35rem,2.6vw,2.85rem)]">
           <main className="min-w-0 space-y-6 sm:space-y-8 xl:space-y-[var(--onb-gap)]">
             {/* Header */}
             <header
-              className={`grid min-w-0 gap-6 p-[clamp(1rem,2vw,1.6rem)] lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,min(100%,0.94fr))] lg:gap-8 ${panelClass}`}
+              className={`grid min-w-0 gap-6 p-[clamp(1rem,2vw,1.6rem)] lg:grid-cols-[minmax(0,1.65fr)_minmax(240px,min(100%,0.88fr))] lg:gap-8 xl:grid-cols-[minmax(0,1.75fr)_minmax(260px,min(100%,0.9fr))] ${panelClass}`}
             >
               <div className="min-w-0 space-y-4">
                 <Link
@@ -597,31 +633,48 @@ export default function OnboardingHubPage() {
                   className={`inline-flex items-center gap-1 text-[length:clamp(0.8rem,0.74rem+0.32vw,0.9375rem)] text-zinc-400 transition hover:text-white ${focusRingClass} rounded-lg`}
                 >
                   <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
-                  Administration
+                  Retour au pilotage serveur
                 </Link>
+                <div className="grid grid-cols-1 items-center gap-5 sm:gap-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-6 xl:gap-8">
+                  <div className="flex shrink-0 justify-center lg:justify-start">
+                    <Image
+                      src="/images/onboarding/hub-accueil-integration-logo.png"
+                      alt="Accueil et intégration — Hub TENF"
+                      width={1024}
+                      height={1024}
+                      priority
+                      unoptimized
+                      className={hubOnboardingLogoClass}
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-4">
                 <div className="flex flex-wrap gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-zinc-200/90">
                     <Compass className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    Accueil & intégration
+                    Hub intégration TENF
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/26 bg-violet-500/[0.1] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-violet-100/92">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-400/26 bg-rose-500/[0.1] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-rose-100/92">
                     <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     Cockpit staff
                   </span>
                 </div>
                 <div>
-                  <p className="text-[length:clamp(0.6875rem,0.625rem+0.25vw,0.8125rem)] uppercase tracking-[0.12em] text-violet-200/95">
+                  <p className="text-[length:clamp(0.6875rem,0.625rem+0.25vw,0.8125rem)] uppercase tracking-[0.12em] text-rose-200/95">
                     Parcours nouveau membre
                   </p>
-                  <h1 className="mt-2 text-[clamp(1.45rem,1.05rem+1.05vw,2.35rem)] font-semibold tracking-tight text-white">
-                    Accueil & intégration
-                  </h1>
-                  <p className="mt-3 max-w-3xl text-[length:clamp(0.8125rem,0.75rem+0.32vw,0.9625rem)] leading-[1.65] text-zinc-400">
-                    Préparer les sessions d&apos;accueil, suivre les présences et accompagner les nouveaux jusqu&apos;au statut
-                    actif TENF. Les compteurs proviennent des sessions d&apos;intégration — pas des événements communautaires.
-                  </p>
+                  <div className="mt-3">
+                    <OnboardingHubWelcome username={username} hasPriorityActions={hasPriorityActions} />
+                  </div>
                 </div>
                 <div className="flex min-w-0 flex-wrap gap-[clamp(0.4rem,0.85vw,0.625rem)]">
+                  <button type="button" onClick={scrollToTodo} className={`${hubSubtleBtnClass} ${focusRingClass}`}>
+                    <ListOrdered className="h-4 w-4 shrink-0" aria-hidden />
+                    À faire maintenant
+                  </button>
+                  <button type="button" onClick={scrollToNextSession} className={`${hubSubtleBtnClass} ${focusRingClass}`}>
+                    <Calendar className="h-4 w-4 shrink-0" aria-hidden />
+                    Prochaine session
+                  </button>
                   <Link href="/integration" target="_blank" rel="noopener noreferrer" className={`${hubSubtleBtnClass} ${focusRingClass}`}>
                     <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
                     Parcours public
@@ -641,13 +694,22 @@ export default function OnboardingHubPage() {
                     Contenus & trame
                   </Link>
                 </div>
+                  </div>
+                </div>
               </div>
               <div className={`relative min-h-[11rem] p-[clamp(0.875rem,1.5vw,1.2rem)] sm:min-h-[12rem] ${heroVisualClass}`}>
-                <div aria-hidden className="absolute inset-0 bg-[conic-gradient(from_200deg_at_72%_-10%,rgba(167,139,250,0.14),transparent_42%)]" />
+                <div
+                  aria-hidden
+                  className="absolute inset-0 bg-[conic-gradient(from_200deg_at_72%_-10%,rgba(244,63,94,0.16),transparent_42%,transparent_58%,rgba(167,139,250,0.1))]"
+                />
+                <div
+                  aria-hidden
+                  className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.12),transparent_40%,transparent_65%,rgba(0,0,0,0.32))]"
+                />
                 <div className="relative flex h-full min-h-[10rem] flex-col justify-between gap-4">
-                  <span className="inline-flex w-fit items-center gap-2 rounded-xl border border-violet-400/26 bg-violet-500/[0.11] px-3 py-1.5 text-[length:clamp(0.65rem,0.55rem+0.35vw,0.7rem)] font-semibold uppercase tracking-[0.08em] text-violet-50/96">
-                    <ListOrdered className="h-3.5 w-3.5 shrink-0 text-violet-200/92" aria-hidden />
-                    Synthèse intégration
+                  <span className="inline-flex w-fit items-center gap-2 rounded-xl border border-rose-400/26 bg-rose-500/[0.11] px-3 py-1.5 text-[length:clamp(0.65rem,0.55rem+0.35vw,0.7rem)] font-semibold uppercase tracking-[0.08em] text-rose-50/96">
+                    <ListOrdered className="h-3.5 w-3.5 shrink-0 text-rose-200/92" aria-hidden />
+                    Synthèse
                   </span>
                   {data.loading ? (
                     <p className="text-sm text-zinc-500" role="status" aria-live="polite">
@@ -659,25 +721,25 @@ export default function OnboardingHubPage() {
                     </p>
                   ) : (
                     <dl className="grid min-w-0 grid-cols-2 gap-[clamp(0.45rem,0.9vw,0.65rem)] sm:grid-cols-4 text-[length:clamp(0.65rem,0.58rem+0.22vw,0.775rem)]">
-                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                      <div className={ONBUI.synthStat}>
                         <dt className="font-medium uppercase tracking-wide text-zinc-500">Créneaux</dt>
                         <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-zinc-50">
                           {data.totalSessions}
                         </dd>
                       </div>
-                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                      <div className={ONBUI.synthStat}>
                         <dt className="font-medium uppercase tracking-wide text-zinc-500">Inscrits (prochain)</dt>
                         <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-sky-200/95">
                           {data.nextSession ? data.nextMeetingRegistrations : "—"}
                         </dd>
                       </div>
-                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                      <div className={ONBUI.synthStat}>
                         <dt className="font-medium uppercase tracking-wide text-zinc-500">Présences à saisir</dt>
                         <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-rose-200/95">
                           {sessionsWithMissingAttendanceCount > 0 ? sessionsWithMissingAttendanceCount : "0"}
                         </dd>
                       </div>
-                      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/52 p-[clamp(0.45rem,0.85vw,0.55rem)] text-center">
+                      <div className={ONBUI.synthStat}>
                         <dt className="font-medium uppercase tracking-wide text-zinc-500">À activer</dt>
                         <dd className="mt-1 text-[clamp(1.05rem,0.88rem+0.45vw,1.45rem)] font-semibold tabular-nums text-amber-200/95">
                           {data.correlation.activationSummary.toActivateCount}
@@ -686,8 +748,8 @@ export default function OnboardingHubPage() {
                     </dl>
                   )}
                   <p className="text-[length:clamp(0.65rem,0.58rem+0.2vw,0.75rem)] leading-snug text-zinc-500">
-                    Sessions passées suivies :{" "}
-                    <span className="font-semibold tabular-nums text-zinc-200">{data.correlation.sessionsPastCount}</span>
+                    Actions prioritaires :{" "}
+                    <span className="font-semibold text-zinc-200">{hasPriorityActions ? "oui" : "non"}</span>
                     <span className="mx-1.5 text-zinc-600">·</span>
                     Membres intégrés :{" "}
                     <span className="font-semibold tabular-nums text-emerald-200/90">
@@ -698,15 +760,56 @@ export default function OnboardingHubPage() {
               </div>
             </header>
 
-            {/* Prochaine session */}
-            <section className={`${panelClass} min-w-0 p-[clamp(1rem,2vw,1.35rem)]`} aria-labelledby="onb-next-session-heading">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <section className="space-y-3" aria-label="Repères du hub">
+              <p className={ONBUI.sectionLabel}>Repères du hub</p>
+              <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <button type="button" onClick={scrollToNextSession} className={`${ONBUI.kpiCard} hover:border-rose-400/35 ${focusRingClass}`}>
+                  <span className={ONBUI.kpiAccentRose} aria-hidden />
+                  <p className={ONBUI.kpiLabel}>Créneaux planifiés</p>
+                  <p className={`${ONBUI.kpiValue} text-zinc-100`}>{data.totalSessions}</p>
+                  <p className={ONBUI.kpiDesc}>
+                    {data.draftSessions > 0 ? `${data.draftSessions} brouillon(s) à publier` : "Tous publiés ou archivés"}
+                  </p>
+                </button>
+                <button type="button" onClick={scrollToNextSession} className={`${ONBUI.kpiCard} hover:border-sky-400/35 ${focusRingClass}`}>
+                  <span className={ONBUI.kpiAccentSky} aria-hidden />
+                  <p className={ONBUI.kpiLabel}>Inscrits (prochain)</p>
+                  <p className={`${ONBUI.kpiValue} text-sky-200/95`}>
+                    {data.nextSession ? data.nextMeetingRegistrations : "—"}
+                  </p>
+                  <p className={ONBUI.kpiDesc}>Réservations sur le prochain créneau</p>
+                </button>
+                <Link href="/admin/onboarding/presences" className={`${ONBUI.kpiCard} hover:border-rose-400/35 ${focusRingClass}`}>
+                  <span className={ONBUI.kpiAccentRose} aria-hidden />
+                  <p className={ONBUI.kpiLabel}>Présences à saisir</p>
+                  <p className={`${ONBUI.kpiValue} text-rose-200/95`}>{sessionsWithMissingAttendanceCount}</p>
+                  <p className={ONBUI.kpiDesc}>Sessions passées avec inscrits sans présence</p>
+                </Link>
+                <Link href="/admin/onboarding/activation" className={`${ONBUI.kpiCard} hover:border-amber-400/35 ${focusRingClass}`}>
+                  <span className={ONBUI.kpiAccentAmber} aria-hidden />
+                  <p className={ONBUI.kpiLabel}>À activer</p>
+                  <p className={`${ONBUI.kpiValue} text-amber-100/95`}>
+                    {data.correlation.activationSummary.toActivateCount}
+                  </p>
+                  <p className={ONBUI.kpiDesc}>Membres présents pas encore activés</p>
+                </Link>
+              </div>
+            </section>
+
+            <section
+              ref={nextSessionRef}
+              className={ONBUI.featuredPillar}
+              aria-labelledby="onb-next-session-heading"
+            >
+              <div className={ONBUI.featuredPillarGlow} aria-hidden />
+              <div className="relative flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 id="onb-next-session-heading" className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-100">
-                    <Calendar className="h-5 w-5 shrink-0 text-violet-300" aria-hidden />
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-rose-200/95">Priorité session</p>
+                  <h2 id="onb-next-session-heading" className={`mt-1.5 flex flex-wrap items-center gap-2 ${ONBUI.sectionTitle}`}>
+                    <Calendar className="h-5 w-5 shrink-0 text-rose-300" aria-hidden />
                     Prochaine session
                   </h2>
-                  <p className="mt-1 text-sm text-zinc-500">Créneau le plus proche dans le calendrier d&apos;accueil.</p>
+                  <p className={ONBUI.sectionLead}>Créneau le plus proche dans le calendrier d&apos;accueil.</p>
                 </div>
                 {data.nextSession && !data.nextSession.isPublished ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/35 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-100">
@@ -721,6 +824,7 @@ export default function OnboardingHubPage() {
                 ) : null}
               </div>
 
+              <div className="relative">
               {data.loading ? (
                 <p className="mt-4 text-sm text-zinc-500" role="status">
                   Chargement du calendrier…
@@ -830,6 +934,7 @@ export default function OnboardingHubPage() {
                   </div>
                 </div>
               )}
+              </div>
             </section>
 
             {/* Dernière session à traiter */}
@@ -935,7 +1040,7 @@ export default function OnboardingHubPage() {
                   <li key={step.n} className="min-w-0">
                     <Link
                       href={step.href}
-                      className={`flex h-full min-w-0 flex-col rounded-xl border border-white/[0.08] bg-zinc-900/35 p-4 transition hover:border-violet-400/30 hover:bg-zinc-900/55 ${focusRingClass}`}
+                      className={`${ONBUI.funnelStep} ${focusRingClass}`}
                       aria-label={`${step.title}${step.showCount && step.count !== null ? ` : ${step.count}` : ""}`}
                     >
                       <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15 text-xs font-bold text-violet-200">
@@ -957,11 +1062,16 @@ export default function OnboardingHubPage() {
             </section>
 
             {/* À faire maintenant */}
-            <section className={`${panelClass} min-w-0 p-[clamp(1rem,2vw,1.35rem)]`} aria-labelledby="onb-todo-heading">
-              <h2 id="onb-todo-heading" className="text-lg font-semibold text-zinc-100">
+            <section
+              ref={todoRef}
+              className={`${panelClass} min-w-0 scroll-mt-24 p-[clamp(1rem,2vw,1.35rem)]`}
+              aria-labelledby="onb-todo-heading"
+            >
+              <p className={ONBUI.sectionLabel}>Priorités détectées</p>
+              <h2 id="onb-todo-heading" className={`mt-1.5 ${ONBUI.sectionTitle}`}>
                 À faire maintenant
               </h2>
-              <p className="mt-1 text-sm text-zinc-500">Actions détectées à partir des données d&apos;intégration et du calendrier.</p>
+              <p className={ONBUI.sectionLead}>Actions détectées à partir des données d&apos;intégration et du calendrier.</p>
               {data.loading ? (
                 <p className="mt-4 text-sm text-zinc-500" role="status" aria-live="polite">
                   Analyse en cours…
@@ -979,7 +1089,7 @@ export default function OnboardingHubPage() {
                       <li key={item.id}>
                         <Link
                           href={item.href}
-                          className={`flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 transition hover:brightness-110 ${item.tone} ${focusRingClass}`}
+                          className={`flex min-w-0 flex-wrap items-center justify-between gap-3 ${todoActionTone[item.tone]} ${focusRingClass}`}
                         >
                           <div className="flex min-w-0 items-start gap-3">
                             <Icon className="mt-0.5 h-5 w-5 shrink-0 opacity-90" aria-hidden />
@@ -1103,7 +1213,7 @@ export default function OnboardingHubPage() {
                     <li key={tile.href} className="min-w-0">
                       <Link
                         href={tile.href}
-                        className={`flex h-full min-w-0 flex-col rounded-xl border border-white/[0.08] bg-zinc-900/35 p-4 transition hover:border-violet-400/28 hover:bg-zinc-900/50 ${focusRingClass}`}
+                        className={`${ONBUI.toolCard} ${focusRingClass}`}
                         aria-label={`${tile.label} — ${tile.description}`}
                       >
                         <Icon className="h-5 w-5 text-violet-300" aria-hidden />

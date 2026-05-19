@@ -15,6 +15,45 @@ export const MUI = {
   panelHeader: "border-b border-white/[0.06] dark:border-white/[0.07]",
   sectionLabel:
     "text-[10px] font-medium uppercase tracking-[0.2em] text-violet-600/85 dark:text-violet-300/70 [html[data-theme=light]_&]:text-violet-700/90",
+  asideSectionLabel:
+    "text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]",
+  asidePanelTitle: "text-base font-semibold tracking-tight text-[var(--color-text)]",
+  asideTileLabel: "text-sm font-medium text-[var(--color-text-secondary)]",
+  asideTileValue: "text-base font-bold tracking-tight",
+  asideUrgentBadge:
+    "mt-2 inline-flex items-center rounded-md border border-rose-300/35 bg-rose-500/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rose-50",
+  asideStaffPanel:
+    `rounded-2xl border border-white/[0.1] bg-[color-mix(in_srgb,var(--color-card)_55%,transparent)] ${glassBlur} shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]`,
+  asideViewToggleWrap:
+    `rounded-2xl border border-white/[0.1] bg-[color-mix(in_srgb,var(--color-card)_52%,transparent)] p-3.5 ${glassBlur} shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]`,
+  asideViewToggleLabel:
+    "text-xs font-semibold uppercase tracking-[0.1em] text-[var(--color-text)]",
+  asideToggleTrack:
+    `flex w-full gap-1 rounded-xl border border-white/[0.12] bg-black/30 p-1 ${glassBlur} shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]`,
+  asideToggleIdle:
+    "font-medium text-[var(--color-text)]/85 hover:bg-white/[0.1] hover:text-[var(--color-text)]",
+  asideToggleActive:
+    "bg-violet-500/40 font-semibold text-white shadow-[0_2px_14px_color-mix(in_srgb,var(--color-primary)_28%,transparent),inset_0_1px_0_0_rgba(255,255,255,0.14)] ring-1 ring-violet-400/50",
+  asideToggleIconIdle: "text-[var(--color-text-secondary)]",
+  asideToggleIconActive: "text-white",
+  asideProgressTrack:
+    `mt-3 h-2.5 overflow-hidden rounded-full border border-white/[0.08] bg-white/[0.06] ${glassBlur}`,
+  asideLinkCta:
+    "mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-violet-600 dark:text-violet-200",
+  glassHero:
+    `rounded-[clamp(1rem,1.35vw,1.4rem)] border border-white/[0.1] bg-[color-mix(in_srgb,var(--color-card)_32%,transparent)] backdrop-blur-2xl backdrop-saturate-[1.18] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_20px_60px_rgba(0,0,0,0.12),0_0_0_1px_rgba(255,255,255,0.04)] dark:bg-[color-mix(in_srgb,var(--color-card)_28%,transparent)]`,
+  glassHeroShine:
+    "pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent",
+  glassHeroColumn:
+    `rounded-2xl border border-white/[0.08] bg-white/[0.02] p-[clamp(0.65rem,0.85vw,0.9rem)] ${glassBlur} shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] lg:border-l-0`,
+  iconHero:
+    `flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/25 bg-violet-500/[0.1] ${glassBlur} text-violet-600 shadow-[0_4px_24px_color-mix(in_srgb,var(--color-primary)_18%,transparent)] dark:text-violet-200/95`,
+  audiencePill:
+    `inline-flex items-center rounded-full border border-violet-400/20 bg-violet-500/[0.08] px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-violet-700/90 backdrop-blur-md dark:text-violet-200/85`,
+  hubTitleLogo:
+    "h-[clamp(7rem,22vw,13rem)] w-auto max-w-[min(100%,40rem)] object-contain object-left drop-shadow-[0_8px_28px_rgba(0,0,0,0.45)] sm:max-w-[44rem] lg:h-[clamp(9.5rem,26vw,17rem)] lg:max-w-[min(62vw,50rem)] xl:h-[clamp(11rem,28vw,19rem)] 2xl:h-[clamp(12rem,30vw,21rem)]",
+  hubTitleLogoWrap:
+    "flex shrink-0 items-center justify-center lg:justify-start",
   glassPanel:
     `rounded-2xl border border-white/[0.09] bg-[color-mix(in_srgb,var(--color-card)_42%,transparent)] ${glassBlur} shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_8px_32px_rgba(0,0,0,0.06)] dark:bg-[color-mix(in_srgb,var(--color-card)_38%,transparent)]`,
   glassHeader:
@@ -37,12 +76,21 @@ export const MUI = {
     `border border-white/[0.07] bg-[color-mix(in_srgb,var(--color-card)_40%,transparent)] ${glassBlur}`,
   surfaceHover:
     "hover:border-violet-400/25 hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)] hover:shadow-[0_8px_32px_color-mix(in_srgb,var(--color-primary)_10%,transparent)]",
+  hubSectionsPanel:
+    `rounded-2xl border border-white/[0.1] bg-[color-mix(in_srgb,var(--color-card)_48%,transparent)] p-[clamp(0.85rem,1.1vw,1.35rem)] ${glassBlur} shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_12px_40px_rgba(0,0,0,0.08)]`,
+  hubSectionTitle: "text-lg font-semibold tracking-tight text-[var(--color-text)] sm:text-xl",
+  hubSectionLead: "mt-1.5 max-w-[65ch] text-pretty text-sm leading-relaxed text-[var(--color-text-secondary)]",
+  groupCard:
+    `rounded-2xl border border-white/[0.1] bg-[color-mix(in_srgb,var(--color-card)_50%,transparent)] ${glassBlur} shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_8px_32px_rgba(0,0,0,0.06)]`,
+  groupActiveCount:
+    "shrink-0 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-100",
+  groupWipHint: "mt-2.5 text-xs font-medium text-[var(--color-text-secondary)]",
   moduleRow:
-    `group flex items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 ${glassBlur} transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/50`,
+    `group flex items-center justify-between gap-3 rounded-xl border border-white/[0.09] bg-white/[0.04] px-3.5 py-2.5 ${glassBlur} transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400/50`,
   moduleRowInactive:
-    "opacity-[0.78] border-dashed border-white/[0.05] bg-transparent hover:opacity-95",
+    `border-dashed border-amber-400/20 bg-amber-500/[0.04] hover:border-amber-400/35 hover:bg-amber-500/[0.07]`,
   moduleTitle: "line-clamp-2 text-pretty font-semibold text-[var(--color-text)]",
-  moduleDesc: "mt-0.5 line-clamp-2 text-pretty leading-relaxed text-[var(--color-text-secondary)]",
+  moduleDesc: "mt-1 line-clamp-2 text-pretty text-sm leading-snug text-[var(--color-text-secondary)]",
   iconAccent:
     `flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/[0.08] ${glassBlur} text-violet-600 dark:text-violet-200/95`,
   iconEmerald:
@@ -69,6 +117,12 @@ export const MUI = {
     `border-violet-400/20 bg-violet-500/[0.06] ${glassBlur} shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_4px_20px_color-mix(in_srgb,var(--color-primary)_8%,transparent)]`,
   todoUrgent:
     `border-rose-400/25 bg-rose-500/[0.06] ${glassBlur} shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_20px_color-mix(in_srgb,#f43f5e_8%,transparent)] ring-1 ring-rose-400/15 hover:border-rose-400/35`,
+  charterUrgent:
+    `relative overflow-hidden border-rose-400/40 bg-gradient-to-br from-rose-950/40 via-rose-500/15 to-rose-500/5 ${glassBlur} shadow-[0_0_32px_color-mix(in_srgb,#f43f5e_14%,transparent),inset_0_1px_0_0_rgba(255,255,255,0.08)] ring-1 ring-rose-400/30 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[radial-gradient(ellipse_at_top_left,color-mix(in_srgb,#f43f5e_22%,transparent),transparent_60%)]`,
+  asideTileInset:
+    `rounded-xl border border-white/[0.1] bg-white/[0.05] ${glassBlur} shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]`,
+  skeletonShimmer:
+    "animate-pulse rounded-md bg-white/[0.06] dark:bg-white/[0.05]",
   todoMuted:
     `border-white/[0.06] bg-white/[0.02] ${glassBlur} hover:border-violet-400/20 hover:bg-violet-500/[0.04]`,
   todoCardMotion:

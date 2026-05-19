@@ -1,6 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import CommunauteHubWelcome from "@/components/admin/communaute/CommunauteHubWelcome";
+import { COMUI, opsMetricTone, staffVerifyTone } from "@/components/admin/communaute/communaute-ui";
+import { getDiscordUser } from "@/lib/discord";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Activity,
@@ -22,14 +26,15 @@ import {
   Zap,
 } from "lucide-react";
 
-const panelClass =
-  "rounded-2xl border border-white/[0.08] bg-zinc-950/55 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]";
+const panelClass = COMUI.glassPanel;
 const heroVisualClass =
   "relative isolate overflow-hidden rounded-2xl border border-violet-500/20 bg-zinc-950/70 ring-1 ring-inset ring-violet-500/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
 const focusRingClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";
 const subtleButtonClass =
   "inline-flex min-h-[2.5rem] items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-950/25 px-3 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-900/30";
+const hubAnimationLogoClass =
+  "h-[clamp(7rem,20vw,12rem)] w-auto max-w-[min(100%,32rem)] object-contain object-center drop-shadow-[0_12px_40px_rgba(0,0,0,0.55)] sm:max-w-[38rem] lg:h-[clamp(9rem,24vw,15rem)] lg:max-w-[min(50vw,28rem)] xl:h-[clamp(10rem,26vw,17rem)] lg:object-left";
 
 type PillarCategory = "events" | "engagement" | "anniversaires";
 
@@ -168,25 +173,25 @@ const staffVerificationItems = [
     href: "/admin/communaute/engagement/raids-fiabilite",
     title: "Raids & signalements",
     body: "Vérifier les écarts entre EventSub, signalements membres et historique.",
-    tone: "border-rose-400/25 bg-rose-500/5 text-rose-50 hover:border-rose-400/40 hover:bg-rose-500/10",
+    tone: staffVerifyTone.rose,
   },
   {
     href: "/admin/communaute/engagement/points-discord",
     title: "Points Discord",
     body: "Attribution des points après vérification des données.",
-    tone: "border-emerald-400/25 bg-emerald-500/5 text-emerald-50 hover:border-emerald-400/40 hover:bg-emerald-500/10",
+    tone: staffVerifyTone.emerald,
   },
   {
     href: "/admin/communaute/evenements",
     title: "Événements & présences",
     body: "Contrôler les événements, présences et récapitulatifs.",
-    tone: "border-sky-400/25 bg-sky-500/5 text-sky-50 hover:border-sky-400/40 hover:bg-sky-500/10",
+    tone: staffVerifyTone.sky,
   },
   {
     href: "/admin/communaute/anniversaires",
     title: "Anniversaires & reconnaissance",
     body: "Préparer les attentions communautaires et valorisations.",
-    tone: "border-amber-400/25 bg-amber-500/5 text-amber-50 hover:border-amber-400/40 hover:bg-amber-500/10",
+    tone: staffVerifyTone.amber,
   },
 ];
 
@@ -225,37 +230,37 @@ const opsMetricLinks = [
     key: "raidsPendingCount" as const,
     label: "Raids à traiter",
     href: "/admin/communaute/engagement/signalements-raids",
-    tone: "border-rose-400/20 bg-rose-500/5 text-rose-100",
+    tone: opsMetricTone.rose,
   },
   {
     key: "raidsIgnoredToProcessCount" as const,
     label: "Raids ignorés à revoir",
     href: "/admin/communaute/engagement/raids-eventsub",
-    tone: "border-amber-400/20 bg-amber-500/5 text-amber-100",
+    tone: opsMetricTone.amber,
   },
   {
     key: "discordPointsPendingCount" as const,
     label: "Points Discord en attente",
     href: "/admin/communaute/engagement/points-discord",
-    tone: "border-emerald-400/20 bg-emerald-500/5 text-emerald-100",
+    tone: opsMetricTone.emerald,
   },
   {
     key: "followOverdueCount" as const,
     label: "Retards follow (staff)",
     href: "/admin/communaute/engagement/follow",
-    tone: "border-cyan-400/20 bg-cyan-500/5 text-cyan-100",
+    tone: opsMetricTone.cyan,
   },
   {
     key: "pendingEventValidations" as const,
     label: "Événements à valider",
     href: "/admin/communaute/evenements",
-    tone: "border-indigo-400/20 bg-indigo-500/5 text-indigo-100",
+    tone: opsMetricTone.indigo,
   },
   {
     key: "upcomingSpotlights" as const,
     label: "Spotlights à venir",
     href: "/admin/communaute/evenements/spotlight",
-    tone: "border-fuchsia-400/20 bg-fuchsia-500/5 text-fuchsia-100",
+    tone: opsMetricTone.violet,
   },
 ];
 
@@ -313,6 +318,7 @@ export default function CommunauteDashboardPage() {
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [checklistHydrated, setChecklistHydrated] = useState(false);
   const [opsRefreshKey, setOpsRefreshKey] = useState(0);
+  const [username, setUsername] = useState("");
   const [ops, setOps] = useState<OpsSignals>({
     loading: true,
     error: null,
@@ -327,6 +333,12 @@ export default function CommunauteDashboardPage() {
   const polesRef = useRef<HTMLDivElement>(null);
   const quickRef = useRef<HTMLDivElement>(null);
   const staffCheckRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void getDiscordUser()
+      .then((user) => setUsername(user?.username ?? ""))
+      .catch(() => setUsername(""));
+  }, []);
 
   useEffect(() => {
     try {
@@ -475,7 +487,7 @@ export default function CommunauteDashboardPage() {
         <div className="grid min-w-0 grid-cols-1 gap-6 [--sidebar:min(100%,clamp(17rem,24vw,25rem))] xl:grid-cols-[minmax(0,1fr)_var(--sidebar)] xl:items-start xl:gap-[clamp(1.35rem,2.6vw,2.85rem)]">
           <main className="min-w-0 space-y-6 sm:space-y-8 xl:space-y-[var(--com-gap)]">
             <header
-              className={`grid min-w-0 gap-6 p-[clamp(1rem,2vw,1.6rem)] lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,min(100%,0.94fr))] lg:gap-8 ${panelClass}`}
+              className={`grid min-w-0 gap-6 p-[clamp(1rem,2vw,1.6rem)] lg:grid-cols-[minmax(0,1.65fr)_minmax(240px,min(100%,0.88fr))] lg:gap-8 xl:grid-cols-[minmax(0,1.75fr)_minmax(260px,min(100%,0.9fr))] ${panelClass}`}
             >
               <div className="min-w-0 space-y-4">
                 <Link
@@ -485,6 +497,19 @@ export default function CommunauteDashboardPage() {
                   <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
                   Retour au pilotage serveur
                 </Link>
+                <div className="grid grid-cols-1 items-center gap-5 sm:gap-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-6 xl:gap-8">
+                  <div className="flex shrink-0 justify-center lg:justify-start">
+                    <Image
+                      src="/images/communaute/hub-animation-logo.png"
+                      alt="Animation et engagement — Hub TENF"
+                      width={1024}
+                      height={1024}
+                      priority
+                      unoptimized
+                      className={hubAnimationLogoClass}
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-4">
                 <div className="flex flex-wrap gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[length:clamp(0.65rem,0.58rem+0.25vw,0.6875rem)] font-semibold uppercase tracking-[0.11em] text-zinc-200/90">
                     <PartyPopper className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -499,14 +524,9 @@ export default function CommunauteDashboardPage() {
                   <p className="text-[length:clamp(0.6875rem,0.625rem+0.25vw,0.8125rem)] uppercase tracking-[0.12em] text-violet-200/95">
                     Animation & engagement
                   </p>
-                  <h1 className="mt-2 text-[clamp(1.45rem,1.05rem+1.05vw,2.35rem)] font-semibold tracking-tight text-white">
-                    Piloter l’animation sans perdre le fil opérationnel
-                  </h1>
-                  <p className="mt-3 max-w-3xl text-[length:clamp(0.8125rem,0.75rem+0.32vw,0.9625rem)] leading-[1.65] text-zinc-400">
-                    Ce hub relie ce que les membres voient (agenda, reconnaissance, entraide) et ce que vous validez en staff.
-                    Les chiffres ci-dessous sont soit issus du tableau de bord ops, soit présentés comme des raccourcis — jamais
-                    comme des pourcentages fictifs.
-                  </p>
+                  <div className="mt-3">
+                    <CommunauteHubWelcome username={username} hasOpsSignals={hasOpsSignals} />
+                  </div>
                 </div>
                 <div className="flex min-w-0 flex-wrap gap-[clamp(0.4rem,0.85vw,0.625rem)]">
                   <button type="button" onClick={scrollToStaffCheck} className={`${subtleButtonClass} ${focusRingClass}`}>
@@ -534,6 +554,8 @@ export default function CommunauteDashboardPage() {
                     <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
                     Aperçu membre
                   </Link>
+                </div>
+                  </div>
                 </div>
               </div>
               <div className={`relative min-h-[11rem] p-[clamp(0.875rem,1.5vw,1.2rem)] sm:min-h-[12rem] ${heroVisualClass}`}>
@@ -584,62 +606,66 @@ export default function CommunauteDashboardPage() {
             </header>
 
       {/* KPI honnêtes */}
-      <section className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Repères du hub">
+      <section className="space-y-3" aria-label="Repères du hub">
+        <p className={COMUI.sectionLabel}>Repères du hub</p>
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <button
           type="button"
           onClick={scrollToPoles}
-          className={`${panelClass} min-w-0 p-4 text-left transition hover:shadow-[0_12px_36px_rgba(2,6,23,0.5)] hover:border-violet-400/30 ${focusRingClass}`}
+          className={`${COMUI.kpiCard} hover:border-violet-400/35 ${focusRingClass}`}
         >
-          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Pôles d’animation</p>
-          <p className="mt-1 text-[clamp(1.25rem,1rem+0.6vw,1.75rem)] font-semibold text-zinc-100">3 pôles</p>
-          <p className="mt-1 text-xs leading-snug text-zinc-500">Événements, engagement, anniversaires</p>
+          <span className={COMUI.kpiAccentViolet} aria-hidden />
+          <p className={COMUI.kpiLabel}>Pôles d’animation</p>
+          <p className={`${COMUI.kpiValue} text-zinc-100`}>3 pôles</p>
+          <p className={COMUI.kpiDesc}>Événements, engagement, anniversaires</p>
         </button>
         <button
           type="button"
           onClick={scrollToQuick}
-          className={`${panelClass} min-w-0 p-4 text-left transition hover:shadow-[0_12px_36px_rgba(2,6,23,0.5)] hover:border-sky-400/30 ${focusRingClass}`}
+          className={`${COMUI.kpiCard} hover:border-sky-400/35 ${focusRingClass}`}
         >
-          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Accès rapides</p>
-          <p className="mt-1 text-[clamp(1.25rem,1rem+0.6vw,1.75rem)] font-semibold tabular-nums text-sky-200/95">
-            {quickLinks.length}
-          </p>
-          <p className="mt-1 text-xs leading-snug text-zinc-500">Liens directs vers les écrans les plus utilisés</p>
+          <span className={COMUI.kpiAccentSky} aria-hidden />
+          <p className={COMUI.kpiLabel}>Accès rapides</p>
+          <p className={`${COMUI.kpiValue} text-sky-200/95`}>{quickLinks.length}</p>
+          <p className={COMUI.kpiDesc}>Liens directs vers les écrans les plus utilisés</p>
         </button>
         <button
           type="button"
           onClick={scrollToStaffCheck}
-          className={`${panelClass} min-w-0 p-4 text-left transition hover:shadow-[0_12px_36px_rgba(2,6,23,0.5)] hover:border-amber-400/30 ${focusRingClass}`}
+          className={`${COMUI.kpiCard} hover:border-amber-400/35 ${focusRingClass}`}
         >
-          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Raccourcis prioritaires</p>
-          <p className="mt-1 text-[clamp(1.25rem,1rem+0.6vw,1.75rem)] font-semibold text-amber-100/95">
-            {staffVerificationItems.length} zones
-          </p>
-          <p className="mt-1 text-xs leading-snug text-zinc-500">À contrôler régulièrement — pas d’alerte temps réel</p>
+          <span className={COMUI.kpiAccentAmber} aria-hidden />
+          <p className={COMUI.kpiLabel}>Raccourcis prioritaires</p>
+          <p className={`${COMUI.kpiValue} text-amber-100/95`}>{staffVerificationItems.length} zones</p>
+          <p className={COMUI.kpiDesc}>À contrôler régulièrement — pas d’alerte temps réel</p>
         </button>
-        <article className={`${panelClass} min-w-0 p-4 transition hover:shadow-[0_12px_36px_rgba(2,6,23,0.5)]`}>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Vue d’orientation</p>
-          <p className="mt-1 text-sm font-semibold leading-snug text-zinc-200">Hub racine</p>
-          <p className="mt-1 text-xs leading-snug text-zinc-500">
+        <article className={`${COMUI.kpiCard} hover:border-zinc-400/25`}>
+          <span className={COMUI.kpiAccentZinc} aria-hidden />
+          <p className={COMUI.kpiLabel}>Vue d’orientation</p>
+          <p className={`${COMUI.kpiValue} text-base text-zinc-200`}>Hub racine</p>
+          <p className={COMUI.kpiDesc}>
             Ouvre les écrans métier ; ne remplace pas les cockpits raids ou points.
           </p>
         </article>
+        </div>
       </section>
 
       {/* Signaux ops réels */}
       <section className={`${panelClass} min-w-0 p-4 sm:p-5`} aria-label="Signaux opérationnels">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.06] pb-4">
           <div>
-            <h2 className="text-base font-semibold text-zinc-100">Signaux ops (tableau de bord)</h2>
-            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-500">
-              Données issues de <span className="text-zinc-400">/api/admin/dashboard/aggregate</span> lorsque disponibles.
-              Zéro affiché = file vide, pas une métrique inventée.
+            <p className={COMUI.sectionLabel}>Tableau de bord</p>
+            <h2 className={`mt-1.5 ${COMUI.sectionTitle}`}>Signaux ops</h2>
+            <p className={COMUI.sectionLead}>
+              Données issues de <span className="font-medium text-zinc-300">/api/admin/dashboard/aggregate</span>{" "}
+              lorsque disponibles. Zéro affiché = file vide, pas une métrique inventée.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setOpsRefreshKey((k) => k + 1)}
             disabled={ops.loading}
-            className={`inline-flex min-h-[2.25rem] items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:bg-white/[0.08] disabled:opacity-50 ${focusRingClass}`}
+            className={`inline-flex min-h-[2.35rem] items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.05] px-3.5 py-2 text-xs font-medium text-zinc-200 backdrop-blur-md transition hover:bg-white/[0.1] disabled:opacity-50 ${focusRingClass}`}
             aria-label="Actualiser les signaux ops du tableau de bord"
           >
             <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${ops.loading ? "animate-spin" : ""}`} aria-hidden />
@@ -669,11 +695,11 @@ export default function CommunauteDashboardPage() {
                 <Link
                   key={metric.key}
                   href={metric.href}
-                  className={`min-w-0 rounded-xl border px-3 py-2.5 transition hover:brightness-110 ${metric.tone} ${focusRingClass}`}
+                  className={`${COMUI.opsMetricBase} ${metric.tone} ${focusRingClass} ${typeof value === "number" && value > 0 ? "ring-1 ring-white/10" : ""}`}
                   aria-label={`${metric.label} : ${value}`}
                 >
-                  <p className="text-[10px] font-medium uppercase tracking-wide opacity-90">{metric.label}</p>
-                  <p className="mt-1 text-[clamp(1.1rem,0.95rem+0.4vw,1.35rem)] font-semibold tabular-nums">{value}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300/90">{metric.label}</p>
+                  <p className="mt-1.5 text-[clamp(1.15rem,0.95rem+0.45vw,1.4rem)] font-bold tabular-nums">{value}</p>
                 </Link>
               );
             })}
@@ -682,48 +708,34 @@ export default function CommunauteDashboardPage() {
       </section>
 
       {/* Pilier Raids & fiabilité */}
-      <section className={`${panelClass} min-w-0 p-5 sm:p-6`} aria-labelledby="raids-pillar-heading">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <section className={COMUI.featuredPillar} aria-labelledby="raids-pillar-heading">
+        <div className={COMUI.featuredPillarGlow} aria-hidden />
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 max-w-2xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-300/90">Pilier prioritaire</p>
-            <h2 id="raids-pillar-heading" className="mt-2 text-lg font-semibold text-white sm:text-xl">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-rose-200/95">Pilier prioritaire</p>
+            <h2 id="raids-pillar-heading" className="mt-2 text-xl font-semibold tracking-tight text-white sm:text-2xl">
               Raids & fiabilité
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-2 text-sm leading-relaxed text-zinc-300/90">
               Vérifier les raids détectés, les signalements membres et l’historique avant d’attribuer ou corriger des points.
             </p>
           </div>
-          <Link
-            href={`${RAIDS_BASE}/raids-fiabilite`}
-            className={`inline-flex min-h-[2.75rem] shrink-0 items-center justify-center gap-2 rounded-xl border border-violet-500/35 bg-violet-950/35 px-4 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400/50 hover:bg-violet-900/40 ${focusRingClass}`}
-          >
+          <Link href={`${RAIDS_BASE}/raids-fiabilite`} className={`${COMUI.btnPrimary} ${focusRingClass}`}>
             Ouvrir le pilier raids
             <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
           </Link>
         </div>
-        <div className="mt-5 flex min-w-0 flex-wrap gap-2">
-          <Link
-            href={`${RAIDS_BASE}/raids-eventsub`}
-            className={`rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-violet-400/30 hover:text-white ${focusRingClass}`}
-          >
+        <div className="relative mt-5 flex min-w-0 flex-wrap gap-2">
+          <Link href={`${RAIDS_BASE}/raids-eventsub`} className={`${COMUI.chipLink} ${focusRingClass}`}>
             EventSub
           </Link>
-          <Link
-            href={`${RAIDS_BASE}/signalements-raids`}
-            className={`rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-amber-400/30 hover:text-white ${focusRingClass}`}
-          >
+          <Link href={`${RAIDS_BASE}/signalements-raids`} className={`${COMUI.chipLink} ${focusRingClass}`}>
             Signalements
           </Link>
-          <Link
-            href={`${RAIDS_BASE}/historique-raids`}
-            className={`rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-sky-400/30 hover:text-white ${focusRingClass}`}
-          >
+          <Link href={`${RAIDS_BASE}/historique-raids`} className={`${COMUI.chipLink} ${focusRingClass}`}>
             Historique
           </Link>
-          <Link
-            href={`${RAIDS_BASE}/points-discord`}
-            className={`rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-emerald-400/30 hover:text-white ${focusRingClass}`}
-          >
+          <Link href={`${RAIDS_BASE}/points-discord`} className={`${COMUI.chipLink} ${focusRingClass}`}>
             Points Discord
           </Link>
         </div>
@@ -732,12 +744,13 @@ export default function CommunauteDashboardPage() {
       {/* Checklist + Ce que le staff doit vérifier */}
       <section className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[1.05fr_1fr]">
         <article className={`${panelClass} min-w-0 p-5 md:p-6`}>
-          <h2 className="text-lg font-semibold text-zinc-100">Passage rapide équipe</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Cette checklist est <strong className="font-medium text-zinc-400">locale à ton navigateur</strong>. Elle sert de
+          <p className={COMUI.sectionLabel}>Mémo personnel</p>
+          <h2 className={`mt-1.5 ${COMUI.sectionTitle}`}>Passage rapide équipe</h2>
+          <p className={COMUI.sectionLead}>
+            Cette checklist est <strong className="font-medium text-zinc-300">locale à ton navigateur</strong>. Elle sert de
             mémo personnel, pas de suivi d’équipe.
           </p>
-          <p className="mt-2 text-xs text-zinc-600" role="status" aria-live="polite">
+          <p className="mt-2 text-xs font-medium text-zinc-500" role="status" aria-live="polite">
             {checklistDone} / {checklistItems.length} points cochés sur cet appareil
           </p>
           <ul className="mt-4 space-y-2" aria-label="Checklist personnelle du hub animation">
@@ -750,10 +763,10 @@ export default function CommunauteDashboardPage() {
                     role="checkbox"
                     aria-checked={done}
                     onClick={() => toggleCheck(item.id)}
-                    className={`flex w-full min-w-0 items-start gap-3 rounded-xl border px-3 py-3 text-left text-sm transition ${focusRingClass} ${
+                    className={`${COMUI.checklistRow} ${focusRingClass} ${
                       done
-                        ? "border-emerald-400/35 bg-emerald-500/10 text-emerald-50"
-                        : "border-white/[0.08] bg-black/20 text-zinc-200 hover:border-violet-400/25"
+                        ? "border-emerald-400/40 bg-emerald-500/12 text-emerald-50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
+                        : "border-white/[0.09] bg-white/[0.03] text-zinc-200 hover:border-violet-400/30 hover:bg-violet-500/[0.06]"
                     }`}
                   >
                     <span
@@ -778,21 +791,25 @@ export default function CommunauteDashboardPage() {
           className={`${panelClass} min-w-0 scroll-mt-24 p-5 md:p-6`}
           aria-labelledby="staff-check-heading"
         >
-          <h2 id="staff-check-heading" className="text-lg font-semibold text-zinc-100">
+          <p className={COMUI.sectionLabel}>Contrôles réguliers</p>
+          <h2 id="staff-check-heading" className={`mt-1.5 ${COMUI.sectionTitle}`}>
             Ce que le staff doit vérifier
           </h2>
-          <p className="mt-1 text-sm leading-relaxed text-zinc-500">
+          <p className={COMUI.sectionLead}>
             Ces raccourcis ne remplacent pas les compteurs métier. Ils t’orientent vers les zones à contrôler régulièrement.
           </p>
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 space-y-2.5">
             {staffVerificationItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`block min-w-0 rounded-xl border px-4 py-3 transition ${item.tone} ${focusRingClass}`}
+                className={`${item.tone} ${focusRingClass} group`}
               >
-                <span className="font-semibold leading-snug text-white">{item.title}</span>
-                <span className="mt-1 block text-xs leading-relaxed opacity-90">{item.body}</span>
+                <span className="flex items-center justify-between gap-2 font-semibold leading-snug text-white">
+                  {item.title}
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-60 motion-safe:transition-transform group-hover:translate-x-0.5 group-hover:opacity-100" aria-hidden />
+                </span>
+                <span className="mt-1.5 block text-xs leading-relaxed text-zinc-300/90">{item.body}</span>
               </Link>
             ))}
           </div>
