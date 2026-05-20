@@ -4,6 +4,7 @@
 import { getStore } from '@netlify/blobs';
 import fs from 'fs';
 import path from 'path';
+import { validateStaffRegistration } from '@/lib/integrationStaffSessionRules';
 
 // ============================================
 // TYPES
@@ -14,6 +15,8 @@ export interface ModeratorRegistration {
   integrationId: string;
   pseudo: string;
   role: string;
+  /** Clé AdminRole au moment de l'inscription (optionnel, rétrocompatibilité). */
+  roleKey?: string | null;
   placement: "Animateur" | "Co-animateur" | "Observateur";
   registeredAt: string; // ISO timestamp
 }
@@ -84,6 +87,7 @@ export async function registerModerator(
   registration: {
     pseudo: string;
     role: string;
+    roleKey?: string | null;
     placement: "Animateur" | "Co-animateur" | "Observateur";
   }
 ): Promise<ModeratorRegistration> {
@@ -97,11 +101,19 @@ export async function registerModerator(
   if (existing) {
     throw new Error('déjà inscrit');
   }
+
+  const quotaCheck = validateStaffRegistration(registrations, registration);
+  if (!quotaCheck.ok) {
+    throw new Error(quotaCheck.code);
+  }
   
   const newRegistration: ModeratorRegistration = {
     id: `mod-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
     integrationId,
-    ...registration,
+    pseudo: registration.pseudo,
+    role: registration.role,
+    roleKey: registration.roleKey ?? null,
+    placement: registration.placement,
     registeredAt: new Date().toISOString(),
   };
   

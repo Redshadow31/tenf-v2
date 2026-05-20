@@ -3,6 +3,11 @@
  * (page inscription-moderateur). Centralisé pour la version mobile et le bureau.
  */
 
+import {
+  computeStaffSessionStaffing,
+  type StaffSessionStaffingStats,
+} from "@/lib/integrationStaffSessionRules";
+
 export type StaffOnboardingIntegration = {
   id: string;
   title: string;
@@ -13,8 +18,18 @@ export type StaffOnboardingIntegration = {
   location?: string;
 };
 
-export type StaffOnboardingModeratorStats = {
-  total: number;
+export type StaffOnboardingRegistrationRow = {
+  id: string;
+  pseudo: string;
+  role: string;
+  roleKey?: string | null;
+  placement: string;
+  registeredAt?: string;
+};
+
+export type StaffOnboardingModeratorStats = StaffSessionStaffingStats & {
+  registrations: StaffOnboardingRegistrationRow[];
+  /** @deprecated Utiliser adminModeratorCount */
   adminCount: number;
 };
 
@@ -27,6 +42,17 @@ export type StaffOnboardingSnapshot = {
   moderatorStats: Record<string, StaffOnboardingModeratorStats>;
   registrationStats: Record<string, StaffOnboardingRegistrationStats>;
 };
+
+function mapModeratorStats(
+  registrations: StaffOnboardingRegistrationRow[],
+): StaffOnboardingModeratorStats {
+  const staffing = computeStaffSessionStaffing(registrations);
+  return {
+    ...staffing,
+    registrations,
+    adminCount: staffing.adminModeratorCount,
+  };
+}
 
 export async function loadStaffOnboardingSnapshot(): Promise<StaffOnboardingSnapshot> {
   const response = await fetch("/api/integrations?admin=true", {
@@ -51,16 +77,16 @@ export async function loadStaffOnboardingSnapshot(): Promise<StaffOnboardingSnap
         });
         if (modResponse.ok) {
           const modData = await modResponse.json();
-          const registrations = modData.registrations || [];
-          const adminCount = registrations.filter(
-            (r: { role?: string }) => r.role && String(r.role).toLowerCase().includes("admin")
-          ).length;
-          moderatorStats[integration.id] = {
-            total: registrations.length,
-            adminCount,
-          };
+          const registrations = (modData.registrations || []) as StaffOnboardingRegistrationRow[];
+          moderatorStats[integration.id] = modData.staffing
+            ? {
+                ...(modData.staffing as StaffSessionStaffingStats),
+                registrations,
+                adminCount: (modData.staffing as StaffSessionStaffingStats).adminModeratorCount,
+              }
+            : mapModeratorStats(registrations);
         } else {
-          moderatorStats[integration.id] = { total: 0, adminCount: 0 };
+          moderatorStats[integration.id] = mapModeratorStats([]);
         }
 
         const regResponse = await fetch(`/api/admin/integrations/${integration.id}/registrations`, {
@@ -77,10 +103,10 @@ export async function loadStaffOnboardingSnapshot(): Promise<StaffOnboardingSnap
           registrationStats[integration.id] = { normalCount: 0 };
         }
       } catch {
-        moderatorStats[integration.id] = { total: 0, adminCount: 0 };
+        moderatorStats[integration.id] = mapModeratorStats([]);
         registrationStats[integration.id] = { normalCount: 0 };
       }
-    })
+    }),
   );
 
   return { integrations: integrationsList, moderatorStats, registrationStats };

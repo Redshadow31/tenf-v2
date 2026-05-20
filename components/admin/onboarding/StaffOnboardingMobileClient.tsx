@@ -10,6 +10,7 @@ import {
   type StaffOnboardingModeratorStats,
   type StaffOnboardingRegistrationStats,
 } from "@/lib/admin/staffOnboardingSnapshot";
+import { staffingBadgeLabel } from "@/lib/integrationStaffSessionRules";
 
 function formatSessionDate(iso: string): string {
   const d = new Date(iso);
@@ -23,9 +24,14 @@ function formatSessionDate(iso: string): string {
   });
 }
 
-function staffTone(adminCount: number): { label: string; className: string } {
-  if (adminCount >= 2) return { label: "OK", className: "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/35" };
-  if (adminCount === 1) return { label: "1/2", className: "bg-amber-500/20 text-amber-100 ring-1 ring-amber-500/35" };
+function staffTone(stats?: StaffOnboardingModeratorStats): { label: string; className: string } {
+  if (!stats) return { label: "—", className: "bg-zinc-700/40 text-zinc-300 ring-1 ring-zinc-600/40" };
+  if (stats.isFullyStaffed) {
+    return { label: "OK", className: "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/35" };
+  }
+  if (stats.status === "partial") {
+    return { label: "Partiel", className: "bg-amber-500/20 text-amber-100 ring-1 ring-amber-500/35" };
+  }
   return { label: "Urgent", className: "bg-rose-500/20 text-rose-100 ring-1 ring-rose-500/35" };
 }
 
@@ -39,6 +45,7 @@ export default function StaffOnboardingMobileClient() {
   const [selected, setSelected] = useState<StaffOnboardingIntegration | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [registrationRefreshKey, setRegistrationRefreshKey] = useState(0);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -66,15 +73,14 @@ export default function StaffOnboardingMobileClient() {
 
   const filtered = useMemo(() => {
     if (!onlyAtRisk) return sorted;
-    return sorted.filter((i) => (moderatorStats[i.id]?.adminCount ?? 0) < 2);
+    return sorted.filter((i) => !moderatorStats[i.id]?.isFullyStaffed);
   }, [sorted, onlyAtRisk, moderatorStats]);
 
   const kpis = useMemo(() => {
     let covered = 0;
     let atRisk = 0;
     sorted.forEach((i) => {
-      const n = moderatorStats[i.id]?.adminCount ?? 0;
-      if (n >= 2) covered += 1;
+      if (moderatorStats[i.id]?.isFullyStaffed) covered += 1;
       else atRisk += 1;
     });
     return { total: sorted.length, covered, atRisk };
@@ -88,6 +94,7 @@ export default function StaffOnboardingMobileClient() {
   const handleRegister = async (formData: {
     pseudo: string;
     role: string;
+    roleKey?: string | null;
     placement: "Animateur" | "Co-animateur" | "Observateur";
   }) => {
     if (!selected) return;
@@ -102,8 +109,6 @@ export default function StaffOnboardingMobileClient() {
       if (response.ok) {
         const data = await response.json();
         alert(`✅ ${data.message || "Inscription enregistrée."}`);
-        setModalOpen(false);
-        setSelected(null);
         const modResponse = await fetch(`/api/integrations/${selected.id}/moderators`, {
           cache: "no-store",
           credentials: "include",
@@ -111,17 +116,33 @@ export default function StaffOnboardingMobileClient() {
         if (modResponse.ok) {
           const modData = await modResponse.json();
           const registrations = modData.registrations || [];
-          const adminCount = registrations.filter(
-            (r: { role?: string }) => r.role && String(r.role).toLowerCase().includes("admin")
-          ).length;
+          const staffing = modData.staffing;
           setModeratorStats((prev) => ({
             ...prev,
-            [selected.id]: { total: registrations.length, adminCount },
+            [selected.id]: staffing
+              ? { ...staffing, registrations, adminCount: staffing.adminModeratorCount }
+              : {
+                  total: registrations.length,
+                  founderCount: 0,
+                  adminModeratorCount: 0,
+                  staffCount: 0,
+                  isFullyStaffed: false,
+                  status: "critical" as const,
+                  registrations,
+                  adminCount: 0,
+                },
           }));
+          setRegistrationRefreshKey((k) => k + 1);
         }
       } else {
         const err = await response.json();
-        alert(response.status === 409 ? `ℹ️ ${err.error || "Déjà inscrit."}` : `❌ ${err.error || "Erreur"}`);
+        alert(
+          response.status === 409
+            ? `ℹ️ ${err.error || "Déjà inscrit."}`
+            : response.status === 403
+              ? `⚠️ ${err.error || "Quota atteint."}`
+              : `❌ ${err.error || "Erreur"}`,
+        );
       }
     } catch {
       alert("❌ Erreur réseau");
@@ -191,7 +212,7 @@ export default function StaffOnboardingMobileClient() {
               : "border-white/12 bg-white/5 text-zinc-300"
           }`}
         >
-          {onlyAtRisk ? "Afficher toutes les sessions" : "Voir seulement les sessions sous 2 staff"}
+          {onlyAtRisk ? "Afficher toutes les sessions" : "Voir seulement les sessions incomplètes"}
         </button>
 
         {loading && !integrations.length ? (
@@ -209,8 +230,7 @@ export default function StaffOnboardingMobileClient() {
             {filtered.map((i) => {
               const stats = moderatorStats[i.id];
               const regs = registrationStats[i.id];
-              const ac = stats?.adminCount ?? 0;
-              const tone = staffTone(ac);
+              const tone = staffTone(stats);
               return (
                 <li key={i.id}>
                   <button
@@ -227,7 +247,7 @@ export default function StaffOnboardingMobileClient() {
                           {regs?.normalCount ?? 0} inscrits
                         </span>
                         <span className="text-zinc-600">·</span>
-                        <span>Staff {ac}/2</span>
+                        <span>{stats ? staffingBadgeLabel(stats) : "—"}</span>
                       </span>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${tone.className}`}>{tone.label}</span>
@@ -247,6 +267,7 @@ export default function StaffOnboardingMobileClient() {
             date: new Date(selected.date),
           }}
           isOpen={modalOpen}
+          refreshKey={registrationRefreshKey}
           onClose={() => {
             setModalOpen(false);
             setSelected(null);

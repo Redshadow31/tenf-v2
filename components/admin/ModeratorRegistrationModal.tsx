@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { AdminRole } from "@/lib/adminRoles";
 import { roleLabelFromKey, type OrgChartRoleKey } from "@/lib/staff/orgChartTypes";
+import {
+  classifyStaffRegistration,
+  computeStaffSessionStaffing,
+  MAX_STAFF_BESIDES_ADMIN,
+  MIN_STAFF_BESIDES_ADMIN,
+  REQUIRED_ADMIN_MODERATORS,
+  staffingBadgeLabel,
+  validateStaffRegistration,
+} from "@/lib/integrationStaffSessionRules";
 
 function adminRoleLabel(role: AdminRole | null | undefined): string {
   if (!role) return "Staff TENF";
@@ -14,6 +23,7 @@ type ModeratorRegistrationRow = {
   id: string;
   pseudo: string;
   role: string;
+  roleKey?: string | null;
   placement: string;
   registeredAt?: string;
 };
@@ -29,10 +39,12 @@ type ModeratorRegistrationModalProps = {
     location?: string;
   };
   isOpen: boolean;
+  refreshKey?: number;
   onClose: () => void;
   onRegister: (formData: {
     pseudo: string;
     role: string;
+    roleKey?: string | null;
     placement: "Animateur" | "Co-animateur" | "Observateur";
   }) => Promise<void>;
   isLoading?: boolean;
@@ -41,6 +53,7 @@ type ModeratorRegistrationModalProps = {
 export default function ModeratorRegistrationModal({
   integration,
   isOpen,
+  refreshKey = 0,
   onClose,
   onRegister,
   isLoading = false,
@@ -109,7 +122,24 @@ export default function ModeratorRegistrationModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, integration.id]);
+  }, [isOpen, integration.id, refreshKey]);
+
+  const staffing = computeStaffSessionStaffing(staffRegistrations);
+  const currentRoleKey = session?.user?.role ?? null;
+  const currentKind = classifyStaffRegistration(formData.role, currentRoleKey);
+  const registrationCheck = validateStaffRegistration(staffRegistrations, {
+    pseudo: formData.pseudo,
+    role: formData.role,
+    roleKey: currentRoleKey,
+  });
+  const alreadyRegistered = staffRegistrations.some(
+    (r) => r.pseudo.toLowerCase() === formData.pseudo.trim().toLowerCase(),
+  );
+  const canSubmit =
+    !isLoading &&
+    !alreadyRegistered &&
+    registrationCheck.ok &&
+    Boolean(formData.pseudo && formData.role && formData.placement);
 
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +147,18 @@ export default function ModeratorRegistrationModal({
       alert("Veuillez remplir tous les champs obligatoires (Pseudo, Rôle et Placement)");
       return;
     }
-    onRegister(formData);
+    if (alreadyRegistered) {
+      alert("Vous êtes déjà inscrit sur cette session.");
+      return;
+    }
+    if (!registrationCheck.ok) {
+      alert(registrationCheck.error);
+      return;
+    }
+    void onRegister({
+      ...formData,
+      roleKey: currentRoleKey,
+    });
   };
 
   if (!isOpen) return null;
@@ -280,6 +321,10 @@ export default function ModeratorRegistrationModal({
             <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-200/85">
               Staff déjà inscrit sur cette session
             </h3>
+            <p className="text-xs text-indigo-100/80">
+              Quota : {REQUIRED_ADMIN_MODERATORS} admin + {MIN_STAFF_BESIDES_ADMIN}–{MAX_STAFF_BESIDES_ADMIN} staff
+              (fondateurs hors quota). Actuel : {staffingBadgeLabel(staffing)}
+            </p>
             {staffListLoading && (
               <p className="text-sm text-zinc-500">Chargement de la liste…</p>
             )}
@@ -300,7 +345,12 @@ export default function ModeratorRegistrationModal({
                   >
                     <div className="min-w-0">
                       <p className="truncate font-medium text-white">{r.pseudo}</p>
-                      <p className="truncate text-xs text-zinc-400">{r.role}</p>
+                      <p className="truncate text-xs text-zinc-400">
+                        {r.role}
+                        {classifyStaffRegistration(r.role, r.roleKey) === "founder"
+                          ? " · fondateur (hors quota)"
+                          : ""}
+                      </p>
                     </div>
                     <span className="shrink-0 self-start rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-xs text-zinc-200">
                       {r.placement}
@@ -361,12 +411,30 @@ export default function ModeratorRegistrationModal({
               </select>
             </div>
 
+            {!registrationCheck.ok && !alreadyRegistered ? (
+              <p className="text-sm text-amber-200/90">{registrationCheck.error}</p>
+            ) : null}
+            {alreadyRegistered ? (
+              <p className="text-sm text-emerald-200/90">Vous êtes déjà inscrit sur cette session.</p>
+            ) : null}
+            {currentKind === "founder" ? (
+              <p className="text-xs text-sky-200/80">
+                En tant que fondateur, votre inscription ne consomme pas le quota staff.
+              </p>
+            ) : null}
+
             <button
               type="submit"
-              disabled={isLoading || !formData.pseudo || !formData.role || !formData.placement}
+              disabled={!canSubmit}
               className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-600 px-6 py-4 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(99,102,241,0.35)] transition hover:shadow-[0_16px_48px_rgba(99,102,241,0.45)] disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
             >
-              <span className="relative z-10">{isLoading ? "Inscription en cours…" : "Confirmer mon inscription staff"}</span>
+              <span className="relative z-10">
+                {isLoading
+                  ? "Inscription en cours…"
+                  : alreadyRegistered
+                    ? "Déjà inscrit"
+                    : "Confirmer mon inscription staff"}
+              </span>
               <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 transition group-hover:opacity-100" />
             </button>
           </form>

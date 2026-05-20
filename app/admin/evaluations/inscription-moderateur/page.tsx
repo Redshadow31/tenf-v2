@@ -2,12 +2,16 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import ModeratorRegistrationModal from "@/components/admin/ModeratorRegistrationModal";
 import {
   OnboardingStaffHubView,
-  MIN_STAFF_MODERATORS,
+  type StaffSessionRosterRow,
   type StaffSessionRiskRow,
 } from "@/components/admin/OnboardingStaffHubView";
+import {
+  staffingBadgeLabel,
+} from "@/lib/integrationStaffSessionRules";
 import {
   loadStaffOnboardingSnapshot,
   type StaffOnboardingIntegration as Integration,
@@ -24,6 +28,7 @@ const hubPanelClass =
 
 export default function InscriptionModerateurPage() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const hubLayout = pathname?.startsWith("/admin/onboarding") ?? false;
   const priorityListRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -35,6 +40,7 @@ export default function InscriptionModerateurPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [moderatorStats, setModeratorStats] = useState<Record<string, ModeratorStats>>({});
   const [registrationStats, setRegistrationStats] = useState<Record<string, RegistrationStats>>({});
+  const [registrationRefreshKey, setRegistrationRefreshKey] = useState(0);
 
   const loadSnapshot = useCallback(async () => {
     try {
@@ -72,9 +78,45 @@ export default function InscriptionModerateurPage() {
     setIsModalOpen(true);
   };
 
+  const refreshIntegrationModeratorStats = useCallback(async (integrationId: string) => {
+    try {
+      const modResponse = await fetch(`/api/integrations/${integrationId}/moderators`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      if (!modResponse.ok) return;
+      const modData = await modResponse.json();
+      const registrations = modData.registrations || [];
+      const staffing = modData.staffing;
+      setModeratorStats((prev) => ({
+        ...prev,
+        [integrationId]: staffing
+          ? {
+              ...staffing,
+              registrations,
+              adminCount: staffing.adminModeratorCount,
+            }
+          : {
+              total: registrations.length,
+              founderCount: 0,
+              adminModeratorCount: 0,
+              staffCount: 0,
+              isFullyStaffed: false,
+              status: "critical" as const,
+              registrations,
+              adminCount: 0,
+            },
+      }));
+      setRegistrationRefreshKey((k) => k + 1);
+    } catch (error) {
+      console.error("Erreur rechargement stats:", error);
+    }
+  }, []);
+
   const handleRegister = async (formData: {
     pseudo: string;
     role: string;
+    roleKey?: string | null;
     placement: "Animateur" | "Co-animateur" | "Observateur";
   }) => {
     if (!selectedIntegration) return;
@@ -85,43 +127,24 @@ export default function InscriptionModerateurPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          roleKey: formData.roleKey ?? session?.user?.role ?? null,
+        }),
       });
       
       if (response.ok) {
         const data = await response.json();
-        alert(`✅ ${data.message || 'Inscription réussie !'}`);
-        setIsModalOpen(false);
-        
-        // Recharger les stats de modérateurs pour cette intégration
-        try {
-          const modResponse = await fetch(`/api/integrations/${selectedIntegration.id}/moderators`, {
-            cache: "no-store",
-            credentials: "include",
-          });
-          if (modResponse.ok) {
-            const modData = await modResponse.json();
-            const registrations = modData.registrations || [];
-            const adminCount = registrations.filter((r: any) => 
-              r.role && r.role.toLowerCase().includes('admin')
-            ).length;
-            setModeratorStats(prev => ({
-              ...prev,
-              [selectedIntegration.id]: {
-                total: registrations.length,
-                adminCount,
-              },
-            }));
-          }
-        } catch (error) {
-          console.error('Erreur rechargement stats:', error);
-        }
+        alert(`✅ ${data.message || "Inscription réussie !"}`);
+        await refreshIntegrationModeratorStats(selectedIntegration.id);
       } else {
         const error = await response.json();
         if (response.status === 409) {
-          alert(`ℹ️ ${error.error || 'Vous êtes déjà inscrit à cette intégration'}`);
+          alert(`ℹ️ ${error.error || "Vous êtes déjà inscrit à cette intégration"}`);
+        } else if (response.status === 403) {
+          alert(`⚠️ ${error.error || "Quota staffing atteint pour cette session"}`);
         } else {
-          alert(`❌ ${error.error || 'Erreur lors de l\'inscription'}`);
+          alert(`❌ ${error.error || "Erreur lors de l'inscription"}`);
         }
       }
     } catch (error) {
@@ -194,9 +217,9 @@ export default function InscriptionModerateurPage() {
 
     integrations.forEach((integration) => {
       const stats = moderatorStats[integration.id];
-      const adminCount = stats?.adminCount || 0;
+      const adminCount = stats?.adminModeratorCount || 0;
       totalAdmins += adminCount;
-      if (adminCount >= MIN_STAFF_MODERATORS) covered += 1;
+      if (stats?.isFullyStaffed) covered += 1;
       else atRisk += 1;
     });
 
@@ -207,15 +230,52 @@ export default function InscriptionModerateurPage() {
   const sessionsAtRisk = useMemo((): StaffSessionRiskRow[] => {
     const now = Date.now();
     return integrations
-      .filter((integration) => (moderatorStats[integration.id]?.adminCount ?? 0) < MIN_STAFF_MODERATORS)
-      .map((integration) => ({
-        id: integration.id,
-        title: integration.title,
-        date: integration.date,
-        adminCount: moderatorStats[integration.id]?.adminCount ?? 0,
-        totalModerators: moderatorStats[integration.id]?.total ?? 0,
-        registrationsCount: registrationStats[integration.id]?.normalCount ?? 0,
-      }))
+      .filter((integration) => !moderatorStats[integration.id]?.isFullyStaffed)
+      .map((integration) => {
+        const stats = moderatorStats[integration.id];
+        return {
+          id: integration.id,
+          title: integration.title,
+          date: integration.date,
+          adminModeratorCount: stats?.adminModeratorCount ?? 0,
+          staffCount: stats?.staffCount ?? 0,
+          totalModerators: stats?.total ?? 0,
+          registrationsCount: registrationStats[integration.id]?.normalCount ?? 0,
+          status: stats?.status ?? "critical",
+          registrations: stats?.registrations ?? [],
+          adminCount: stats?.adminModeratorCount ?? 0,
+        };
+      })
+      .sort((a, b) => {
+        const aFuture = new Date(a.date).getTime() >= now ? 0 : 1;
+        const bFuture = new Date(b.date).getTime() >= now ? 0 : 1;
+        if (aFuture !== bFuture) return aFuture - bFuture;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+  }, [integrations, moderatorStats, registrationStats]);
+
+  const sessionRoster = useMemo((): StaffSessionRosterRow[] => {
+    const now = Date.now();
+    return [...integrations]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map((integration) => {
+        const stats = moderatorStats[integration.id];
+        return {
+          id: integration.id,
+          title: integration.title,
+          date: integration.date,
+          stats: {
+            total: stats?.total ?? 0,
+            founderCount: stats?.founderCount ?? 0,
+            adminModeratorCount: stats?.adminModeratorCount ?? 0,
+            staffCount: stats?.staffCount ?? 0,
+            isFullyStaffed: stats?.isFullyStaffed ?? false,
+            status: stats?.status ?? "critical",
+            registrations: stats?.registrations ?? [],
+          },
+          registrationsCount: registrationStats[integration.id]?.normalCount ?? 0,
+        };
+      })
       .sort((a, b) => {
         const aFuture = new Date(a.date).getTime() >= now ? 0 : 1;
         const bFuture = new Date(b.date).getTime() >= now ? 0 : 1;
@@ -391,15 +451,16 @@ export default function InscriptionModerateurPage() {
             const integration = getIntegrationForDate(date);
             const stats = integration ? moderatorStats[integration.id] : null;
             const regStats = integration ? registrationStats[integration.id] : null;
-            const hasEnoughAdmins = stats ? stats.adminCount >= MIN_STAFF_MODERATORS : false;
+            const staffingOk = stats?.isFullyStaffed ?? false;
+            const sessionStatus = stats?.status ?? "critical";
             const normalCount = regStats ? regStats.normalCount : 0;
             const today = new Date();
             const isToday = date ? isSameCalendarDay(date, today) : false;
 
             const sessionTone = integration
-              ? hasEnoughAdmins
+              ? sessionStatus === "ok"
                 ? "border-emerald-500/45 bg-[linear-gradient(165deg,rgba(16,185,129,0.14),rgba(11,13,20,0.92))] shadow-[0_0_0_1px_rgba(52,211,153,0.12)] hover:border-emerald-400/55 hover:shadow-[0_12px_40px_rgba(16,185,129,0.12)]"
-                : (stats?.adminCount || 0) === 1
+                : sessionStatus === "partial"
                   ? "border-amber-500/45 bg-[linear-gradient(165deg,rgba(245,158,11,0.12),rgba(11,13,20,0.92))] shadow-[0_0_0_1px_rgba(251,191,36,0.1)] hover:border-amber-400/55 hover:shadow-[0_12px_40px_rgba(245,158,11,0.1)]"
                   : "border-rose-500/45 bg-[linear-gradient(165deg,rgba(244,63,94,0.12),rgba(11,13,20,0.92))] shadow-[0_0_0_1px_rgba(251,113,133,0.1)] hover:border-rose-400/55 hover:shadow-[0_12px_40px_rgba(244,63,94,0.1)]"
               : "";
@@ -443,9 +504,9 @@ export default function InscriptionModerateurPage() {
                         </div>
                         {stats && (
                           <div
-                            className={`mt-1 text-[10px] font-medium sm:text-xs ${hasEnoughAdmins ? "text-emerald-300/95" : "text-zinc-500"}`}
+                            className={`mt-1 text-[10px] font-medium leading-tight sm:text-xs ${staffingOk ? "text-emerald-300/95" : "text-zinc-500"}`}
                           >
-                            Staff {stats.adminCount}/{MIN_STAFF_MODERATORS}
+                            {staffingBadgeLabel(stats)}
                           </div>
                         )}
                       </>
@@ -466,6 +527,7 @@ export default function InscriptionModerateurPage() {
             date: new Date(selectedIntegration.date),
           }}
           isOpen={isModalOpen}
+          refreshKey={registrationRefreshKey}
           onClose={() => {
             setIsModalOpen(false);
             setSelectedIntegration(null);
@@ -497,6 +559,7 @@ export default function InscriptionModerateurPage() {
         onRefresh={() => void loadSnapshot()}
         staffingStats={staffingStats}
         sessionsAtRisk={sessionsAtRisk}
+        sessionRoster={sessionRoster}
         priorityListRef={priorityListRef}
         calendarRef={calendarRef}
         onScrollToPriority={scrollToPriority}

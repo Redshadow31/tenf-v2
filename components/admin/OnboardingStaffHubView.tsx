@@ -14,17 +14,45 @@ import {
   Smartphone,
   Users,
 } from "lucide-react";
+import type { StaffOnboardingRegistrationRow } from "@/lib/admin/staffOnboardingSnapshot";
+import {
+  MAX_STAFF_BESIDES_ADMIN,
+  MIN_STAFF_BESIDES_ADMIN,
+  REQUIRED_ADMIN_MODERATORS,
+  staffingBadgeLabel,
+  staffingStatusLabel,
+  type StaffSessionStaffingStats,
+} from "@/lib/integrationStaffSessionRules";
 
-export const MIN_STAFF_MODERATORS = 2;
+export {
+  MAX_STAFF_BESIDES_ADMIN,
+  MIN_STAFF_BESIDES_ADMIN,
+  REQUIRED_ADMIN_MODERATORS,
+};
+
+/** @deprecated Utiliser REQUIRED_ADMIN_MODERATORS + MIN_STAFF_BESIDES_ADMIN */
+export const MIN_STAFF_MODERATORS = REQUIRED_ADMIN_MODERATORS + MIN_STAFF_BESIDES_ADMIN;
 
 export type StaffSessionRiskRow = {
   id: string;
   title: string;
   date: string;
-  adminCount: number;
+  adminModeratorCount: number;
+  staffCount: number;
   totalModerators: number;
   registrationsCount: number;
-  isPublished?: boolean;
+  status: StaffSessionStaffingStats["status"];
+  registrations: StaffOnboardingRegistrationRow[];
+  /** @deprecated */
+  adminCount: number;
+};
+
+export type StaffSessionRosterRow = {
+  id: string;
+  title: string;
+  date: string;
+  stats: StaffSessionStaffingStats & { registrations: StaffOnboardingRegistrationRow[] };
+  registrationsCount: number;
 };
 
 const hubPanelClass =
@@ -49,6 +77,7 @@ type Props = {
   onRefresh: () => void;
   staffingStats: StaffingStats;
   sessionsAtRisk: StaffSessionRiskRow[];
+  sessionRoster: StaffSessionRosterRow[];
   priorityListRef: RefObject<HTMLDivElement>;
   calendarRef: RefObject<HTMLDivElement>;
   onScrollToPriority: () => void;
@@ -58,14 +87,16 @@ type Props = {
   children: ReactNode;
 };
 
-function riskLabel(adminCount: number): { text: string; tone: string } {
-  if (adminCount === 0) {
-    return { text: "Critique — 0 modérateur admin", tone: "text-rose-200" };
-  }
-  if (adminCount < MIN_STAFF_MODERATORS) {
-    return { text: `Partiel — ${adminCount}/${MIN_STAFF_MODERATORS} modérateurs admin`, tone: "text-amber-200" };
-  }
-  return { text: "Conforme", tone: "text-emerald-200" };
+function riskTone(status: StaffSessionStaffingStats["status"]): string {
+  if (status === "ok") return "text-emerald-200";
+  if (status === "partial") return "text-amber-200";
+  return "text-rose-200";
+}
+
+function statusPillClass(status: StaffSessionStaffingStats["status"]): string {
+  if (status === "ok") return "border-emerald-400/25 bg-emerald-950/20 text-emerald-100";
+  if (status === "partial") return "border-amber-400/25 bg-amber-950/20 text-amber-100";
+  return "border-rose-400/25 bg-rose-950/20 text-rose-100";
 }
 
 export function OnboardingStaffHubView({
@@ -73,6 +104,7 @@ export function OnboardingStaffHubView({
   onRefresh,
   staffingStats,
   sessionsAtRisk,
+  sessionRoster,
   priorityListRef,
   calendarRef,
   onScrollToPriority,
@@ -108,10 +140,16 @@ export function OnboardingStaffHubView({
                   Équipe session & modérateurs
                 </h1>
                 <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">
-                  Composer l&apos;équipe d&apos;animation pour chaque créneau publié. Règle TENF : au moins{" "}
-                  <strong className="font-medium text-zinc-200">{MIN_STAFF_MODERATORS} modérateurs admin</strong>{" "}
-                  inscrits sur la session (indicateur « Staff x/2 » sur le calendrier). Clique un jour pour inscrire un
-                  modérateur.
+                  Composer l&apos;équipe d&apos;animation pour chaque créneau publié. Règle TENF :{" "}
+                  <strong className="font-medium text-zinc-200">
+                    {REQUIRED_ADMIN_MODERATORS} modérateur admin
+                  </strong>
+                  , plus{" "}
+                  <strong className="font-medium text-zinc-200">
+                    {MIN_STAFF_BESIDES_ADMIN} à {MAX_STAFF_BESIDES_ADMIN} staff
+                  </strong>{" "}
+                  (les fondateurs peuvent s&apos;inscrire mais ne comptent pas dans ce quota). Clique un jour pour
+                  inscrire ou consulter le staff.
                 </p>
                 <div className="flex min-w-0 flex-wrap gap-2">
                   <button
@@ -152,7 +190,7 @@ export function OnboardingStaffHubView({
                     <dd className="mt-1 text-lg font-bold tabular-nums text-zinc-100">{staffingStats.sessionCount}</dd>
                   </div>
                   <div className="rounded-xl border border-white/[0.08] bg-zinc-900/50 p-2">
-                    <dt className="text-zinc-500">Conformes (≥2)</dt>
+                    <dt className="text-zinc-500">Conformes</dt>
                     <dd className="mt-1 text-lg font-bold tabular-nums text-emerald-200">{staffingStats.covered}</dd>
                   </div>
                   <div className="rounded-xl border border-white/[0.08] bg-zinc-900/50 p-2">
@@ -167,8 +205,7 @@ export function OnboardingStaffHubView({
                   </div>
                 </dl>
                 <p className="mt-3 text-[11px] leading-snug text-zinc-500">
-                  « Admin » = inscription staff avec un rôle contenant « admin » (animateur / lead), comme sur le
-                  calendrier existant.
+                  Conforme = 1 admin + {MIN_STAFF_BESIDES_ADMIN}–{MAX_STAFF_BESIDES_ADMIN} staff (hors fondateurs).
                 </p>
               </div>
             </header>
@@ -191,6 +228,82 @@ export function OnboardingStaffHubView({
             </nav>
 
             <section
+              className={`${hubPanelClass} p-[clamp(1rem,2vw,1.35rem)]`}
+              aria-labelledby="staff-roster-heading"
+            >
+              <h2
+                id="staff-roster-heading"
+                className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-100"
+              >
+                <Users className="h-5 w-5 shrink-0 text-violet-300" aria-hidden />
+                Staff inscrit par session
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Vue d&apos;ensemble des inscriptions staff — clique une session pour modifier ou compléter l&apos;équipe.
+              </p>
+              {loading ? (
+                <p className="mt-4 text-sm text-zinc-500" role="status">
+                  Chargement…
+                </p>
+              ) : sessionRoster.length === 0 ? (
+                <p className="mt-4 text-sm text-zinc-500">Aucune session publiée pour le moment.</p>
+              ) : (
+                <ul className="mt-4 grid min-w-0 gap-3 lg:grid-cols-2">
+                  {sessionRoster.map((row) => (
+                    <li key={row.id}>
+                      <article className="rounded-xl border border-white/[0.08] bg-zinc-900/40 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="line-clamp-2 font-semibold text-white">{row.title}</p>
+                            <p className="mt-1 text-xs capitalize text-zinc-400">{formatDateShort(row.date)}</p>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${statusPillClass(row.stats.status)}`}
+                          >
+                            {staffingStatusLabel(row.stats)}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs font-medium text-zinc-300">{staffingBadgeLabel(row.stats)}</p>
+                        {row.stats.registrations.length === 0 ? (
+                          <p className="mt-3 text-sm text-zinc-500">Aucun staff inscrit.</p>
+                        ) : (
+                          <ul className="mt-3 space-y-2">
+                            {row.stats.registrations.map((r) => (
+                              <li
+                                key={r.id}
+                                className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2 text-sm"
+                              >
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-zinc-100">{r.pseudo}</p>
+                                  <p className="truncate text-xs text-zinc-500">{r.role}</p>
+                                </div>
+                                <span className="shrink-0 text-xs text-zinc-400">{r.placement}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {row.stats.founderCount > 0 ? (
+                          <p className="mt-2 text-[11px] text-zinc-500">
+                            {row.stats.founderCount} fondateur{row.stats.founderCount > 1 ? "s" : ""} inscrit
+                            {row.stats.founderCount > 1 ? "s" : ""} (hors quota staff)
+                          </p>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => onOpenSession(row.id)}
+                          className={`mt-3 inline-flex items-center gap-2 text-sm font-medium text-violet-200 underline-offset-2 hover:underline ${hubFocusClass} rounded`}
+                        >
+                          Gérer le staffing
+                          <ArrowRight className="h-4 w-4" aria-hidden />
+                        </button>
+                      </article>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section
               ref={priorityListRef}
               className={`${hubPanelClass} scroll-mt-24 p-[clamp(1rem,2vw,1.35rem)]`}
               aria-labelledby="staff-risk-heading"
@@ -200,11 +313,10 @@ export function OnboardingStaffHubView({
                 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-zinc-100"
               >
                 <AlertTriangle className="h-5 w-5 shrink-0 text-amber-300" aria-hidden />
-                Sessions à compléter (&lt; {MIN_STAFF_MODERATORS} modérateurs admin)
+                Sessions à compléter
               </h2>
               <p className="mt-1 text-sm text-zinc-500">
-                Priorise les créneaux avec le plus d&apos;inscrits membres. Ouvre une ligne pour inscrire des
-                modérateurs sur le calendrier.
+                Priorise les créneaux incomplets (admin ou staff manquant). Ouvre une ligne pour inscrire des modérateurs.
               </p>
               {loading ? (
                 <p className="mt-4 text-sm text-zinc-500" role="status" aria-live="polite">
@@ -216,40 +328,50 @@ export function OnboardingStaffHubView({
                   role="status"
                 >
                   <CheckCircle2 className="mr-2 inline h-4 w-4 align-text-bottom" aria-hidden />
-                  Toutes les sessions chargées ont au moins {MIN_STAFF_MODERATORS} modérateurs admin inscrits.
+                  Toutes les sessions chargées ont un staffing conforme.
                 </p>
               ) : (
                 <ul className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
-                  {sessionsAtRisk.map((row) => {
-                    const risk = riskLabel(row.adminCount);
-                    return (
-                      <li key={row.id}>
-                        <article className="rounded-xl border border-amber-400/25 bg-amber-950/15 p-4">
-                          <p className="line-clamp-2 font-semibold text-white">{row.title}</p>
-                          <p className="mt-1 text-xs capitalize text-zinc-400">{formatDateShort(row.date)}</p>
-                          <p className={`mt-2 text-sm font-medium ${risk.tone}`}>{risk.text}</p>
-                          <p className="mt-1 text-xs text-zinc-500">
-                            {row.registrationsCount} inscription{row.registrationsCount !== 1 ? "s" : ""} membre
-                            {row.registrationsCount !== 1 ? "s" : ""}
-                            {row.totalModerators > 0 ? (
-                              <>
-                                {" "}
-                                · {row.totalModerators} staff au total
-                              </>
-                            ) : null}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => onOpenSession(row.id)}
-                            className={`mt-3 inline-flex items-center gap-2 text-sm font-medium text-amber-100 underline-offset-2 hover:underline ${hubFocusClass} rounded`}
-                          >
-                            Inscrire sur cette session
-                            <ArrowRight className="h-4 w-4" aria-hidden />
-                          </button>
-                        </article>
-                      </li>
-                    );
-                  })}
+                  {sessionsAtRisk.map((row) => (
+                    <li key={row.id}>
+                      <article className="rounded-xl border border-amber-400/25 bg-amber-950/15 p-4">
+                        <p className="line-clamp-2 font-semibold text-white">{row.title}</p>
+                        <p className="mt-1 text-xs capitalize text-zinc-400">{formatDateShort(row.date)}</p>
+                        <p className={`mt-2 text-sm font-medium ${riskTone(row.status)}`}>
+                          {staffingStatusLabel({
+                            ...row,
+                            founderCount: 0,
+                            isFullyStaffed: false,
+                            adminModeratorCount: row.adminModeratorCount,
+                            staffCount: row.staffCount,
+                            total: row.totalModerators,
+                            status: row.status,
+                          })}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {staffingBadgeLabel({
+                            founderCount: 0,
+                            isFullyStaffed: false,
+                            adminModeratorCount: row.adminModeratorCount,
+                            staffCount: row.staffCount,
+                            total: row.totalModerators,
+                            status: row.status,
+                          })}
+                          {" · "}
+                          {row.registrationsCount} membre{row.registrationsCount !== 1 ? "s" : ""} inscrit
+                          {row.registrationsCount !== 1 ? "s" : ""}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => onOpenSession(row.id)}
+                          className={`mt-3 inline-flex items-center gap-2 text-sm font-medium text-amber-100 underline-offset-2 hover:underline ${hubFocusClass} rounded`}
+                        >
+                          Inscrire sur cette session
+                          <ArrowRight className="h-4 w-4" aria-hidden />
+                        </button>
+                      </article>
+                    </li>
+                  ))}
                 </ul>
               )}
             </section>
@@ -261,7 +383,7 @@ export function OnboardingStaffHubView({
                     Calendrier staffing
                   </h2>
                   <p className="mt-1 text-sm text-zinc-500">
-                    Vert = conforme · Jaune = 1 admin · Rouge = 0 — clique un jour pour ouvrir l&apos;inscription staff.
+                    Vert = conforme · Jaune = partiel · Rouge = critique — clique un jour pour le détail.
                   </p>
                 </div>
               </div>
@@ -280,11 +402,15 @@ export function OnboardingStaffHubView({
               <ul className="mt-3 space-y-2 text-sm leading-relaxed text-zinc-400">
                 <li className="flex gap-2">
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-300" aria-hidden />
-                  Minimum {MIN_STAFF_MODERATORS} modérateurs admin par session avant le live.
+                  {REQUIRED_ADMIN_MODERATORS} modérateur admin par session (coordinateur / admin).
                 </li>
                 <li className="flex gap-2">
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-violet-300" aria-hidden />
-                  Prévoir un lead / admin sur les sessions chargées en inscrits.
+                  {MIN_STAFF_BESIDES_ADMIN} à {MAX_STAFF_BESIDES_ADMIN} staff en plus (modérateurs, mentors…).
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-300" aria-hidden />
+                  Les fondateurs peuvent s&apos;inscrire sans consommer le quota staff.
                 </li>
                 <li className="flex gap-2">
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-300" aria-hidden />
@@ -334,13 +460,13 @@ export function OnboardingStaffHubView({
               <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Légende</h2>
               <ul className="mt-3 space-y-2 text-xs text-zinc-400">
                 <li className="rounded-lg border border-emerald-400/25 bg-emerald-950/20 px-2 py-1.5 text-emerald-100">
-                  Vert — ≥ 2 modérateurs admin
+                  Vert — admin + staff conformes
                 </li>
                 <li className="rounded-lg border border-amber-400/25 bg-amber-950/20 px-2 py-1.5 text-amber-100">
-                  Jaune — 1 modérateur admin
+                  Jaune — staffing partiel
                 </li>
                 <li className="rounded-lg border border-rose-400/25 bg-rose-950/20 px-2 py-1.5 text-rose-100">
-                  Rouge — aucun modérateur admin
+                  Rouge — admin ou staff manquant
                 </li>
               </ul>
             </div>

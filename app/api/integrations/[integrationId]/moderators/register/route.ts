@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { registerModerator } from '@/lib/integrationModeratorsStorage';
 import { getIntegration } from '@/lib/integrationStorage';
 
+const QUOTA_ERRORS: Record<string, string> = {
+  ADMIN_SLOT_FULL: 'Un modérateur admin est déjà inscrit sur cette session.',
+  STAFF_SLOT_FULL: 'Maximum 2 staff (hors admin et fondateurs) déjà inscrits sur cette session.',
+};
+
 /**
  * POST - Inscription modérateur à une intégration
  */
@@ -22,7 +27,7 @@ export async function POST(
       );
     }
     
-    const { pseudo, role, placement } = body;
+    const { pseudo, role, placement, roleKey } = body;
     
     // Validation des champs requis
     if (!pseudo || !role || !placement) {
@@ -44,6 +49,7 @@ export async function POST(
       const registration = await registerModerator(integrationId, {
         pseudo,
         role,
+        roleKey: roleKey ?? null,
         placement: placement as "Animateur" | "Co-animateur" | "Observateur",
       });
       
@@ -57,6 +63,12 @@ export async function POST(
         return NextResponse.json(
           { error: 'déjà inscrit' },
           { status: 409 }
+        );
+      }
+      if (error instanceof Error && QUOTA_ERRORS[error.message]) {
+        return NextResponse.json(
+          { error: QUOTA_ERRORS[error.message], code: error.message },
+          { status: 403 }
         );
       }
       throw error;

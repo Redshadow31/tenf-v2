@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadModeratorRegistrations } from '@/lib/integrationModeratorsStorage';
 import { getIntegration } from '@/lib/integrationStorage';
+import { computeStaffSessionStaffing } from '@/lib/integrationStaffSessionRules';
 
 /**
  * GET - Récupère les inscriptions modérateur pour une intégration
@@ -22,8 +23,9 @@ export async function GET(
     }
     
     const registrations = await loadModeratorRegistrations(integrationId);
+    const staffing = computeStaffSessionStaffing(registrations);
     
-    return NextResponse.json({ registrations });
+    return NextResponse.json({ registrations, staffing });
   } catch (error) {
     console.error('[Moderators API] Erreur GET:', error);
     return NextResponse.json(
