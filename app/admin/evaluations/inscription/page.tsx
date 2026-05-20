@@ -19,6 +19,8 @@ import {
   Gauge,
   Search,
   LayoutList,
+  AlertTriangle,
+  Pencil,
 } from "lucide-react";
 
 const heroShellClass =
@@ -72,6 +74,13 @@ export default function InscriptionPage() {
   const [presences, setPresences] = useState<Record<string, boolean>>({});
   const [sessionSearch, setSessionSearch] = useState("");
   const [kpiPulse, setKpiPulse] = useState(false);
+  const [editingRegistration, setEditingRegistration] = useState<IntegrationRegistration | null>(null);
+  const [editForm, setEditForm] = useState({
+    discordUsername: "",
+    twitchChannelUrl: "",
+    parrain: "",
+    notes: "",
+  });
   const sessionsListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -153,6 +162,70 @@ export default function InscriptionPage() {
     
     setIsModalOpen(true);
     setShowAddForm(false);
+    setEditingRegistration(null);
+  };
+
+  const refreshModalRegistrations = async () => {
+    if (!selectedIntegration) return;
+    await loadData();
+    const regResponse = await fetch(`/api/admin/integrations/${selectedIntegration.id}/registrations`, {
+      cache: "no-store",
+    });
+    if (!regResponse.ok) return;
+    const regData = await regResponse.json();
+    const updatedRegistrations = (regData.registrations || []) as IntegrationRegistration[];
+    setSelectedRegistrations(updatedRegistrations);
+    setAllRegistrations((prev) => ({
+      ...prev,
+      [selectedIntegration.id]: updatedRegistrations,
+    }));
+  };
+
+  const handleOpenEditModal = (registration: IntegrationRegistration) => {
+    setEditingRegistration(registration);
+    setEditForm({
+      discordUsername: registration.discordUsername || registration.displayName || "",
+      twitchChannelUrl: registration.twitchChannelUrl || "",
+      parrain: registration.parrain || "",
+      notes: registration.notes || "",
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedIntegration || !editingRegistration) return;
+    if (!editForm.discordUsername.trim() || !editForm.twitchChannelUrl.trim() || !editForm.parrain.trim()) {
+      alert("Pseudo Discord, lien Twitch et parrain sont requis.");
+      return;
+    }
+    try {
+      setSaving(true);
+      const response = await fetch(`/api/admin/integrations/${selectedIntegration.id}/registrations`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          updateRegistration: {
+            id: editingRegistration.id,
+            discordUsername: editForm.discordUsername.trim(),
+            twitchChannelUrl: editForm.twitchChannelUrl.trim(),
+            parrain: editForm.parrain.trim(),
+            notes: editForm.notes.trim() || null,
+          },
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        alert(`❌ ${err.error || "Impossible de mettre à jour la fiche"}`);
+        return;
+      }
+      alert("✅ Fiche d'inscription mise à jour.");
+      setEditingRegistration(null);
+      await refreshModalRegistrations();
+    } catch (error) {
+      console.error("Erreur mise à jour inscription:", error);
+      alert("❌ Erreur lors de la mise à jour");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handlePresenceChange = (registrationId: string, present: boolean) => {
@@ -171,13 +244,16 @@ export default function InscriptionPage() {
   };
 
   useEffect(() => {
-    if (!isModalOpen) return;
+    if (!isModalOpen && !editingRegistration) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsModalOpen(false);
+      if (e.key === "Escape") {
+        if (editingRegistration) setEditingRegistration(null);
+        else setIsModalOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isModalOpen]);
+  }, [isModalOpen, editingRegistration]);
 
   const handleAddMember = async () => {
     if (!selectedIntegration) return;
@@ -768,8 +844,20 @@ export default function InscriptionPage() {
               </p>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-400">
                 Cocher les présences reflète l&apos;accueil réel des membres TENF. Tu peux aussi inscrire quelqu&apos;un à la
-                main si le formulaire public a sauté.
+                main si le formulaire public a sauté. Clique sur un membre pour ouvrir sa fiche et ajouter une note staff.
               </p>
+              {selectedRegistrations.some((r) => r.notes?.trim()) ? (
+                <div
+                  className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/50 bg-rose-950/45 px-4 py-3 text-sm text-rose-100"
+                  role="status"
+                >
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" aria-hidden />
+                  <p>
+                    <strong className="font-semibold text-rose-200">Note staff sur cette session</strong> — au moins un
+                    inscrit a une note interne. Les fiches concernées sont surlignées en rouge ci-dessous.
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -820,7 +908,7 @@ export default function InscriptionPage() {
                     </div>
                     <div className="md:col-span-2">
                       <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Notes (optionnel)
+                        Note staff (optionnel)
                       </label>
                       <textarea
                         value={newMember.notes}
@@ -905,20 +993,47 @@ export default function InscriptionPage() {
                       const isPresent = raw ?? registration.present;
                       const isAbsent = isPresent === false;
                       const isUnset = isPresent !== true && isPresent !== false;
+                      const hasStaffNote = Boolean(registration.notes?.trim());
 
                       return (
                         <div
                           key={registration.id}
                           className={`rounded-2xl border p-4 transition ${
-                            isAbsent
-                              ? "border-rose-500/40 bg-rose-950/25"
-                              : isPresent === true
-                                ? "border-emerald-500/25 bg-emerald-950/15"
-                                : "border-[#353a50] bg-[#0f1321]/90"
+                            hasStaffNote
+                              ? "border-rose-500/55 bg-rose-950/30 ring-1 ring-rose-500/25"
+                              : isAbsent
+                                ? "border-rose-500/40 bg-rose-950/25"
+                                : isPresent === true
+                                  ? "border-emerald-500/25 bg-emerald-950/15"
+                                  : "border-[#353a50] bg-[#0f1321]/90"
                           }`}
                         >
+                          {hasStaffNote ? (
+                            <div className="mb-3 flex items-start gap-2 rounded-xl border border-rose-500/45 bg-rose-950/55 px-3 py-2.5 text-sm text-rose-100">
+                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" aria-hidden />
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold uppercase tracking-wide text-rose-200">Note staff</p>
+                                <p className="mt-1 whitespace-pre-wrap leading-relaxed text-rose-50/95">
+                                  {registration.notes}
+                                </p>
+                              </div>
+                            </div>
+                          ) : null}
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div className="min-w-0 flex-1 space-y-3">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(registration)}
+                              className={`min-w-0 flex-1 space-y-3 rounded-xl border border-transparent p-1 text-left transition hover:border-indigo-400/25 hover:bg-indigo-500/5 ${focusRingClass}`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] font-semibold uppercase tracking-wide text-indigo-300/90">
+                                  Fiche inscription
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-200">
+                                  <Pencil className="h-3 w-3" aria-hidden />
+                                  Modifier
+                                </span>
+                              </div>
                               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div>
                                   <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -932,20 +1047,8 @@ export default function InscriptionPage() {
                                   <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                                     Twitch
                                   </div>
-                                  <div className="mt-1 truncate text-sm">
-                                    {registration.twitchChannelUrl ? (
-                                      <a
-                                        href={registration.twitchChannelUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-indigo-300 underline-offset-2 hover:text-indigo-200 hover:underline"
-                                      >
-                                        {registration.twitchChannelUrl}
-                                        <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-                                      </a>
-                                    ) : (
-                                      <span className="text-slate-500">—</span>
-                                    )}
+                                  <div className="mt-1 truncate text-sm text-indigo-300">
+                                    {registration.twitchChannelUrl || "—"}
                                   </div>
                                 </div>
                               </div>
@@ -957,14 +1060,6 @@ export default function InscriptionPage() {
                                   {registration.parrain || <span className="text-slate-500">—</span>}
                                 </div>
                               </div>
-                              {registration.notes ? (
-                                <div className="rounded-xl border border-white/[0.06] bg-black/25 px-3 py-2 text-sm text-slate-300">
-                                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                                    Notes staff{" "}
-                                  </span>
-                                  {registration.notes}
-                                </div>
-                              ) : null}
                               <p className="text-[11px] text-slate-500">
                                 Inscrit le{" "}
                                 {new Date(registration.registeredAt).toLocaleDateString("fr-FR", {
@@ -978,7 +1073,7 @@ export default function InscriptionPage() {
                                   <span className="text-slate-600"> · valeur en base</span>
                                 ) : null}
                               </p>
-                            </div>
+                            </button>
 
                             <div className="shrink-0 lg:pl-2">
                               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -1039,6 +1134,109 @@ export default function InscriptionPage() {
           </div>
         </div>
       )}
+
+      {editingRegistration && selectedIntegration ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
+          role="presentation"
+          onClick={() => setEditingRegistration(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-registration-title"
+            className={`${modalShellClass} w-full max-w-lg`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setEditingRegistration(null)}
+              className={`absolute right-4 top-4 z-20 rounded-xl border border-white/10 bg-black/40 p-2 text-slate-300 backdrop-blur-sm transition hover:border-rose-400/35 hover:bg-rose-500/15 hover:text-rose-100 ${focusRingClass}`}
+              aria-label="Fermer la fiche"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="border-b border-white/[0.08] px-6 pb-5 pt-8 md:px-8">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-300/90">Fiche inscription</p>
+              <h3 id="edit-registration-title" className="mt-2 text-xl font-bold text-white">
+                {editingRegistration.displayName || editingRegistration.discordUsername}
+              </h3>
+              <p className="mt-1 text-sm text-slate-400">{selectedIntegration.title}</p>
+            </div>
+            <div className="space-y-4 px-6 py-6 md:px-8">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Pseudo Discord *
+                </label>
+                <input
+                  type="text"
+                  value={editForm.discordUsername}
+                  onChange={(e) => setEditForm({ ...editForm, discordUsername: e.target.value })}
+                  className={`w-full rounded-xl border border-[#353a50] bg-[#121623]/90 px-4 py-2.5 text-white ${focusRingClass}`}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Lien chaîne Twitch *
+                </label>
+                <input
+                  type="text"
+                  value={editForm.twitchChannelUrl}
+                  onChange={(e) => setEditForm({ ...editForm, twitchChannelUrl: e.target.value })}
+                  className={`w-full rounded-xl border border-[#353a50] bg-[#121623]/90 px-4 py-2.5 text-white ${focusRingClass}`}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Parrain TENF *
+                </label>
+                <input
+                  type="text"
+                  value={editForm.parrain}
+                  onChange={(e) => setEditForm({ ...editForm, parrain: e.target.value })}
+                  className={`w-full rounded-xl border border-[#353a50] bg-[#121623]/90 px-4 py-2.5 text-white ${focusRingClass}`}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Note staff
+                </label>
+                <textarea
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  rows={4}
+                  placeholder="Référence interne visible sur la liste des inscrits (alerte rouge si renseignée)"
+                  className={`w-full resize-none rounded-xl border border-[#353a50] bg-[#121623]/90 px-4 py-2.5 text-white placeholder:text-slate-600 ${focusRingClass}`}
+                />
+                {editForm.notes.trim() ? (
+                  <p className="mt-2 flex items-start gap-2 text-xs text-rose-300">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Cette note apparaîtra en rouge sur la fiche membre dans le dossier session.
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingRegistration(null)}
+                  className={`flex-1 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/10 md:flex-none ${focusRingClass}`}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveEdit()}
+                  disabled={saving}
+                  className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/20 px-4 py-2.5 text-sm font-bold text-emerald-50 hover:bg-emerald-500/30 disabled:opacity-50 md:flex-none ${focusRingClass}`}
+                >
+                  {saving ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
+                  {saving ? "Enregistrement…" : "Enregistrer la fiche"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

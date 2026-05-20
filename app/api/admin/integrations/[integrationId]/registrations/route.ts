@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/requireAdmin';
-import { getIntegration, loadRegistrations, saveRegistrations, registerForIntegration, type IntegrationRegistration } from '@/lib/integrationStorage';
+import { getIntegration, loadRegistrations, saveRegistrations, registerForIntegration, updateIntegrationRegistration, extractTwitchLoginFromUrl, type IntegrationRegistration } from '@/lib/integrationStorage';
 
 /**
  * GET - Récupère les inscriptions pour une intégration (admin uniquement)
@@ -110,22 +110,7 @@ export async function PUT(
       }
       
       // Extraire le pseudo Twitch du lien
-      const extractTwitchLogin = (url: string): string | null => {
-        if (!url) return null;
-        const patterns = [
-          /twitch\.tv\/([a-zA-Z0-9_]+)/i,
-          /^([a-zA-Z0-9_]+)$/,
-        ];
-        for (const pattern of patterns) {
-          const match = url.match(pattern);
-          if (match && match[1]) {
-            return match[1].toLowerCase();
-          }
-        }
-        return null;
-      };
-      
-      const twitchLogin = extractTwitchLogin(twitchChannelUrl);
+      const twitchLogin = extractTwitchLoginFromUrl(twitchChannelUrl);
       if (!twitchLogin) {
         return NextResponse.json(
           { error: 'Format de lien Twitch invalide' },
@@ -159,6 +144,48 @@ export async function PUT(
         success: true,
         message: 'Membre ajouté avec succès'
       });
+    }
+
+    // Mode 3: Mise à jour d'une inscription existante
+    if (body.updateRegistration) {
+      const { id, discordUsername, twitchChannelUrl, parrain, notes } = body.updateRegistration as {
+        id?: string;
+        discordUsername?: string;
+        twitchChannelUrl?: string;
+        parrain?: string;
+        notes?: string | null;
+      };
+
+      if (!id) {
+        return NextResponse.json({ error: 'id requis' }, { status: 400 });
+      }
+
+      try {
+        const registration = await updateIntegrationRegistration(integrationId, id, {
+          discordUsername,
+          twitchChannelUrl,
+          parrain,
+          notes,
+        });
+        return NextResponse.json({
+          registration,
+          success: true,
+          message: 'Inscription mise à jour',
+        });
+      } catch (err) {
+        if (err instanceof Error) {
+          if (err.message === 'NOT_FOUND') {
+            return NextResponse.json({ error: 'Inscription introuvable' }, { status: 404 });
+          }
+          if (err.message === 'INVALID_TWITCH') {
+            return NextResponse.json({ error: 'Format de lien Twitch invalide' }, { status: 400 });
+          }
+          if (err.message === 'INVALID_DISCORD' || err.message === 'INVALID_PARRAIN') {
+            return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 });
+          }
+        }
+        throw err;
+      }
     }
     
     return NextResponse.json(

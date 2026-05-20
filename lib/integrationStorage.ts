@@ -205,6 +205,65 @@ export async function saveRegistrations(integrationId: string, registrations: In
   }
 }
 
+export function extractTwitchLoginFromUrl(url: string): string | null {
+  if (!url?.trim()) return null;
+  const patterns = [/twitch\.tv\/([a-zA-Z0-9_]+)/i, /^([a-zA-Z0-9_]+)$/];
+  for (const pattern of patterns) {
+    const match = url.trim().match(pattern);
+    if (match?.[1]) return match[1].toLowerCase();
+  }
+  return null;
+}
+
+export async function updateIntegrationRegistration(
+  integrationId: string,
+  registrationId: string,
+  patch: {
+    discordUsername?: string;
+    twitchChannelUrl?: string;
+    parrain?: string;
+    notes?: string | null;
+  },
+): Promise<IntegrationRegistration> {
+  const registrations = await loadRegistrations(integrationId);
+  const index = registrations.findIndex((r) => r.id === registrationId);
+  if (index < 0) throw new Error('NOT_FOUND');
+
+  const reg = { ...registrations[index]! };
+
+  if (patch.discordUsername !== undefined) {
+    const pseudo = patch.discordUsername.trim();
+    if (!pseudo) throw new Error('INVALID_DISCORD');
+    reg.discordUsername = pseudo;
+    reg.displayName = pseudo;
+  }
+
+  if (patch.twitchChannelUrl !== undefined) {
+    const twitchLogin = extractTwitchLoginFromUrl(patch.twitchChannelUrl);
+    if (!twitchLogin) throw new Error('INVALID_TWITCH');
+    const normalized = patch.twitchChannelUrl.trim().startsWith('http')
+      ? patch.twitchChannelUrl.trim()
+      : `https://www.twitch.tv/${twitchLogin}`;
+    reg.twitchLogin = twitchLogin;
+    reg.twitchChannelUrl = normalized;
+  }
+
+  if (patch.parrain !== undefined) {
+    const parrain = patch.parrain.trim();
+    if (!parrain) throw new Error('INVALID_PARRAIN');
+    reg.parrain = parrain;
+  }
+
+  if (patch.notes !== undefined) {
+    const trimmed = patch.notes?.trim();
+    reg.notes = trimmed || undefined;
+  }
+
+  registrations[index] = reg;
+  await saveRegistrations(integrationId, registrations);
+  return reg;
+}
+
 export async function registerForIntegration(integrationId: string, registration: {
   twitchLogin: string;
   twitchChannelUrl: string;
