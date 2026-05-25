@@ -24,6 +24,8 @@ export type MemberRole =
   | "Créateur Junior"
   | "Les P'tits Jeunes"
   | "Communauté"
+  | "Départ"
+  | "Banni"
   | "Admin Adjoint"
   | "Mentor"
   | "Modérateur Junior";

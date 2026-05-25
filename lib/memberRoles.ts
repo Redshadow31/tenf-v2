@@ -22,6 +22,8 @@ export type MemberRole =
   | "Créateur Junior"
   | "Les P'tits Jeunes"
   | "Communauté"
+  | "Départ"
+  | "Banni"
   // Compatibilité legacy
   | "Admin Adjoint"
   | "Mentor"
@@ -65,6 +67,8 @@ const CANONICAL_MEMBER_ROLES: MemberRole[] = [
   "Créateur Junior",
   "Les P'tits Jeunes",
   "Communauté",
+  "Départ",
+  "Banni",
 ];
 
 export function toCanonicalMemberRole(role: string): MemberRole {
@@ -85,7 +89,15 @@ export function isExcludedFromMemberDiscover(role: string | undefined | null): b
   if (!role) return false;
   const trimmed = role.trim();
   if (trimmed === "Communauté (mineur)") return true;
-  return toCanonicalMemberRole(trimmed) === "Communauté";
+  const canonical = toCanonicalMemberRole(trimmed);
+  return canonical === "Communauté" || canonical === "Départ" || canonical === "Banni";
+}
+
+/** Rôles de sortie : toujours inactifs, hors suivi staff après départ ou ban. */
+export function isInactiveExitMemberRole(role: string | undefined | null): boolean {
+  if (!role) return false;
+  const canonical = toCanonicalMemberRole(role.trim());
+  return canonical === "Départ" || canonical === "Banni";
 }
 
 export function toCanonicalBadgeLabel(badge: string): string {

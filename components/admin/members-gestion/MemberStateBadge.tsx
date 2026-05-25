@@ -3,11 +3,14 @@
 import {
   Archive,
   AlertCircle,
+  Ban,
   CheckCircle2,
+  LogOut,
   PauseCircle,
   Shield,
   Sparkles,
   Star,
+  Users,
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -28,11 +31,14 @@ type MemberStateBadgeProps = {
 
 const ICON_BY_ID: Record<MemberTenfStateId, LucideIcon> = {
   archived: Archive,
+  departed: LogOut,
+  banned: Ban,
   staff: Shield,
   review_due: AlertCircle,
   new: Sparkles,
   incomplete: Wrench,
   paused: PauseCircle,
+  community: Users,
   vip: Star,
   active: CheckCircle2,
 };

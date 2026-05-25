@@ -36,6 +36,8 @@ const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   "Créateur Junior": { label: "Créateurs Juniors", variant: "minor-creator", family: "mineurs" },
   "Les P'tits Jeunes": { label: "Les P'tits Jeunes", variant: "minor-community", family: "mineurs" },
   "Communauté": { label: "Communauté", variant: "community", family: "communaute" },
+  "Départ": { label: "A quitté TENF", variant: "default", family: "communaute" },
+  Banni: { label: "Banni TENF", variant: "default", family: "communaute" },
   Admin: { label: "Fondateurs TENF", variant: "staff-founder", family: "staff" },
   "Admin Fondateurs": { label: "Fondateurs TENF", variant: "staff-founder", family: "staff" },
   "Admin Coordinateur": { label: "Coordinateurs TENF", variant: "staff-coordinator", family: "staff" },
@@ -99,14 +101,18 @@ export const COMMUNITY_MEMBER_ROLE_KEYS = [
   "Contributeur TENF du Mois",
 ] as const;
 
+export const EXIT_MEMBER_ROLE_KEYS = ["Départ", "Banni"] as const;
+
 export const ROLE_BADGE_PICKER_OPTIONS = [
   ...STAFF_MEMBER_ROLE_KEYS,
   ...COMMUNITY_MEMBER_ROLE_KEYS,
+  ...EXIT_MEMBER_ROLE_KEYS,
 ] as const;
 
 export const MEMBER_ROLE_PICKER_GROUPS = [
   { label: "Staff TENF", keys: STAFF_MEMBER_ROLE_KEYS },
   { label: "Créateurs & communauté", keys: COMMUNITY_MEMBER_ROLE_KEYS },
+  { label: "Sorties (inactif forcé)", keys: EXIT_MEMBER_ROLE_KEYS },
 ] as const;
 
 export const SYSTEM_BADGES = [

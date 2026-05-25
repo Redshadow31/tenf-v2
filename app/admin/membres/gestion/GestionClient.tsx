@@ -80,6 +80,11 @@ import {
   isStaffRole,
   computeMemberListPipeline,
 } from "@/lib/admin/members-gestion/memberListHelpers";
+import {
+  type GestionStatusTab,
+  parseGestionStatusTabFromUrl,
+} from "@/lib/admin/members-gestion/memberPopulationFilters";
+import { isInactiveExitMemberRole } from "@/lib/memberRoles";
 import MembersCockpitShell from "@/components/admin/members-hub/MembersCockpitShell";
 import MembersGestionCockpitAside from "@/components/admin/members-hub/MembersGestionCockpitAside";
 import { cockpitPanelClass } from "@/components/admin/members-hub/membersHubStyles";
@@ -154,7 +159,7 @@ export default function GestionClient() {
   const [bulkOnboarding, setBulkOnboarding] = useState<"" | "a_faire" | "en_cours" | "termine">("");
   const [bulkNextReviewDate, setBulkNextReviewDate] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [statusTab, setStatusTab] = useState<"actifs" | "inactifs" | "nouveaux" | "archives">("actifs");
+  const [statusTab, setStatusTab] = useState<GestionStatusTab>("actifs");
   const [archivedMembers, setArchivedMembers] = useState<Member[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<25 | 50 | 100>(25);
@@ -191,8 +196,8 @@ export default function GestionClient() {
 
   // Lire search / tab / addTwitch / addDiscord depuis l'URL (deep links)
   useEffect(() => {
-    const tabParam = searchParams?.get("tab");
-    if (tabParam === "nouveaux" || tabParam === "actifs" || tabParam === "inactifs" || tabParam === "archives") {
+    const tabParam = parseGestionStatusTabFromUrl(searchParams?.get("tab") ?? null);
+    if (tabParam) {
       setStatusTab(tabParam);
     }
     const searchParam = searchParams?.get("search");
@@ -963,7 +968,11 @@ export default function GestionClient() {
     endItem,
     newMembers,
     activeMembers,
+    communityRoleMembers,
     communityFollowupMembers,
+    tenfAffiliateMembers,
+    departedMembers,
+    bannedMembers,
     isSearching,
   } = listPipeline;
 
@@ -1012,7 +1021,14 @@ export default function GestionClient() {
         if (m.role !== "Nouveau") totalActiveMembersIntegrated++;
       }
       if (m.role === "Nouveau" && m.statut === "Actif") totalActiveNewRoleMembers++;
-      if (m.statut === "Inactif" && !isStaffRole(m.role) && m.role !== "Nouveau") totalInactiveMembers++;
+      if (
+        m.statut === "Inactif" &&
+        !isStaffRole(m.role) &&
+        m.role !== "Nouveau" &&
+        !isInactiveExitMemberRole(m.role)
+      ) {
+        totalInactiveMembers++;
+      }
       if (m.role === "Nouveau") totalNewMembers++;
       if (getMemberCompleteness(m).percent < 80) totalIncompleteMembers++;
       if (!m.twitchId) totalWithoutTwitchId++;
@@ -1051,14 +1067,17 @@ export default function GestionClient() {
   );
 
   const totalArchivedMembers = archivedMembers.length;
-  const activeTabLabel =
-    statusTab === "actifs"
-      ? "Actifs"
-      : statusTab === "inactifs"
-      ? "Suivi communauté"
-      : statusTab === "nouveaux"
-      ? "Nouveaux"
-      : "Archivé";
+  const STATUS_TAB_LABELS: Record<GestionStatusTab, string> = {
+    actifs: "Actifs",
+    communaute: "Communauté",
+    suivi_pause: "Suivi pause",
+    nouveaux: "Nouveaux",
+    affilies: "Affiliés TENF",
+    departs: "Départs",
+    bans: "Bans",
+    archives: "Archivé",
+  };
+  const activeTabLabel = STATUS_TAB_LABELS[statusTab];
   const availableRoles = useMemo(
     () => getMemberRoleFilterOptions(members.map((member) => member.role)),
     [members],
@@ -1312,10 +1331,10 @@ export default function GestionClient() {
     if (!member || !member.twitch) return;
 
     const oldStatus = member.statut;
-    if (oldStatus === "Inactif" && member.role === "Communauté") {
+    if (oldStatus === "Inactif" && (member.role === "Communauté" || isInactiveExitMemberRole(member.role))) {
       pushNotice(
         "info",
-        "Membre verrouillé en Inactif (rôle Communauté). Changez d'abord le rôle pour le réactiver."
+        "Membre verrouillé en Inactif (rôle Communauté, Départ ou Banni). Changez d'abord le rôle pour le réactiver."
       );
       return;
     }
@@ -1383,6 +1402,7 @@ export default function GestionClient() {
   const canValidateCommunityPassage = (member: Member) =>
     member.statut === "Inactif" &&
     member.role !== "Communauté" &&
+    !isInactiveExitMemberRole(member.role) &&
     member.profileValidationStatus === "valide";
 
   const handleValidateCommunityPassage = async (memberToUpdate: Member) => {
@@ -1667,7 +1687,10 @@ export default function GestionClient() {
       staffPeriods: updatedMember.staffPeriods ?? oldMember.staffPeriods,
     };
 
-    if (mergedMember.role === "Communauté" && mergedMember.statut !== "Inactif") {
+    if (
+      (mergedMember.role === "Communauté" || isInactiveExitMemberRole(mergedMember.role)) &&
+      mergedMember.statut !== "Inactif"
+    ) {
       mergedMember.statut = "Inactif";
     }
 
@@ -1959,7 +1982,7 @@ export default function GestionClient() {
       }
       pushNotice("success", `Membre désarchivé: ${member.nom}`);
       await loadMembers();
-      setStatusTab("inactifs");
+      setStatusTab("suivi_pause");
     } catch (error) {
       pushNotice("error", `Erreur désarchivage: ${error instanceof Error ? error.message : "Erreur inconnue"}`);
     }
@@ -2564,8 +2587,8 @@ export default function GestionClient() {
                   toneActive: "border-rose-400/55 bg-rose-500/22 text-rose-100",
                   toneIdle: "border-rose-500/30 bg-rose-500/10 text-rose-100/95 hover:bg-rose-500/16",
                   iconColor: "text-rose-300",
-                  onClick: () => setStatusTab("inactifs"),
-                  isActive: statusTab === "inactifs",
+                  onClick: () => setStatusTab("suivi_pause"),
+                  isActive: statusTab === "suivi_pause" || statusTab === "communaute",
                 },
                 {
                   id: "nouveaux" as const,
@@ -3062,8 +3085,12 @@ export default function GestionClient() {
           onChange={setStatusTab}
           counts={{
             actifs: activeMembers.length,
-            inactifs: communityFollowupMembers.length,
+            communaute: communityRoleMembers.length,
+            suivi_pause: communityFollowupMembers.length,
             nouveaux: newMembers.length,
+            affilies: tenfAffiliateMembers.length,
+            departs: departedMembers.length,
+            bans: bannedMembers.length,
             archives: totalArchivedMembers,
           }}
         />
@@ -3076,10 +3103,18 @@ export default function GestionClient() {
           <HelpCircle className="mt-0.5 h-3 w-3 shrink-0 text-slate-500" aria-hidden />
           {statusTab === "actifs"
             ? "Membres présents dans la communauté active. Utilise « À compléter » ou « À revoir » pour repérer ce qui demande une action staff."
-            : statusTab === "inactifs"
-            ? "Suivi communauté : comptes en pause à accompagner. Pense à valider un passage en rôle « Communauté » si la situation est stable."
+            : statusTab === "communaute"
+            ? "Rôle « Communauté » : membres en pause stable, hors suivi actif. Les infos communauté restent visibles sur leur fiche."
+            : statusTab === "suivi_pause"
+            ? "Suivi pause : inactifs à accompagner (hors Communauté). Valide un passage en « Communauté » ou attribue Départ / Banni si la sortie est définitive."
             : statusTab === "nouveaux"
             ? "Nouveaux membres (rôle « Nouveau »). Utilise les raccourcis Affilié / Développement pour activer rapidement après l'intégration."
+            : statusTab === "affilies"
+            ? "Affiliés TENF : affiliation Twitch obtenue après l'intégration au collectif (historique de rôle ou date d'affiliation post-intégration)."
+            : statusTab === "departs"
+            ? "Départs : ont quitté TENF (rôle « Départ », toujours inactif, sans suivi d'information)."
+            : statusTab === "bans"
+            ? "Bans : comptes sanctionnés (rôle « Banni », inactif, hors suivi et hors listings publics)."
             : "Archives : comptes retirés des listings actifs. Consulte les données archivées avant toute restauration ou suppression définitive."}
         </p>
 
@@ -3526,7 +3561,9 @@ export default function GestionClient() {
                     )}
                     <td className="py-4 px-6">
                       {(() => {
-                        const isCommunityLocked = member.statut === "Inactif" && member.role === "Communauté";
+                        const isCommunityLocked =
+                          member.statut === "Inactif" &&
+                          (member.role === "Communauté" || isInactiveExitMemberRole(member.role));
                         const canValidateCommunity = canValidateCommunityPassage(member);
                         const isCompactView = viewMode !== "complet";
                         const actionInfoClass = isCompactView ? rowActionInfoCompact : rowActionInfo;
@@ -3598,7 +3635,7 @@ export default function GestionClient() {
                               disabled={isCommunityLocked}
                               title={
                                 isCommunityLocked
-                                  ? "Rôle Communauté: changez d'abord le rôle pour réactiver"
+                                  ? "Rôle verrouillé (Communauté / Départ / Banni) : changez d'abord le rôle pour réactiver"
                                   : undefined
                               }
                             >
@@ -3608,7 +3645,7 @@ export default function GestionClient() {
                                 ? (isCompactView ? "ON 🔒" : "Activer (rôle verrouillé)")
                                 : (isCompactView ? "ON" : "Activer")}
                             </button>
-                            {statusTab !== "nouveaux" && canValidateCommunity && currentAdmin?.canWrite && (
+                            {statusTab === "suivi_pause" && canValidateCommunity && currentAdmin?.canWrite && (
                               <button
                                 onClick={() => handleValidateCommunityPassage(member)}
                                 className={actionWarningClass}
@@ -3765,15 +3802,7 @@ export default function GestionClient() {
                     >
                       {isSearching
                         ? "Aucun membre ne correspond à cette recherche."
-                        : `Aucun membre ${
-                            statusTab === "actifs"
-                              ? "actif"
-                              : statusTab === "inactifs"
-                              ? "du suivi communauté"
-                              : statusTab === "nouveaux"
-                              ? "nouveau"
-                              : "archivé"
-                          } avec les filtres actuels.`}
+                        : `Aucun membre dans l'onglet « ${activeTabLabel} » avec les filtres actuels.`}
                     </td>
                   </tr>
                 )}
@@ -3786,15 +3815,7 @@ export default function GestionClient() {
               <div className="py-16 text-center text-slate-400">
                 {isSearching
                   ? "Aucun membre ne correspond à cette recherche."
-                  : `Aucun membre ${
-                      statusTab === "actifs"
-                        ? "actif"
-                        : statusTab === "inactifs"
-                        ? "du suivi communauté"
-                        : statusTab === "nouveaux"
-                        ? "nouveau"
-                        : "archivé"
-                    } avec les filtres actuels.`}
+                  : `Aucun membre dans l'onglet « ${activeTabLabel} » avec les filtres actuels.`}
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -3803,7 +3824,9 @@ export default function GestionClient() {
                   const ficheHref = `/admin/membres/fiche/${encodeURIComponent(
                     member.discordId || member.twitchId || member.twitch || member.siteUsername || member.nom
                   )}`;
-                  const isCommunityLocked = member.statut === "Inactif" && member.role === "Communauté";
+                  const isCommunityLocked =
+                    member.statut === "Inactif" &&
+                    (member.role === "Communauté" || isInactiveExitMemberRole(member.role));
                   const canValidateCommunity = canValidateCommunityPassage(member);
                   const barColor =
                     completeness.percent >= 80
@@ -3941,13 +3964,13 @@ export default function GestionClient() {
                               }`}
                               title={
                                 isCommunityLocked
-                                  ? "Rôle Communauté: changez d'abord le rôle pour réactiver"
+                                  ? "Rôle verrouillé (Communauté / Départ / Banni) : changez d'abord le rôle pour réactiver"
                                   : undefined
                               }
                             >
                               {member.statut === "Actif" ? "Désact." : "Activer"}
                             </button>
-                            {statusTab !== "nouveaux" && canValidateCommunity && currentAdmin?.canWrite ? (
+                            {statusTab === "suivi_pause" && canValidateCommunity && currentAdmin?.canWrite ? (
                               <button
                                 type="button"
                                 onClick={() => handleValidateCommunityPassage(member)}

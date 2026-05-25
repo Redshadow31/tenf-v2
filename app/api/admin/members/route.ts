@@ -4,7 +4,7 @@ import { getTwitchUsers } from "@/lib/twitch";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 import { logApi, logMember } from "@/lib/logging/logger";
-import { toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
+import { isInactiveExitMemberRole, toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
 import { invalidateAdminDashboardCache } from "@/lib/admin/dashboardSummary";
 import {
   buildTwitchAvatarMap,
@@ -506,7 +506,11 @@ export async function POST(request: NextRequest) {
     
     const targetRole = normalizedRole || "Affilié";
     const targetIsActive =
-      targetRole === "Communauté" ? false : (isActive !== undefined ? isActive : true);
+      targetRole === "Communauté" || isInactiveExitMemberRole(targetRole)
+        ? false
+        : isActive !== undefined
+          ? isActive
+          : true;
     const basePayload = {
       twitchLogin,
       twitchId,
@@ -944,6 +948,20 @@ export async function PUT(request: NextRequest) {
           {
             error:
               "Impossible d'activer un membre avec le rôle Nouveau. Attribue d'abord un rôle communautaire (Affilié, Développement…) pour permettre l'activation.",
+          },
+          { status: 400 }
+        );
+      }
+      updates.isActive = false;
+    }
+
+    // Garde-fou : Départ / Banni — sortie définitive, pas de réactivation ni de suivi actif.
+    if (isInactiveExitMemberRole(targetRoleAfterUpdate)) {
+      if (updates.isActive === true) {
+        return NextResponse.json(
+          {
+            error:
+              "Impossible d'activer un membre avec le rôle Départ ou Banni. Changez d'abord le rôle pour permettre une réintégration.",
           },
           { status: 400 }
         );

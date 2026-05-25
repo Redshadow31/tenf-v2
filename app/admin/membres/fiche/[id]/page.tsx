@@ -392,6 +392,43 @@ export default function MemberFichePage() {
               </div>
             </div>
 
+            <div className="xl:col-span-3 rounded-2xl border border-sky-500/25 bg-[#151922] p-5">
+              <h3 className="text-lg font-semibold text-sky-100">Infos communauté</h3>
+              <p className="mt-1 text-sm text-gray-400">
+                Repères pour le suivi communauté (onglets Communauté / Suivi pause sur la gestion membres).
+              </p>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                  <p className="text-gray-400">Parrain</p>
+                  <p className="font-semibold">{member.parrain || "—"}</p>
+                </div>
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                  <p className="text-gray-400">Date intégration TENF</p>
+                  <p className="font-semibold">{formatDate(member.integrationDate)}</p>
+                </div>
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                  <p className="text-gray-400">Statut site</p>
+                  <p className="font-semibold">{member.isActive === false ? "Inactif" : "Actif"}</p>
+                </div>
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                  <p className="text-gray-400">Validation profil</p>
+                  <p className="font-semibold">{member.profileValidationStatus || "—"}</p>
+                </div>
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                  <p className="text-gray-400">Dernière revue staff</p>
+                  <p className="font-semibold">{formatDate(member.lastReviewAt)}</p>
+                </div>
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                  <p className="text-gray-400">Prochaine revue</p>
+                  <p className="font-semibold">{formatDate(member.nextReviewAt)}</p>
+                </div>
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 md:col-span-2">
+                  <p className="text-gray-400">Bio personnalisée</p>
+                  <p className="font-medium text-gray-200 whitespace-pre-wrap">{member.customBio || "—"}</p>
+                </div>
+              </div>
+            </div>
+
             <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5">
               <h3 className="text-lg font-semibold">Synthese rapide</h3>
               <ul className="mt-4 space-y-2 text-sm text-gray-300">
@@ -600,6 +637,23 @@ export default function MemberFichePage() {
 
         {activeTab === "community" && (
           <section className="space-y-4">
+            <div className="rounded-2xl border border-sky-500/25 bg-[#151922] p-5">
+              <h3 className="text-lg font-semibold text-sky-100">Fiche communauté</h3>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                  <p className="text-gray-400">Rôle</p>
+                  <p className="font-semibold">{getRoleBadgeLabel(member.role || "—")}</p>
+                </div>
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                  <p className="text-gray-400">Parrain</p>
+                  <p className="font-semibold">{member.parrain || "—"}</p>
+                </div>
+                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                  <p className="text-gray-400">Mentor intégration</p>
+                  <p className="font-semibold">{member.mentorTwitchLogin ? `@${member.mentorTwitchLogin}` : "—"}</p>
+                </div>
+              </div>
+            </div>
             <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5">
               <h3 className="text-lg font-semibold">Evenements communautaires</h3>
               {loadingSections.has("events") ? (

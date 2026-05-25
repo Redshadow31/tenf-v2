@@ -1,7 +1,10 @@
 import { calendarDayKey, type SessionDayIndex } from "@/lib/integrationSessionCalendar";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 import { ROLE_BADGE_PICKER_OPTIONS, sortMemberRolesForPicker } from "@/lib/roleBadgeSystem";
+import { type GestionStatusTab, partitionMembersByStatusTab } from "./memberPopulationFilters";
 import type { Member, MemberRole, MemberStatus, PresetFilter, SortableColumn } from "./types";
+
+export type { GestionStatusTab };
 
 export async function parseApiResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") || "";
@@ -110,7 +113,7 @@ export type MemberListPipelineInput = {
   joinedBeforeFilter: string;
   sortColumn: SortableColumn | null;
   sortDirection: "asc" | "desc";
-  statusTab: "actifs" | "inactifs" | "nouveaux" | "archives";
+  statusTab: GestionStatusTab;
   integrationSessionsLoaded: boolean;
   sessionDayIndex: SessionDayIndex;
 };
@@ -127,7 +130,11 @@ export type MemberListPipelineOutput = {
   endItem: number;
   newMembers: Member[];
   activeMembers: Member[];
+  communityRoleMembers: Member[];
   communityFollowupMembers: Member[];
+  tenfAffiliateMembers: Member[];
+  departedMembers: Member[];
+  bannedMembers: Member[];
   isSearching: boolean;
 };
 
@@ -310,18 +317,14 @@ export function computeMemberListPipeline(
     });
   }
 
-  const newMembers = filteredMembers.filter((member) => member.role === "Nouveau");
-  const activeMembers = filteredMembers.filter(
-    (member) => (member.statut === "Actif" || isStaffRole(member.role)) && member.role !== "Nouveau"
-  );
-  const inactiveCommunityMembers = filteredMembers.filter(
-    (member) => member.statut === "Inactif" && member.role === "Communauté"
-  );
-  const inactiveOtherMembers = filteredMembers.filter(
-    (member) =>
-      member.statut === "Inactif" && !isStaffRole(member.role) && member.role !== "Nouveau" && member.role !== "Communauté"
-  );
-  const communityFollowupMembers = [...inactiveCommunityMembers, ...inactiveOtherMembers];
+  const partitioned = partitionMembersByStatusTab(filteredMembers);
+  const newMembers = partitioned.nouveaux;
+  const activeMembers = partitioned.actifs;
+  const communityRoleMembers = partitioned.communaute;
+  const communityFollowupMembers = partitioned.suivi_pause;
+  const tenfAffiliateMembers = partitioned.affilies;
+  const departedMembers = partitioned.departs;
+  const bannedMembers = partitioned.bans;
   const isSearching = searchQuery.trim().length > 0;
 
   let filteredArchivedMembers = archivedMembers;
@@ -346,11 +349,7 @@ export function computeMemberListPipeline(
       ? filteredArchivedMembers
       : isSearching
         ? filteredMembers
-        : statusTab === "actifs"
-          ? activeMembers
-          : statusTab === "inactifs"
-            ? communityFollowupMembers
-            : newMembers;
+        : partitioned[statusTab] ?? [];
 
   const totalPages = Math.max(1, Math.ceil(displayedMembers.length / pageSize));
   const clampedCurrentPage = Math.min(currentPage, totalPages);
@@ -371,7 +370,11 @@ export function computeMemberListPipeline(
     endItem,
     newMembers,
     activeMembers,
+    communityRoleMembers,
     communityFollowupMembers,
+    tenfAffiliateMembers,
+    departedMembers,
+    bannedMembers,
     isSearching,
   };
 }

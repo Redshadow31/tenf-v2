@@ -44,9 +44,15 @@ type MemberRole =
   | "Créateur Junior"
   | "Les P'tits Jeunes"
   | "Communauté"
+  | "Départ"
+  | "Banni"
   | "Admin Adjoint" // legacy
   | "Mentor" // legacy
   | "Modérateur Junior"; // legacy
+
+function isRoleInactiveLocked(role: MemberRole): boolean {
+  return role === "Communauté" || role === "Départ" || role === "Banni";
+}
 
 interface Member {
   id: number;
@@ -825,11 +831,11 @@ export default function EditMemberModal({
                           setFormData((prev) => ({
                             ...prev,
                             role: nextRole,
-                            statut: nextRole === "Communauté" ? "Inactif" : prev.statut,
+                            statut: isRoleInactiveLocked(nextRole) ? "Inactif" : prev.statut,
                           }));
                         }}
                         className={`w-full bg-[#0e0e10] border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500 ${
-                          formData.role === "Communauté" ? 'border-orange-500/50' : 'border-gray-700'
+                          isRoleInactiveLocked(formData.role) ? 'border-orange-500/50' : 'border-gray-700'
                         }`}
                       >
                         <option value="Nouveau">{getRoleBadgeLabel("Nouveau")}</option>
@@ -850,6 +856,8 @@ export default function EditMemberModal({
                         <option value="Contributeur Invité TENF">{getRoleBadgeLabel("Contributeur Invité TENF")}</option>
                         <option value="Contributeur TENF du Mois">{getRoleBadgeLabel("Contributeur TENF du Mois")}</option>
                         <option value="Communauté">Communauté (évaluation)</option>
+                        <option value="Départ">{getRoleBadgeLabel("Départ")}</option>
+                        <option value="Banni">{getRoleBadgeLabel("Banni")}</option>
                       </select>
                       {formData.role !== originalRole && (
                         <div className="mt-2">
@@ -870,9 +878,9 @@ export default function EditMemberModal({
                       <label className="block text-sm font-semibold text-gray-300 mb-2">
                         Statut
                       </label>
-                      {formData.role === "Communauté" && (
+                      {isRoleInactiveLocked(formData.role) && (
                         <p className="text-xs text-orange-300 mb-2">
-                          Le rôle Communauté impose le statut Inactif. Pour réactiver ce membre, change d&apos;abord le rôle.
+                          Ce rôle impose le statut Inactif (Communauté, Départ ou Banni). Pour réactiver, change d&apos;abord le rôle.
                         </p>
                       )}
                       <select
@@ -882,7 +890,7 @@ export default function EditMemberModal({
                         }
                         className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
                       >
-                        <option value="Actif" disabled={formData.role === "Communauté"}>
+                        <option value="Actif" disabled={isRoleInactiveLocked(formData.role)}>
                           Actif
                         </option>
                         <option value="Inactif">Inactif</option>

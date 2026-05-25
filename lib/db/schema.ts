@@ -29,7 +29,9 @@ export const memberRoleEnum = pgEnum('member_role', [
   'Contributeur TENF du Mois',
   'Créateur Junior',
   "Les P'tits Jeunes",
-  'Communauté'
+  'Communauté',
+  'Départ',
+  'Banni'
 ]);
 
 export const eventCategoryEnum = pgEnum('event_category', [

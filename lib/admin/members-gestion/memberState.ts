@@ -1,3 +1,4 @@
+import { isInactiveExitMemberRole } from "@/lib/memberRoles";
 import type { Member } from "./types";
 import { getMemberCompleteness, isStaffRole } from "./memberListHelpers";
 
@@ -13,11 +14,14 @@ import { getMemberCompleteness, isStaffRole } from "./memberListHelpers";
  */
 export type MemberTenfStateId =
   | "archived"
+  | "departed"
+  | "banned"
   | "staff"
   | "review_due"
   | "new"
   | "incomplete"
   | "paused"
+  | "community"
   | "vip"
   | "active";
 
@@ -47,6 +51,18 @@ const STATE_BY_ID: Record<MemberTenfStateId, MemberTenfState> = {
     hint: "Membre retiré de la communauté active. Consulter ou désarchiver via la fiche.",
     tone: "slate",
   },
+  departed: {
+    id: "departed",
+    label: "Départ",
+    hint: "A quitté TENF. Compte inactif, hors suivi d'information.",
+    tone: "slate",
+  },
+  banned: {
+    id: "banned",
+    label: "Banni",
+    hint: "Compte sanctionné. Inactif, hors suivi et hors listings publics.",
+    tone: "slate",
+  },
   staff: {
     id: "staff",
     label: "Staff",
@@ -74,8 +90,14 @@ const STATE_BY_ID: Record<MemberTenfStateId, MemberTenfState> = {
   paused: {
     id: "paused",
     label: "En pause",
-    hint: "Statut inactif : membre sorti des listings actifs, suivi communauté.",
+    hint: "Statut inactif : membre sorti des listings actifs, suivi pause.",
     tone: "rose",
+  },
+  community: {
+    id: "community",
+    label: "Communauté",
+    hint: "Rôle Communauté : en pause stable, fiche conservée pour référence.",
+    tone: "slate",
   },
   vip: {
     id: "vip",
@@ -97,6 +119,9 @@ const STATE_BY_ID: Record<MemberTenfStateId, MemberTenfState> = {
  */
 export function getMemberTenfState(member: Member, now: Date = new Date()): MemberTenfState {
   if (member.isArchived) return STATE_BY_ID.archived;
+  if (member.role === "Départ") return STATE_BY_ID.departed;
+  if (member.role === "Banni") return STATE_BY_ID.banned;
+  if (member.role === "Communauté") return STATE_BY_ID.community;
   if (isStaffRole(member.role)) return STATE_BY_ID.staff;
 
   if (member.nextReviewAt) {

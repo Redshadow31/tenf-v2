@@ -67,7 +67,7 @@ export default function MembersGestionCockpitAside({
             ) : null}
           </Link>
           <Link
-            href="/admin/membres/gestion?tab=inactifs"
+            href="/admin/membres/gestion?tab=suivi_pause"
             className={`${cockpitBtnClass} ${hubFocusRingClass} justify-center border-rose-400/25 bg-rose-950/20 text-rose-100`}
           >
             Suivi communauté
