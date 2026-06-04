@@ -133,6 +133,25 @@ const SNAPSHOT_MEMBERS_TABLE = "follow_engagement_snapshot_members";
 const SNAPSHOT_MEMBER_CHANNELS_TABLE = "follow_engagement_snapshot_member_channels";
 /** Snapshots "running" depuis plus longtemps = considérés stuck (serverless kill) */
 const SNAPSHOT_STALE_MINUTES = 10;
+/** Insert par lots pour follow_engagement_snapshot_member_channels (evite limite payload PostgREST). */
+const SNAPSHOT_CHANNELS_INSERT_BATCH_SIZE = 400;
+
+type SnapshotChannelInsertRow = {
+  snapshot_member_id: string;
+  twitch_login: string;
+  twitch_id: string | null;
+  display_name: string;
+  is_followed: boolean;
+  is_own_channel: boolean;
+};
+
+async function insertSnapshotChannelsInBatches(rows: SnapshotChannelInsertRow[]): Promise<void> {
+  for (let i = 0; i < rows.length; i += SNAPSHOT_CHANNELS_INSERT_BATCH_SIZE) {
+    const batch = rows.slice(i, i + SNAPSHOT_CHANNELS_INSERT_BATCH_SIZE);
+    const { error } = await supabaseAdmin.from(SNAPSHOT_MEMBER_CHANNELS_TABLE).insert(batch);
+    if (error) throw error;
+  }
+}
 
 function normalizeTwitchLogin(login: string | null | undefined): string | null {
   if (!login) return null;
@@ -673,21 +692,8 @@ export async function executeFollowEngagementSnapshotJob(
 
     const computed = await computeSnapshotPayload(onProgress);
 
-    const { error: updateSnapshotError } = await supabaseAdmin
-      .from(SNAPSHOTS_TABLE)
-      .update({
-        generated_at: computed.generatedAt,
-        source_data_retrieved_at: computed.sourceDataRetrievedAt,
-        total_active_tenf_channels: computed.totalActiveTenfChannels,
-        tracked_members_count: computed.trackedMembersCount,
-        generated_by_discord_id: generatedByDiscordId,
-        progress_done: pendingTotal,
-        progress_total: pendingTotal,
-        status: "completed",
-      })
-      .eq("id", snapshotId);
-    if (updateSnapshotError) throw updateSnapshotError;
-
+    // Ne pas marquer "completed" avant la persistance des listes de chaines : sinon un
+    // timeout serverless laisse des totaux (snapshot_members) sans lignes detail (channels).
     const { error: cleanupMembersError } = await supabaseAdmin
       .from(SNAPSHOT_MEMBERS_TABLE)
       .delete()
@@ -722,14 +728,7 @@ export async function executeFollowEngagementSnapshotJob(
       }
     }
 
-    const channelsInsert: Array<{
-      snapshot_member_id: string;
-      twitch_login: string;
-      twitch_id: string | null;
-      display_name: string;
-      is_followed: boolean;
-      is_own_channel: boolean;
-    }> = [];
+    const channelsInsert: SnapshotChannelInsertRow[] = [];
 
     for (const entry of computed.rows) {
       const snapshotMemberId = memberIdByLogin.get(entry.row.memberTwitchLogin.toLowerCase());
@@ -758,11 +757,23 @@ export async function executeFollowEngagementSnapshotJob(
     }
 
     if (channelsInsert.length > 0) {
-      const { error: channelsError } = await supabaseAdmin
-        .from(SNAPSHOT_MEMBER_CHANNELS_TABLE)
-        .insert(channelsInsert);
-      if (channelsError) throw channelsError;
+      await insertSnapshotChannelsInBatches(channelsInsert);
     }
+
+    const { error: updateSnapshotError } = await supabaseAdmin
+      .from(SNAPSHOTS_TABLE)
+      .update({
+        generated_at: computed.generatedAt,
+        source_data_retrieved_at: computed.sourceDataRetrievedAt,
+        total_active_tenf_channels: computed.totalActiveTenfChannels,
+        tracked_members_count: computed.trackedMembersCount,
+        generated_by_discord_id: generatedByDiscordId,
+        progress_done: pendingTotal,
+        progress_total: pendingTotal,
+        status: "completed",
+      })
+      .eq("id", snapshotId);
+    if (updateSnapshotError) throw updateSnapshotError;
 
     return {
       snapshotId,
@@ -1100,8 +1111,8 @@ export async function buildFollowEngagementMemberDetail(
 
   if (channelsError) throw channelsError;
 
-  const followedChannels: FollowEngagementDetailChannel[] = [];
-  const notFollowedChannels: FollowEngagementDetailChannel[] = [];
+  let followedChannels: FollowEngagementDetailChannel[] = [];
+  let notFollowedChannels: FollowEngagementDetailChannel[] = [];
   for (const channel of channelsRows || []) {
     const item: FollowEngagementDetailChannel = {
       twitchLogin: String(channel.twitch_login || "").toLowerCase(),
@@ -1111,6 +1122,38 @@ export async function buildFollowEngagementMemberDetail(
     };
     if (channel.is_followed) followedChannels.push(item);
     else notFollowedChannels.push(item);
+  }
+
+  // Snapshots deja "completed" mais sans lignes channels (insert massif echoue / timeout
+  // avant correctif) : recalcul a la volée pour ce membre uniquement.
+  if (
+    followedChannels.length === 0 &&
+    notFollowedChannels.length === 0 &&
+    memberRow.state === "ok" &&
+    typeof memberRow.followed_count === "number"
+  ) {
+    try {
+      const { channels: activeChannels } = await listActiveTenfChannels();
+      const memberChannel = activeChannels.find((c) => c.discordId === discordId);
+      if (memberChannel) {
+        const generatedAtIso = String(
+          snapshot.generated_at || snapshot.source_data_retrieved_at || new Date().toISOString()
+        );
+        const recomputed = await computeMemberOverviewRow(
+          memberChannel,
+          activeChannels,
+          generatedAtIso
+        );
+        followedChannels = recomputed.followedChannels;
+        notFollowedChannels = recomputed.notFollowedChannels;
+      }
+    } catch (recomputeError) {
+      console.warn(
+        "[Follow Detail] Recompute channels a la volee echoue:",
+        discordId,
+        recomputeError
+      );
+    }
   }
 
   return {
