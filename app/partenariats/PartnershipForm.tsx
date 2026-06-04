@@ -2,6 +2,8 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Send, AlertTriangle } from "lucide-react";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -25,7 +27,8 @@ export default function PartnershipForm() {
   const [projectUrl, setProjectUrl] = useState("");
   const [message, setMessage] = useState("");
   const [website, setWebsite] = useState("");
-  const [consent, setConsent] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -40,16 +43,21 @@ export default function PartnershipForm() {
       email.trim().length > 0 &&
       partnerType.trim().length > 0 &&
       message.trim().length >= MIN_MESSAGE &&
-      consent
+      privacyConsent
     );
-  }, [orgName, contactName, email, partnerType, message, consent]);
+  }, [orgName, contactName, email, partnerType, message, privacyConsent]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!privacyConsent) {
+      setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+      return;
+    }
     if (!isValid || status === "submitting") return;
 
     setStatus("submitting");
     setErrorMessage("");
+    setConsentError(null);
 
     try {
       const res = await fetch("/api/partnerships", {
@@ -63,6 +71,7 @@ export default function PartnershipForm() {
           projectUrl,
           message,
           website,
+          privacyConsent: true,
           sourcePage: "/partenariats",
         }),
       });
@@ -86,7 +95,7 @@ export default function PartnershipForm() {
       setEmail("");
       setProjectUrl("");
       setMessage("");
-      setConsent(false);
+      setPrivacyConsent(false);
     } catch (error) {
       console.error("[PartnershipForm] submit error:", error);
       setErrorMessage("Erreur réseau. Vérifie ta connexion et réessaie.");
@@ -242,24 +251,17 @@ export default function PartnershipForm() {
         </div>
       </div>
 
-      <div className="mt-4 flex items-start gap-3">
-        <input
-          id="consent-partner"
-          type="checkbox"
-          checked={consent}
-          onChange={(event) => setConsent(event.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border"
-          style={{ accentColor: "var(--color-primary)", borderColor: "var(--color-border)" }}
-          required
-        />
-        <label
-          htmlFor="consent-partner"
-          className="text-xs leading-relaxed sm:text-sm"
-          style={{ color: "var(--color-text-secondary)" }}
-        >
-          J&apos;autorise le staff TENF à conserver ces informations pour étudier la demande. Aucun usage commercial, aucun partage externe.
-        </label>
-      </div>
+      <RgpdConsentCheckbox
+        id="partnership-privacy-consent"
+        checked={privacyConsent}
+        onChange={(checked) => {
+          setPrivacyConsent(checked);
+          if (checked) setConsentError(null);
+        }}
+        disabled={status === "submitting"}
+        error={consentError}
+        className="mt-4"
+      />
 
       {/* Honeypot */}
       <div className="hidden" aria-hidden>

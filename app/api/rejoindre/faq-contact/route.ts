@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createFaqContact } from "@/lib/faqContactStorage";
+import { requirePrivacyConsent } from "@/lib/legal/privacyConsent";
 
 const TOPIC_ALLOWLIST = new Set([
   "integration",
@@ -17,18 +18,27 @@ function normalizeTopic(topic: unknown): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
+    }
+    const record = body as Record<string, unknown>;
+
+    const consentCheck = requirePrivacyConsent(record);
+    if (!consentCheck.ok) {
+      return NextResponse.json({ error: consentCheck.error }, { status: 400 });
+    }
 
     // Honeypot antispam: doit rester vide côté utilisateur réel.
-    if (typeof body?.website === "string" && body.website.trim().length > 0) {
+    if (typeof record.website === "string" && record.website.trim().length > 0) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
-    const pseudo = typeof body?.pseudo === "string" ? body.pseudo : "";
-    const contact = typeof body?.contact === "string" ? body.contact : "";
-    const message = typeof body?.message === "string" ? body.message : "";
-    const sourcePage = typeof body?.sourcePage === "string" ? body.sourcePage : "/rejoindre/faq";
-    const topic = normalizeTopic(body?.topic);
+    const pseudo = typeof record.pseudo === "string" ? record.pseudo : "";
+    const contact = typeof record.contact === "string" ? record.contact : "";
+    const message = typeof record.message === "string" ? record.message : "";
+    const sourcePage = typeof record.sourcePage === "string" ? record.sourcePage : "/rejoindre/faq";
+    const topic = normalizeTopic(record.topic);
 
     if (!pseudo.trim() || !contact.trim() || !message.trim()) {
       return NextResponse.json({ error: "Pseudo, contact et message sont obligatoires." }, { status: 400 });

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { ArrowLeft, MessageSquare } from "lucide-react";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 
 type QuestionCategory =
   | "participation"
@@ -28,7 +30,9 @@ export default function NewFamilyAventuraQuestionsPage() {
     category: "participation" as QuestionCategory,
     question: "",
     allowFaqPublication: true,
+    privacyConsent: false,
   });
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -36,6 +40,11 @@ export default function NewFamilyAventuraQuestionsPage() {
       setNotice("Pseudo et question sont obligatoires.");
       return;
     }
+    if (!form.privacyConsent) {
+      setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+      return;
+    }
+    setConsentError(null);
     setSending(true);
     setNotice(null);
     try {
@@ -49,6 +58,7 @@ export default function NewFamilyAventuraQuestionsPage() {
           question: form.question,
           allow_faq_publication: form.allowFaqPublication,
           source: "page_questions",
+          privacyConsent: true,
         }),
       });
       const data = await response.json();
@@ -63,6 +73,7 @@ export default function NewFamilyAventuraQuestionsPage() {
         category: "participation",
         question: "",
         allowFaqPublication: true,
+        privacyConsent: false,
       });
     } catch {
       setNotice("Erreur reseau. Reessaie dans un instant.");
@@ -183,6 +194,16 @@ export default function NewFamilyAventuraQuestionsPage() {
             Donnees utilisees uniquement pour repondre. Possibilite d'anonymisation FAQ. Aucune utilisation commerciale.
             Canal de reponse privilegie: Discord (email si necessaire).
           </div>
+
+          <RgpdConsentCheckbox
+            id="aventura-questions-privacy-consent"
+            checked={form.privacyConsent}
+            onChange={(checked) => {
+              setForm((prev) => ({ ...prev, privacyConsent: checked }));
+              if (checked) setConsentError(null);
+            }}
+            error={consentError}
+          />
 
           <button
             type="submit"

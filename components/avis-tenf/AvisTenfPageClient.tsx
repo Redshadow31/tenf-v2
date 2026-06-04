@@ -31,10 +31,12 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReviewMessageMarkdown from "@/components/reviews/ReviewMessageMarkdown";
 import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
 import {
   MAX_REVIEW_MESSAGE_LENGTH as MAX_MESSAGE,
   MIN_REVIEW_MESSAGE_LENGTH as MIN_MESSAGE,
 } from "@/lib/reviewsMessageLimits";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 import fnStyles from "@/app/fonctionnement-tenf/fonctionnement.module.css";
 
 // ============================================================
@@ -249,6 +251,8 @@ export default function AvisTenfPageClient() {
   const [pseudo, setPseudo] = useState("");
   const [message, setMessage] = useState("");
   const [hearts, setHearts] = useState<number>(5);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState("");
 
   // ---- Liste des avis ----------------------------------------
@@ -370,6 +374,11 @@ export default function AvisTenfPageClient() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!privacyConsent) {
+      setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+      return;
+    }
+    setConsentError(null);
     setSubmitting(true);
     try {
       const now = Date.now();
@@ -392,6 +401,7 @@ export default function AvisTenfPageClient() {
           pseudo: pseudo.trim(),
           message: finalMessage,
           hearts,
+          privacyConsent: true,
         }),
       });
       const data = await res.json();
@@ -423,7 +433,8 @@ export default function AvisTenfPageClient() {
     pseudo.trim().length >= 2 &&
     message.trim().length >= MIN_MESSAGE &&
     message.length <= maxMessageInputLength &&
-    maxMessageInputLength >= MIN_MESSAGE;
+    maxMessageInputLength >= MIN_MESSAGE &&
+    privacyConsent;
 
   const stats = useMemo(() => {
     const total = reviews.length;
@@ -1262,6 +1273,17 @@ export default function AvisTenfPageClient() {
                   Les témoignages sont <strong className="text-[var(--color-text)]">relus par le staff</strong> avant publication, uniquement pour garder un espace respectueux. On ne réécrit pas ton message.
                 </span>
               </div>
+
+              <RgpdConsentCheckbox
+                id="avis-tenf-privacy-consent"
+                checked={privacyConsent}
+                onChange={(checked) => {
+                  setPrivacyConsent(checked);
+                  if (checked) setConsentError(null);
+                }}
+                error={consentError}
+                className="mt-4"
+              />
 
               {/* États error / success */}
               {error ? (

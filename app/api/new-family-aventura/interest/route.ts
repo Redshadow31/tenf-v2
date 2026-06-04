@@ -5,6 +5,7 @@ import {
   type AventuraProfileType,
   type AventuraQuickResponse,
 } from "@/lib/newFamilyAventuraStorage";
+import { requirePrivacyConsent } from "@/lib/legal/privacyConsent";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -29,10 +30,19 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const pseudo = String(body?.pseudo || "").trim();
-    const quickResponse = String(body?.quick_response || "").trim() as AventuraQuickResponse;
-    const profileType = String(body?.profile_type || "").trim() as AventuraProfileType;
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
+    }
+    const record = body as Record<string, unknown>;
+    const consentCheck = requirePrivacyConsent(record);
+    if (!consentCheck.ok) {
+      return NextResponse.json({ error: consentCheck.error }, { status: 400 });
+    }
+
+    const pseudo = String(record.pseudo || "").trim();
+    const quickResponse = String(record.quick_response || "").trim() as AventuraQuickResponse;
+    const profileType = String(record.profile_type || "").trim() as AventuraProfileType;
 
     if (!pseudo || !ALLOWED_QUICK.includes(quickResponse) || !ALLOWED_PROFILE.includes(profileType)) {
       return NextResponse.json(
@@ -43,13 +53,14 @@ export async function POST(request: NextRequest) {
 
     const response = await addAventuraInterestResponse({
       pseudo,
-      contact: body?.contact,
+      contact: record.contact != null ? String(record.contact) : undefined,
       profile_type: profileType,
       quick_response: quickResponse,
-      interest_reason: body?.interest_reason,
-      conditions: Array.isArray(body?.conditions) ? body.conditions : [],
-      comment: body?.comment,
-      source: String(body?.source || "formulaire"),
+      interest_reason:
+        record.interest_reason != null ? String(record.interest_reason) : undefined,
+      conditions: Array.isArray(record.conditions) ? record.conditions : [],
+      comment: record.comment != null ? String(record.comment) : undefined,
+      source: String(record.source || "formulaire"),
     });
 
     return NextResponse.json({

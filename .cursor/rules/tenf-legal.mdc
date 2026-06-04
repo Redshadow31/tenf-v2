@@ -1,0 +1,43 @@
+---
+description: Règles légales TENF (mentions, RGPD, adresse éditeur) — à respecter pour toute page ou formulaire légal
+globs:
+  - app/mentions-legales/**
+  - app/confidentialite/**
+  - lib/legal/**
+  - components/legal/**
+  - components/Footer.tsx
+---
+
+# TENF — Informations légales et adresse éditeur
+
+## Coordonnées officielles (à utiliser telles quelles)
+
+- **Nom** : Twitch Entraide New Family / TENF
+- **Responsables de publication** : Clara, NeXou31 et Red_Shadow_31
+- **Contact officiel** : Twitchentraidenewfamily@gmail.com
+- **Canal RGPD** : Twitchentraidenewfamily@gmail.com (même adresse)
+- **Hébergeur** : Netlify, Inc., 101 2nd Street, San Francisco, CA 94105, États-Unis
+
+## Adresse de l'éditeur — règle stricte
+
+- **Ne jamais** afficher l'adresse personnelle des fondateurs (Clara, NeXou31, Red_Shadow_31).
+- **Ne pas** publier d'adresse privée / domicile pour des raisons de sécurité.
+- **Ne pas inventer** d'adresse postale.
+- Si le projet n'a pas encore d'association, d'entreprise ou de domiciliation officielle, afficher :
+
+  > Adresse de l'éditeur : information non publiée pour des raisons de sécurité personnelle, à compléter après validation juridique.
+
+  Et en détail sur les mentions légales :
+  - « Non publiée pour des raisons de sécurité personnelle. »
+  - « Cette information devra être complétée ou adaptée après validation juridique, notamment si TENF évolue vers une association, une structure déclarée ou une domiciliation officielle. »
+
+- Constantes centralisées : `lib/legal/constants.ts` (`TENF_EDITOR_ADDRESS_*`, `TENF_OFFICIAL_EMAIL`).
+
+## Validation
+
+Les textes doivent être relus par **Clara, NeXou31 et Red_Shadow_31** avant publication officielle.
+
+## Formulaires
+
+- Case RGPD obligatoire + validation serveur via `requirePrivacyConsent()` (`lib/legal/privacyConsent.ts`).
+- Lien vers `/confidentialite` dans chaque formulaire collectant des données personnelles.

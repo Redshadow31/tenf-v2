@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Send } from "lucide-react";
 import ReviewMessageMarkdown from "@/components/reviews/ReviewMessageMarkdown";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
 import {
   MAX_REVIEW_MESSAGE_LENGTH as MAX_MESSAGE,
   MIN_REVIEW_MESSAGE_LENGTH as MIN_MESSAGE,
 } from "@/lib/reviewsMessageLimits";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 
 interface Review {
   id: string;
@@ -26,6 +28,8 @@ export default function SoutienNexouPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   useEffect(() => {
     loadReviews();
@@ -47,6 +51,11 @@ export default function SoutienNexouPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!privacyConsent) {
+      setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+      return;
+    }
+    setConsentError(null);
     setSubmitting(true);
     try {
       const res = await fetch("/api/reviews", {
@@ -56,6 +65,7 @@ export default function SoutienNexouPage() {
           type: "nexou",
           pseudo: pseudo.trim(),
           message: message.trim(),
+          privacyConsent: true,
         }),
       });
       const data = await res.json();
@@ -78,7 +88,8 @@ export default function SoutienNexouPage() {
   const canSubmit =
     pseudo.trim().length >= 2 &&
     message.trim().length >= MIN_MESSAGE &&
-    message.length <= MAX_MESSAGE;
+    message.length <= MAX_MESSAGE &&
+    privacyConsent;
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--color-bg)" }}>
@@ -158,6 +169,16 @@ export default function SoutienNexouPage() {
               Min. {MIN_MESSAGE} caractères, max. {MAX_MESSAGE}
             </p>
           </div>
+
+          <RgpdConsentCheckbox
+            id="soutien-nexou-privacy-consent"
+            checked={privacyConsent}
+            onChange={(checked) => {
+              setPrivacyConsent(checked);
+              if (checked) setConsentError(null);
+            }}
+            error={consentError}
+          />
 
           {error && (
             <div className="p-3 rounded-lg bg-red-500/10 text-red-400 text-sm">{error}</div>

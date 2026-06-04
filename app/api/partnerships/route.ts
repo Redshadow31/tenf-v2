@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requirePrivacyConsent } from "@/lib/legal/privacyConsent";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import {
   createPartnershipRequest,
@@ -275,6 +276,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
     }
     const dict = body as Record<string, unknown>;
+
+    const consentCheck = requirePrivacyConsent(dict);
+    if (!consentCheck.ok) {
+      return NextResponse.json({ error: consentCheck.error }, { status: 400 });
+    }
 
     // Honeypot anti-bot : si le champ caché est rempli, on simule un succès
     // sans rien stocker — les bots ne savent pas qu'ils ont été détectés.

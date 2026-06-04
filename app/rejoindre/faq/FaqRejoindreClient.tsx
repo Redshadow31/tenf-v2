@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 import {
   ArrowRight,
   CalendarClock,
@@ -195,11 +197,29 @@ function ContactModal({
   errorMessage,
   successMessage,
   onSubmit,
+  consentError,
 }: {
   open: boolean;
   onClose: () => void;
-  form: { pseudo: string; contact: string; topic: string; message: string; website: string };
-  setForm: Dispatch<SetStateAction<{ pseudo: string; contact: string; topic: string; message: string; website: string }>>;
+  form: {
+    pseudo: string;
+    contact: string;
+    topic: string;
+    message: string;
+    website: string;
+    privacyConsent: boolean;
+  };
+  setForm: Dispatch<
+    SetStateAction<{
+      pseudo: string;
+      contact: string;
+      topic: string;
+      message: string;
+      website: string;
+      privacyConsent: boolean;
+    }>
+  >;
+  consentError: string | null;
   sending: boolean;
   errorMessage: string;
   successMessage: string;
@@ -340,6 +360,16 @@ function ContactModal({
                   {successMessage}
                 </p>
               ) : null}
+
+              <RgpdConsentCheckbox
+                id="faq-contact-privacy-consent"
+                checked={form.privacyConsent}
+                onChange={(checked) =>
+                  setForm((prev) => ({ ...prev, privacyConsent: checked }))
+                }
+                disabled={sending}
+                error={consentError}
+              />
             </div>
           </div>
 
@@ -372,6 +402,7 @@ export default function FaqRejoindreClient() {
   const [sending, setSending] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [form, setForm] = useState({
@@ -380,6 +411,7 @@ export default function FaqRejoindreClient() {
     topic: "integration",
     message: "",
     website: "",
+    privacyConsent: false,
   });
 
   const groupedFaq = useMemo(
@@ -423,8 +455,13 @@ export default function FaqRejoindreClient() {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!form.privacyConsent) {
+      setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+      return;
+    }
     setSending(true);
     setErrorMessage("");
+    setConsentError(null);
     setSuccessMessage("");
     try {
       const res = await fetch("/api/rejoindre/faq-contact", {
@@ -432,6 +469,7 @@ export default function FaqRejoindreClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          privacyConsent: true,
           sourcePage: "/rejoindre/faq",
         }),
       });
@@ -446,6 +484,7 @@ export default function FaqRejoindreClient() {
         topic: "integration",
         message: "",
         website: "",
+        privacyConsent: false,
       });
       window.setTimeout(() => setIsModalOpen(false), 1400);
     } catch (error) {
@@ -710,9 +749,11 @@ export default function FaqRejoindreClient() {
           setIsModalOpen(false);
           setErrorMessage("");
           setSuccessMessage("");
+          setConsentError(null);
         }}
         form={form}
         setForm={setForm}
+        consentError={consentError}
         sending={sending}
         errorMessage={errorMessage}
         successMessage={successMessage}

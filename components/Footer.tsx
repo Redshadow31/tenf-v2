@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { ExternalLink, Mail, Ticket } from "lucide-react";
+import { TENF_OFFICIAL_EMAIL } from "@/lib/legal/constants";
+import { LEGAL_NOTICE_PATH, PRIVACY_POLICY_PATH } from "@/lib/legal/privacyConsent";
 import { DISCORD_TICKETS_CHANNEL_URL } from "@/lib/socialLinks";
 
 export default function Footer() {
@@ -40,17 +42,31 @@ export default function Footer() {
 
         {/* Liens */}
         <nav
-          className="flex shrink-0 items-center gap-3 sm:gap-4"
+          className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 sm:gap-x-4"
           aria-label="Liens du pied de page"
         >
           <Link
-            href="/contact"
+            href={LEGAL_NOTICE_PATH}
+            className="text-[11px] font-medium transition-colors hover:opacity-80 sm:text-xs"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            Mentions légales
+          </Link>
+          <Link
+            href={PRIVACY_POLICY_PATH}
+            className="text-[11px] font-medium transition-colors hover:opacity-80 sm:text-xs"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            Confidentialité
+          </Link>
+          <a
+            href={`mailto:${TENF_OFFICIAL_EMAIL}`}
             className="inline-flex items-center gap-1.5 text-[11px] font-medium transition-colors hover:opacity-80 sm:text-xs"
             style={{ color: "var(--color-text)" }}
           >
             <Mail className="h-3.5 w-3.5" aria-hidden="true" />
             Contact
-          </Link>
+          </a>
 
           <a
             href={DISCORD_TICKETS_CHANNEL_URL}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requirePrivacyConsent } from "@/lib/legal/privacyConsent";
 import {
   addAventuraQuestion,
   listAventuraQuestions,
@@ -29,6 +30,12 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const record = body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+    const consentCheck = requirePrivacyConsent(record);
+    if (!consentCheck.ok) {
+      return NextResponse.json({ error: consentCheck.error }, { status: 400 });
+    }
+
     const pseudo = String(body?.pseudo || "").trim();
     const category = String(body?.category || "").trim() as AventuraQuestionCategory;
     const question = String(body?.question || "").trim();

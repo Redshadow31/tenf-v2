@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import FormationCategoryBadge from "@/components/events/FormationCategoryBadge";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 import { useCallback, useEffect, useId, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -114,9 +116,13 @@ export default function EventDetailModal({
   const [tab, setTab] = useState<TabId>("about");
   const [copied, setCopied] = useState(false);
   const [entered, setEntered] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
+      setPrivacyConsent(false);
+      setConsentError(null);
       setTab("about");
       setCopied(false);
       const t = requestAnimationFrame(() => setEntered(true));
@@ -447,15 +453,34 @@ export default function EventDetailModal({
                           Me désinscrire
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={onRegister}
-                          disabled={actionLoading}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_0_24px_rgba(145,70,255,0.35)] transition hover:bg-violet-500 disabled:opacity-50"
-                        >
-                          <HeartHandshake className="h-4 w-4" aria-hidden />
-                          Confirmer mon inscription
-                        </button>
+                        <div className="flex w-full flex-col gap-3">
+                          <RgpdConsentCheckbox
+                            id="event-register-privacy-consent"
+                            checked={privacyConsent}
+                            onChange={(checked) => {
+                              setPrivacyConsent(checked);
+                              if (checked) setConsentError(null);
+                            }}
+                            disabled={actionLoading}
+                            error={consentError}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!privacyConsent) {
+                                setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+                                return;
+                              }
+                              setConsentError(null);
+                              onRegister();
+                            }}
+                            disabled={actionLoading}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_0_24px_rgba(145,70,255,0.35)] transition hover:bg-violet-500 disabled:opacity-50"
+                          >
+                            <HeartHandshake className="h-4 w-4" aria-hidden />
+                            Confirmer mon inscription
+                          </button>
+                        </div>
                       )}
                     </>
                   )}

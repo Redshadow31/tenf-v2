@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { requirePrivacyConsent } from "@/lib/legal/privacyConsent";
 import { memberRepository } from "@/lib/repositories";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { syncProfileValidationNotification } from "@/lib/memberNotifications";
@@ -31,6 +32,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    const consentCheck = requirePrivacyConsent(
+      body && typeof body === "object" ? (body as Record<string, unknown>) : null
+    );
+    if (!consentCheck.ok) {
+      return NextResponse.json({ error: consentCheck.error }, { status: 400 });
+    }
+
     const { description, instagram, tiktok, twitter, birthday, twitchAffiliateDate, timezone } = body;
 
     const member = await memberRepository.findByDiscordId(session.user.discordId);

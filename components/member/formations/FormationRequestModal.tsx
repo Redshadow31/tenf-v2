@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useState } from "react";
 import { BookOpen, Loader2, MessageSquarePlus, Sparkles, X } from "lucide-react";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 
 export type CatalogSuggestion = {
   title: string;
@@ -28,6 +30,8 @@ export default function FormationRequestModal({ open, onClose, catalogSuggestion
   const [linkedTitle, setLinkedTitle] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -36,6 +40,8 @@ export default function FormationRequestModal({ open, onClose, catalogSuggestion
       setLinkedTitle("");
       setSubmitting(false);
       setError("");
+      setPrivacyConsent(false);
+      setConsentError(null);
       return;
     }
     setError("");
@@ -47,6 +53,10 @@ export default function FormationRequestModal({ open, onClose, catalogSuggestion
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!privacyConsent) {
+      setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+      return;
+    }
     const formationTitle = (linkedTitle || title).replace(/\s+/g, " ").trim().slice(0, MAX_TITLE);
     if (!formationTitle) {
       setError("Indique un titre de formation ou choisis une entrée du catalogue.");
@@ -56,6 +66,7 @@ export default function FormationRequestModal({ open, onClose, catalogSuggestion
 
     setSubmitting(true);
     setError("");
+    setConsentError(null);
     try {
       const response = await fetch("/api/members/me/formation-requests", {
         method: "POST",
@@ -64,6 +75,7 @@ export default function FormationRequestModal({ open, onClose, catalogSuggestion
           formationTitle,
           sourceEventId: selectedSuggestion?.sourceEventId || null,
           message: memberMessage || undefined,
+          privacyConsent: true,
         }),
       });
       const body = await response.json().catch(() => ({}));
@@ -210,6 +222,17 @@ export default function FormationRequestModal({ open, onClose, catalogSuggestion
               {error}
             </p>
           ) : null}
+
+          <RgpdConsentCheckbox
+            id="formation-request-privacy-consent"
+            checked={privacyConsent}
+            onChange={(checked) => {
+              setPrivacyConsent(checked);
+              if (checked) setConsentError(null);
+            }}
+            disabled={submitting}
+            error={consentError}
+          />
 
           <div className="flex flex-wrap gap-2 pt-1">
             <button

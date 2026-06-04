@@ -23,6 +23,8 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 
 // ============================================================
 // Types & constantes
@@ -212,6 +214,7 @@ export default function NewFamilyAventuraPage() {
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [quickChoice, setQuickChoice] = useState<QuickResponse>("interested");
   const [activeAnchor, setActiveAnchor] = useState<string | null>(null);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [form, setForm] = useState({
     pseudo: "",
     contact: "",
@@ -219,6 +222,7 @@ export default function NewFamilyAventuraPage() {
     interestReason: "",
     comment: "",
     conditions: [] as string[],
+    privacyConsent: false,
   });
 
   const displayedInspiration = useMemo(() => inspiration.slice(0, 6), [inspiration]);
@@ -325,9 +329,15 @@ export default function NewFamilyAventuraPage() {
       showNotice("Il nous faut au moins ton pseudo pour t'identifier — promis, rien de plus.", "error");
       return;
     }
+    if (!form.privacyConsent) {
+      setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+      showNotice(PRIVACY_CONSENT_ERROR_FORM, "error");
+      return;
+    }
 
     setSending(true);
     setNotice(null);
+    setConsentError(null);
     try {
       const response = await fetch("/api/new-family-aventura/interest", {
         method: "POST",
@@ -340,6 +350,7 @@ export default function NewFamilyAventuraPage() {
           interest_reason: form.interestReason,
           conditions: form.conditions,
           comment: form.comment,
+          privacyConsent: true,
           source,
         }),
       });
@@ -357,6 +368,7 @@ export default function NewFamilyAventuraPage() {
         interestReason: "",
         comment: "",
         conditions: [],
+        privacyConsent: false,
       });
       setQuickChoice("interested");
     } catch (error) {
@@ -1330,6 +1342,17 @@ export default function NewFamilyAventuraPage() {
               />
             </div>
 
+            <RgpdConsentCheckbox
+              id="nfa-privacy-consent"
+              checked={form.privacyConsent}
+              onChange={(checked) => {
+                setForm((prev) => ({ ...prev, privacyConsent: checked }));
+                if (checked) setConsentError(null);
+              }}
+              disabled={sending}
+              error={consentError}
+            />
+
             <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <button
                 type="submit"
@@ -1627,6 +1650,17 @@ export default function NewFamilyAventuraPage() {
                 autoFocus
               />
             </div>
+            <RgpdConsentCheckbox
+              id="nfa-modal-privacy-consent"
+              checked={form.privacyConsent}
+              onChange={(checked) => {
+                setForm((prev) => ({ ...prev, privacyConsent: checked }));
+                if (checked) setConsentError(null);
+              }}
+              disabled={sending}
+              error={consentError}
+            />
+
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"

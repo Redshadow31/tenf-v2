@@ -61,6 +61,8 @@ function MemberSiteLayout({
     "/avis-tenf",
     "/member/dashboard",
     "/decouvrir-createurs",
+    "/mentions-legales",
+    "/confidentialite",
   ] as const;
   /** Pages membres « inbox » / « profil » : pleine largeur du `<main>` (pas de max-w-7xl) pour utiliser l’espace quand la sidebar est visible ou repliée. */
   const isMemberNotificationsPage = Boolean(pathname?.startsWith("/member/notifications"));

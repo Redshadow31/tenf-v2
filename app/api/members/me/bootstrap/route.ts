@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requirePrivacyConsent } from "@/lib/legal/privacyConsent";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
@@ -77,7 +78,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Connexion Discord requise" }, { status: 401 });
     }
 
-    const body = (await request.json()) as BootstrapBody;
+    const rawBody = await request.json();
+    const consentCheck = requirePrivacyConsent(
+      rawBody && typeof rawBody === "object" ? (rawBody as Record<string, unknown>) : null
+    );
+    if (!consentCheck.ok) {
+      return NextResponse.json({ error: consentCheck.error }, { status: 400 });
+    }
+
+    const body = rawBody as BootstrapBody;
     const discordUsername = (body.discordUsername || session.user.username || "").trim();
     const creatorName = (body.creatorName || "").trim();
     const parrain = (body.parrain || "").trim();

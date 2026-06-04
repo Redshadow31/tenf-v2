@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createFaqContact } from "@/lib/faqContactStorage";
+import { requirePrivacyConsent } from "@/lib/legal/privacyConsent";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { CONTACT_TOPIC_IDS } from "@/app/contact/topics";
 
@@ -35,16 +36,22 @@ export async function POST(request: NextRequest) {
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
     }
+    const record = body as Record<string, unknown>;
+
+    const consentCheck = requirePrivacyConsent(record);
+    if (!consentCheck.ok) {
+      return NextResponse.json({ error: consentCheck.error }, { status: 400 });
+    }
 
     // Honeypot : si rempli, on simule un succès silencieux (anti-bot).
-    if (typeof body.website === "string" && body.website.trim().length > 0) {
+    if (typeof record.website === "string" && record.website.trim().length > 0) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
-    const pseudo = typeof body.pseudo === "string" ? body.pseudo.trim() : "";
-    const contact = typeof body.contact === "string" ? body.contact.trim() : "";
-    const message = typeof body.message === "string" ? body.message.trim() : "";
-    const topic = normalizeTopic(body.topic);
+    const pseudo = typeof record.pseudo === "string" ? record.pseudo.trim() : "";
+    const contact = typeof record.contact === "string" ? record.contact.trim() : "";
+    const message = typeof record.message === "string" ? record.message.trim() : "";
+    const topic = normalizeTopic(record.topic);
 
     if (!pseudo || !contact || !message) {
       return NextResponse.json(

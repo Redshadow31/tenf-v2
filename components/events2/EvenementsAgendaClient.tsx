@@ -455,7 +455,7 @@ export default function EvenementsAgendaClient() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ privacyConsent: true }),
       });
       const data = await response.json();
 

@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { PRIVACY_POLICY_PATH } from "@/lib/legal/privacyConsent";
+
 /**
  * Modale plein écran "Demande de partenariat" branchée sur le bouton
  * Contact de la page /partenariats.
@@ -1545,8 +1548,18 @@ function StepForm({
                 className="mt-1 h-4 w-4 cursor-pointer"
               />
               <span className="text-sm" style={{ color: "var(--color-text)" }}>
-                J'accepte que TENF utilise ces informations uniquement pour étudier cette
-                demande de partenariat.
+                J&apos;accepte que les informations envoyées soient utilisées par l&apos;équipe TENF
+                pour traiter ma demande, conformément à la{" "}
+                <Link
+                  href={PRIVACY_POLICY_PATH}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold underline underline-offset-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  politique de confidentialité
+                </Link>
+                .
               </span>
             </label>
             <FieldError message={errors.dataUsageAccepted} />

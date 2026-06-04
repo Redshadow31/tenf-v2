@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { memberRepository } from "@/lib/repositories";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import { requirePrivacyConsent } from "@/lib/legal/privacyConsent";
 
 function sanitizeFormationTitle(input: string): string {
   return input.replace(/\s+/g, " ").trim();
@@ -62,11 +63,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const rawTitle = String(body?.formationTitle || "");
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
+    }
+    const record = body as Record<string, unknown>;
+    const consentCheck = requirePrivacyConsent(record);
+    if (!consentCheck.ok) {
+      return NextResponse.json({ error: consentCheck.error }, { status: 400 });
+    }
+
+    const rawTitle = String(record.formationTitle || "");
     const formationTitle = sanitizeFormationTitle(rawTitle).slice(0, 200);
-    const sourceEventId = body?.sourceEventId ? String(body.sourceEventId) : null;
-    const rawMessage = body?.message != null ? String(body.message) : "";
+    const sourceEventId = record.sourceEventId ? String(record.sourceEventId) : null;
+    const rawMessage = record.message != null ? String(record.message) : "";
     const memberMessage = rawMessage.replace(/\s+/g, " ").trim().slice(0, 2000);
 
     if (!formationTitle) {

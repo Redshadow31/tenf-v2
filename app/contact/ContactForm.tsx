@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, Send, AlertTriangle } from "lucide-react";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 import { CONTACT_TOPICS, resolveContactTopic } from "./topics";
 import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
 
@@ -26,7 +28,8 @@ export default function ContactForm({ embedded = false, initialTopic: initialTop
   const [message, setMessage] = useState("");
   /** Honeypot anti-bot : doit rester vide. */
   const [website, setWebsite] = useState("");
-  const [consent, setConsent] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -50,16 +53,21 @@ export default function ContactForm({ embedded = false, initialTopic: initialTop
       contact.trim().length > 0 &&
       topic.trim().length > 0 &&
       message.trim().length >= MIN_MESSAGE &&
-      consent
+      privacyConsent
     );
-  }, [pseudo, contact, topic, message, consent]);
+  }, [pseudo, contact, topic, message, privacyConsent]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!privacyConsent) {
+      setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+      return;
+    }
     if (!isValid || status === "submitting") return;
 
     setStatus("submitting");
     setErrorMessage("");
+    setConsentError(null);
 
     try {
       const res = await fetch("/api/contact", {
@@ -71,6 +79,7 @@ export default function ContactForm({ embedded = false, initialTopic: initialTop
           topic,
           message,
           website,
+          privacyConsent: true,
           sourcePage: "/contact",
         }),
       });
@@ -92,7 +101,7 @@ export default function ContactForm({ embedded = false, initialTopic: initialTop
       setPseudo("");
       setContact("");
       setMessage("");
-      setConsent(false);
+      setPrivacyConsent(false);
     } catch (error) {
       console.error("[ContactForm] submit error:", error);
       setErrorMessage("Erreur réseau. Vérifie ta connexion et réessaie.");
@@ -231,20 +240,17 @@ export default function ContactForm({ embedded = false, initialTopic: initialTop
         </div>
       </div>
 
-      <div className="mt-4 flex items-start gap-3">
-        <input
-          id="consent"
-          type="checkbox"
-          checked={consent}
-          onChange={(event) => setConsent(event.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border"
-          style={{ accentColor: "var(--color-primary)", borderColor: "var(--color-border)" }}
-          required
-        />
-        <label htmlFor="consent" className="text-xs leading-relaxed sm:text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          J&apos;accepte que mon message soit lu par le staff TENF pour traiter ma demande. Les données ne sont ni revendues ni publiées.
-        </label>
-      </div>
+      <RgpdConsentCheckbox
+        id="contact-privacy-consent"
+        checked={privacyConsent}
+        onChange={(checked) => {
+          setPrivacyConsent(checked);
+          if (checked) setConsentError(null);
+        }}
+        disabled={status === "submitting"}
+        error={consentError}
+        className="mt-4"
+      />
 
       {/* Honeypot — caché pour les humains, rempli par les bots */}
       <div className="hidden" aria-hidden>

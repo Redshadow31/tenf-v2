@@ -27,6 +27,8 @@ import MemberPageHeader from "@/components/member/ui/MemberPageHeader";
 import MemberInfoCard from "@/components/member/ui/MemberInfoCard";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
 import TwitchLinkCard from "@/components/member/ui/TwitchLinkCard";
+import RgpdConsentCheckbox from "@/components/legal/RgpdConsentCheckbox";
+import { PRIVACY_CONSENT_ERROR_FORM } from "@/lib/legal/privacyConsent";
 
 const MAX_DESCRIPTION = 800;
 const TIMEZONE_OPTIONS = [
@@ -101,6 +103,8 @@ export default function MemberProfileCompletePage() {
   const [showWelcomeSuccessMessage, setShowWelcomeSuccessMessage] = useState(false);
   const [creatingProfile, setCreatingProfile] = useState(false);
   const [createProfileSuccess, setCreateProfileSuccess] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("identite");
   const [publicProfileForm, setPublicProfileForm] = useState({
     description: "",
@@ -262,6 +266,11 @@ export default function MemberProfileCompletePage() {
   }
 
   async function submitProfileSetup() {
+    if (!privacyConsent) {
+      setConsentError(PRIVACY_CONSENT_ERROR_FORM);
+      return false;
+    }
+    setConsentError(null);
     setCreatingProfile(true);
     setCreateProfileSuccess(false);
     try {
@@ -273,7 +282,7 @@ export default function MemberProfileCompletePage() {
       const res = await fetch("/api/members/me/bootstrap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, privacyConsent: true }),
       });
       const body = await res.json();
       if (!res.ok) {
@@ -292,6 +301,7 @@ export default function MemberProfileCompletePage() {
           birthday: form.birthday,
           twitchAffiliateDate: form.twitchAffiliateDate,
           timezone: form.timezone,
+          privacyConsent: true,
         }),
       });
       const profileBody = await profileRes.json();
@@ -1016,6 +1026,16 @@ export default function MemberProfileCompletePage() {
             ) : null}
           </div>
 
+          <RgpdConsentCheckbox
+            id="member-profile-complete-privacy-consent"
+            checked={privacyConsent}
+            onChange={(checked) => {
+              setPrivacyConsent(checked);
+              if (checked) setConsentError(null);
+            }}
+            error={consentError}
+          />
+
           <div className="flex flex-col gap-4 rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/40 to-black/40 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-2 text-sm text-zinc-400">
               <Globe2 className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" aria-hidden />
@@ -1023,7 +1043,7 @@ export default function MemberProfileCompletePage() {
             </div>
             <button
               type="submit"
-              disabled={creatingProfile || !canSubmit}
+              disabled={creatingProfile || !canSubmit || !privacyConsent}
               className="inline-flex min-h-[48px] shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-900/30 transition hover:brightness-110 disabled:pointer-events-none disabled:opacity-45"
             >
               {creatingProfile ? (

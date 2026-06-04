@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eventRepository, memberRepository } from '@/lib/repositories';
 import { requireUser } from '@/lib/requireUser';
 import { cacheDelete, cacheKey } from '@/lib/cache';
+import { requirePrivacyConsent } from '@/lib/legal/privacyConsent';
 
 /**
  * POST - Inscription à un événement
@@ -12,8 +13,13 @@ export async function POST(
 ) {
   try {
     const { eventId } = params;
-    const body = await request.json();
-    const { notes } = body;
+    const body = await request.json().catch(() => ({}));
+    const record = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+    const consentCheck = requirePrivacyConsent(record);
+    if (!consentCheck.ok) {
+      return NextResponse.json({ error: consentCheck.error }, { status: 400 });
+    }
+    const { notes } = body as { notes?: string };
     
     // Vérifier que l'événement existe et est publié
     const event = await eventRepository.findById(eventId);
