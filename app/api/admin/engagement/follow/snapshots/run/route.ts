@@ -33,18 +33,27 @@ export async function POST() {
 
     const netlifyEnv = process.env.NETLIFY;
     const isNetlify = netlifyEnv === "true" || Boolean(netlifyEnv);
-    const bgSecret = process.env.NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET;
+    // `process.env.NETLIFY` n'est pas fiable au runtime des fonctions Next.js sur Netlify :
+    // si la detection echoue, la route bascule en synchrone et le job (Twitch + DB) depasse
+    // le timeout du CDN/lambda (~26-60s) -> 504. On considere donc "serveur deploye" des que
+    // NODE_ENV vaut "production" (fiable cote serveur Next prod), independamment de NETLIFY.
+    const isDeployedServer = process.env.NODE_ENV === "production" || isNetlify;
+    // Secret partage route <-> fonction background. On retombe sur NEXTAUTH_SECRET
+    // (toujours defini en prod) pour ne pas exiger une nouvelle variable Netlify.
+    const bgSecret =
+      process.env.NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET || process.env.NEXTAUTH_SECRET;
     const siteOrigin = (
       process.env.URL ||
       process.env.DEPLOY_PRIME_URL ||
       process.env.NEXT_PUBLIC_BASE_URL ||
       process.env.NEXTAUTH_URL ||
+      process.env.NEXTAUTH_URL_INTERNAL ||
       ""
     ).replace(/\/$/, "");
 
-    // En production Netlify, la route Next est coupee par le CDN (~60s) avant la fin du job -> 504.
+    // En production, la route Next est coupee par le CDN (~60s) avant la fin du job -> 504.
     // Une Netlify Background Function tourne jusqu'a ~15 min apres la reponse au declencheur.
-    if (isNetlify && bgSecret && siteOrigin) {
+    if (isDeployedServer && bgSecret && siteOrigin) {
       const bgUrl = `${siteOrigin}/.netlify/functions/follow-engagement-snapshot-background`;
       const trigger = await fetch(bgUrl, {
         method: "POST",
@@ -88,17 +97,21 @@ export async function POST() {
       );
     }
 
-    if (isNetlify && (!bgSecret || !siteOrigin)) {
+    if (isDeployedServer && (!bgSecret || !siteOrigin)) {
+      console.error(
+        "[Admin Follow Snapshot Run] Config background manquante:",
+        JSON.stringify({ hasBgSecret: Boolean(bgSecret), hasSiteOrigin: Boolean(siteOrigin) })
+      );
       return NextResponse.json(
         {
           error:
-            "Configuration Netlify manquante : définir NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET (secret partagé) et s'assurer que URL ou NEXT_PUBLIC_BASE_URL est disponible pour déclencher la fonction background.",
+            "Configuration background manquante : définir NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET (secret partagé) et s'assurer que URL, NEXT_PUBLIC_BASE_URL ou NEXTAUTH_URL est disponible pour déclencher la fonction background.",
         },
         { status: 503 }
       );
     }
 
-    // Local (next dev) ou hors Netlify : execution synchrone dans la route.
+    // Local (next dev) uniquement : execution synchrone dans la route.
     await executeFollowEngagementSnapshotJob(started.snapshotId, admin.discordId || null);
 
     return NextResponse.json(

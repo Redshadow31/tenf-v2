@@ -89,6 +89,10 @@ export type FollowEngagementSnapshotRunInfo = {
   status: FollowEngagementSnapshotRunStatus;
   generatedAt: string;
   createdAt: string;
+  /** Nombre de membres/chaines actives deja calcules pendant le run. */
+  progressDone: number;
+  /** Nombre total de membres/chaines actives a calculer (0 tant qu'inconnu). */
+  progressTotal: number;
 };
 
 type SnapshotMeta = {
@@ -411,7 +415,9 @@ async function computeMemberOverviewRow(
   }
 }
 
-async function computeSnapshotPayload(): Promise<{
+async function computeSnapshotPayload(
+  onProgress?: (done: number, total: number) => void
+): Promise<{
   generatedAt: string;
   sourceDataRetrievedAt: string;
   totalActiveTenfChannels: number;
@@ -474,16 +480,28 @@ async function computeSnapshotPayload(): Promise<{
     toCompute.map((m) => m.discordId!).filter(Boolean)
   );
 
+  // Progression sur TOUTES les chaines en statut actif : le total est le nombre de
+  // chaines actives (liees + non liees). Les non liees sont traitees instantanement
+  // (pas d'appel Twitch) et comptent donc deja comme faites ; seules les liees
+  // (toCompute) declenchent des appels Twitch et font avancer la barre ensuite.
+  const progressTotal = channels.length;
+  let progressDone = notLinkedRows.length;
+  onProgress?.(progressDone, progressTotal);
+
   const computedRows = await withConcurrency(
     toCompute,
     FOLLOW_COMPUTE_CONCURRENCY,
-    async (member) =>
-      computeMemberOverviewRow(
+    async (member) => {
+      const computed = await computeMemberOverviewRow(
         member,
         channels,
         generatedAtIso,
         member.discordId ? prefetchedLinkedMap.get(member.discordId) : undefined
-      )
+      );
+      progressDone += 1;
+      onProgress?.(progressDone, progressTotal);
+      return computed;
+    }
   );
 
   const rows = [...notLinkedRows, ...computedRows];
@@ -606,6 +624,8 @@ export async function startFollowEngagementSnapshotJob(
       total_active_tenf_channels: 0,
       tracked_members_count: 0,
       generated_by_discord_id: generatedByDiscordId,
+      progress_done: 0,
+      progress_total: 0,
       status: "running",
     })
     .select("id")
@@ -623,7 +643,35 @@ export async function executeFollowEngagementSnapshotJob(
   generatedByDiscordId: string | null
 ): Promise<FollowEngagementOverviewResponse> {
   try {
-    const computed = await computeSnapshotPayload();
+    // Ecriture de progression throttlee (max ~1 ecriture / 1.2s) pour ne pas
+    // saturer la DB pendant la boucle de calcul, tout en alimentant le polling UI.
+    let progressWriting = false;
+    let lastProgressWriteAt = 0;
+    let pendingDone = 0;
+    let pendingTotal = 0;
+    const flushProgress = () => {
+      if (progressWriting) return;
+      progressWriting = true;
+      void supabaseAdmin
+        .from(SNAPSHOTS_TABLE)
+        .update({ progress_done: pendingDone, progress_total: pendingTotal })
+        .eq("id", snapshotId)
+        .then(() => {
+          progressWriting = false;
+        });
+    };
+    const onProgress = (done: number, total: number) => {
+      pendingDone = done;
+      pendingTotal = total;
+      const now = Date.now();
+      // Ecrit immediatement au tout debut (total connu) et a la fin, sinon throttle.
+      if (done === 0 || done === total || now - lastProgressWriteAt >= 1200) {
+        lastProgressWriteAt = now;
+        flushProgress();
+      }
+    };
+
+    const computed = await computeSnapshotPayload(onProgress);
 
     const { error: updateSnapshotError } = await supabaseAdmin
       .from(SNAPSHOTS_TABLE)
@@ -633,6 +681,8 @@ export async function executeFollowEngagementSnapshotJob(
         total_active_tenf_channels: computed.totalActiveTenfChannels,
         tracked_members_count: computed.trackedMembersCount,
         generated_by_discord_id: generatedByDiscordId,
+        progress_done: pendingTotal,
+        progress_total: pendingTotal,
         status: "completed",
       })
       .eq("id", snapshotId);
@@ -970,7 +1020,7 @@ export async function getFollowEngagementSnapshotRunInfo(
 
   let query = supabaseAdmin
     .from(SNAPSHOTS_TABLE)
-    .select("id, status, generated_at, created_at")
+    .select("id, status, generated_at, created_at, progress_done, progress_total")
     .order("created_at", { ascending: false })
     .limit(1);
 
@@ -993,6 +1043,8 @@ export async function getFollowEngagementSnapshotRunInfo(
     status: normalizedStatus,
     generatedAt: String(data.generated_at || data.created_at || new Date(0).toISOString()),
     createdAt: String(data.created_at || data.generated_at || new Date(0).toISOString()),
+    progressDone: Number((data as { progress_done?: number }).progress_done ?? 0),
+    progressTotal: Number((data as { progress_total?: number }).progress_total ?? 0),
   };
 }
 

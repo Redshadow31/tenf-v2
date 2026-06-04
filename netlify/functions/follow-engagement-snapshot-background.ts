@@ -28,7 +28,10 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const expected = process.env.NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET;
+  // Meme repli que la route declencheuse : NEXTAUTH_SECRET si la variable dediee
+  // n'est pas definie, afin de ne pas exiger une nouvelle variable Netlify.
+  const expected =
+    process.env.NETLIFY_FOLLOW_SNAPSHOT_BG_SECRET || process.env.NEXTAUTH_SECRET;
   if (!expected || body.secret !== expected) {
     return {
       statusCode: 401,

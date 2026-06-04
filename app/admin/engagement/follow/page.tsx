@@ -36,6 +36,7 @@ export default function AdminEngagementFollowPage() {
   const [loading, setLoading] = useState(true);
   const [runningSnapshot, setRunningSnapshot] = useState(false);
   const [runningSnapshotId, setRunningSnapshotId] = useState<string | null>(null);
+  const [snapshotProgress, setSnapshotProgress] = useState<{ done: number; total: number } | null>(null);
   const [snapshotRequestInflight, setSnapshotRequestInflight] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -122,19 +123,23 @@ export default function AdminEngagementFollowPage() {
       if (payload.status === "completed") {
         setRunningSnapshot(false);
         setRunningSnapshotId(null);
+        setSnapshotProgress(null);
         setNotice("Snapshot terminé. Données rechargées.");
         await loadOverview();
+        setShowConfirmSnapshot(false);
       } else if (payload.alreadyRunning) {
+        setSnapshotProgress(null);
         setNotice("Un snapshot était déjà en cours. Suivi du statut activé.");
       } else {
+        setSnapshotProgress(null);
         setNotice("Génération du snapshot lancée. Mise à jour automatique en cours…");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
       setRunningSnapshot(false);
+      setShowConfirmSnapshot(false);
     } finally {
       setSnapshotRequestInflight(false);
-      setShowConfirmSnapshot(false);
     }
   }
 
@@ -187,6 +192,10 @@ export default function AdminEngagementFollowPage() {
         if (latestSnapshot?.status === "running") {
           setRunningSnapshot(true);
           setRunningSnapshotId(latestSnapshot.snapshotId);
+          setSnapshotProgress({
+            done: latestSnapshot.progressDone ?? 0,
+            total: latestSnapshot.progressTotal ?? 0,
+          });
           setNotice("Un snapshot est en cours. Suivi du statut activé.");
         }
       } catch (_error) {
@@ -216,6 +225,8 @@ export default function AdminEngagementFollowPage() {
         if (snapshot.status === "failed") {
           setRunningSnapshot(false);
           setRunningSnapshotId(null);
+          setSnapshotProgress(null);
+          setShowConfirmSnapshot(false);
           setError("La génération du snapshot a échoué.");
           setNotice(null);
           return;
@@ -224,14 +235,24 @@ export default function AdminEngagementFollowPage() {
         if (snapshot.status === "completed") {
           setRunningSnapshot(false);
           setRunningSnapshotId(null);
+          setSnapshotProgress(null);
+          setShowConfirmSnapshot(false);
           setNotice("Snapshot terminé. Données rechargées.");
           await loadOverview();
           return;
         }
+
+        // Toujours en cours : on rafraichit la progression affichee.
+        setSnapshotProgress({
+          done: snapshot.progressDone ?? 0,
+          total: snapshot.progressTotal ?? 0,
+        });
       } catch (err) {
         if (cancelled) return;
         setRunningSnapshot(false);
         setRunningSnapshotId(null);
+        setSnapshotProgress(null);
+        setShowConfirmSnapshot(false);
         setError(err instanceof Error ? err.message : "Erreur inconnue");
         return;
       }
@@ -344,10 +365,43 @@ export default function AdminEngagementFollowPage() {
                 : "rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-xs text-cyan-200"
             }`}
           >
-            Génération en cours{runningSnapshotId ? ` (id\u00a0: ${runningSnapshotId.slice(0, 8)}…)` : ""}.{" "}
-            {hubLayout
-              ? "Cette page se mettra à jour automatiquement à la fin du snapshot."
-              : "L\u2019écran sera mis à jour automatiquement dès que le snapshot est terminé."}
+            <div>
+              Génération en cours{runningSnapshotId ? ` (id\u00a0: ${runningSnapshotId.slice(0, 8)}…)` : ""}.{" "}
+              {hubLayout
+                ? "Cette page se mettra à jour automatiquement à la fin du snapshot."
+                : "L\u2019écran sera mis à jour automatiquement dès que le snapshot est terminé."}
+            </div>
+            {snapshotProgress && snapshotProgress.total > 0 ? (
+              <div className="mt-2">
+                <div className="mb-1 flex items-center justify-between text-xs font-medium">
+                  <span>
+                    {snapshotProgress.done} / {snapshotProgress.total} chaînes actives calculées
+                  </span>
+                  <span>
+                    {Math.min(
+                      100,
+                      Math.round((snapshotProgress.done / snapshotProgress.total) * 100)
+                    )}
+                    %
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-cyan-500/15">
+                  <div
+                    className="h-full rounded-full bg-cyan-400 transition-[width] duration-500 ease-out"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round((snapshotProgress.done / snapshotProgress.total) * 100)
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-cyan-500/15">
+                <div className="h-full w-full animate-pulse rounded-full bg-cyan-400/70" />
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -417,6 +471,9 @@ export default function AdminEngagementFollowPage() {
       <SnapshotConfirmDialog
         open={showConfirmSnapshot}
         loading={snapshotRequestInflight}
+        running={runningSnapshot}
+        progressDone={snapshotProgress?.done ?? null}
+        progressTotal={snapshotProgress?.total ?? null}
         onCancel={() => {
           if (!snapshotRequestInflight) setShowConfirmSnapshot(false);
         }}

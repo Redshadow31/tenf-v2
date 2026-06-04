@@ -83,6 +83,10 @@ export type SnapshotStatusResponse = {
     status: "running" | "completed" | "failed";
     generatedAt: string;
     createdAt: string;
+    /** Membres/chaines actives deja calcules pendant le run. */
+    progressDone: number;
+    /** Total a calculer (0 tant qu'inconnu). */
+    progressTotal: number;
   } | null;
 };
 
