@@ -89,7 +89,7 @@ function MemberSiteLayout({
         memberAreaHref={isMobileViewport && !isMemberArea ? "/member/dashboard" : undefined}
         showMemberMenuInBurger={isMemberArea}
       />
-      <div className="flex min-w-0 flex-1 overflow-x-hidden">
+      <div className="flex min-w-0 flex-1 overflow-x-hidden pb-14">
         {shouldRenderDesktopSidebar ? (
           <div
             className={sidebarWrapperClass}

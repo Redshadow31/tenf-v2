@@ -9,7 +9,7 @@ export default function Footer() {
 
   return (
     <footer
-      className="relative w-full mt-auto"
+      className="fixed inset-x-0 bottom-0 z-40 w-full"
       style={{ backgroundColor: "var(--color-card)", color: "var(--color-text-secondary)" }}
       aria-label="Pied de page TENF"
     >
@@ -19,56 +19,52 @@ export default function Footer() {
         style={{
           background:
             "linear-gradient(90deg, transparent, var(--color-primary) 35%, #dc2626 65%, transparent)",
-          opacity: 0.45,
+          opacity: 0.5,
         }}
         aria-hidden="true"
       />
 
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          {/* Bloc marque + mentions légales */}
-          <div className="min-w-0">
-            <span
-              className="text-lg font-bold tracking-wide"
-              style={{ color: "var(--color-text)" }}
-            >
-              TENF
-            </span>
-            <p className="mt-2 text-sm leading-relaxed">
-              © {year} Twitch Entraide New Family – TENF. Tous droits réservés.
-            </p>
-            <p className="text-sm leading-relaxed">
-              Textes, visuels, structure et contenus protégés.
-            </p>
-          </div>
+      <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5 sm:px-6 lg:px-8">
+        {/* Mentions légales — compactes, sur une ligne quand la place le permet */}
+        <p className="min-w-0 text-[11px] leading-tight sm:text-xs">
+          <span className="font-semibold" style={{ color: "var(--color-text)" }}>
+            © {year} TENF
+          </span>
+          <span className="mx-1.5 opacity-50">•</span>
+          <span>Twitch Entraide New Family. Tous droits réservés.</span>
+          <span className="hidden sm:inline">
+            <span className="mx-1.5 opacity-50">•</span>
+            Textes, visuels, structure et contenus protégés.
+          </span>
+        </p>
 
-          {/* Bloc liens */}
-          <nav
-            className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5"
-            aria-label="Liens du pied de page"
+        {/* Liens */}
+        <nav
+          className="flex shrink-0 items-center gap-3 sm:gap-4"
+          aria-label="Liens du pied de page"
+        >
+          <Link
+            href="/contact"
+            className="inline-flex items-center gap-1.5 text-[11px] font-medium transition-colors hover:opacity-80 sm:text-xs"
+            style={{ color: "var(--color-text)" }}
           >
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
-              style={{ color: "var(--color-text)" }}
-            >
-              <Mail className="h-4 w-4" aria-hidden="true" />
-              Contact
-            </Link>
+            <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+            Contact
+          </Link>
 
-            <a
-              href={DISCORD_TICKETS_CHANNEL_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: "var(--color-primary)" }}
-            >
-              <Ticket className="h-4 w-4" aria-hidden="true" />
-              Ouvrir un ticket Discord
-              <ExternalLink className="h-3.5 w-3.5 opacity-80" aria-hidden="true" />
-            </a>
-          </nav>
-        </div>
+          <a
+            href={DISCORD_TICKETS_CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold text-white transition-opacity hover:opacity-90 sm:text-xs"
+            style={{ backgroundColor: "var(--color-primary)" }}
+          >
+            <Ticket className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Ouvrir un ticket Discord</span>
+            <span className="sm:hidden">Ticket Discord</span>
+            <ExternalLink className="h-3 w-3 opacity-80" aria-hidden="true" />
+          </a>
+        </nav>
       </div>
     </footer>
   );
