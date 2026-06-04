@@ -100,6 +100,18 @@ export function isInactiveExitMemberRole(role: string | undefined | null): boole
   return canonical === "Départ" || canonical === "Banni";
 }
 
+/**
+ * Membre déjà intégré à TENF (hors parcours « Nouveau » et sorties).
+ * Utilisé p.ex. pour remplacer le CTA « Rejoindre TENF » du header public.
+ */
+export function isTenfMemberWithActiveRole(role: string | undefined | null): boolean {
+  if (!role?.trim()) return false;
+  const canonical = toCanonicalMemberRole(role.trim());
+  if (canonical === "Nouveau") return false;
+  if (isInactiveExitMemberRole(role)) return false;
+  return true;
+}
+
 export function toCanonicalBadgeLabel(badge: string): string {
   if (badge === "Communauté (mineur)") {
     return "Communauté";

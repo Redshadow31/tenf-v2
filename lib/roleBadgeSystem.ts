@@ -9,6 +9,9 @@ export type BadgeVisualVariant =
   | "staff-founder"
   | "staff-coordinator"
   | "staff-moderator"
+  | "staff-autonomie"
+  | "staff-accompagnement"
+  | "staff-decouverte"
   | "staff-trainee"
   | "staff-reduced"
   | "staff-paused"
@@ -42,7 +45,7 @@ const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   "Admin Fondateurs": { label: "Fondateurs TENF", variant: "staff-founder", family: "staff" },
   "Admin Coordinateur": { label: "Coordinateurs TENF", variant: "staff-coordinator", family: "staff" },
   "Modérateur": { label: "Modérateur TENF", variant: "staff-moderator", family: "staff" },
-  "Modérateur en formation": { label: "Modérateur en Accompagnement", variant: "staff-trainee", family: "staff" },
+  "Modérateur en formation": { label: "Modérateur en Accompagnement", variant: "staff-accompagnement", family: "staff" },
   "Modérateur en activité réduite": { label: "Modérateur en activité réduite", variant: "staff-reduced", family: "staff" },
   "Modérateur en pause": { label: "Modérateur en pause", variant: "staff-paused", family: "staff" },
   "Contributeur TENF du Mois": { label: "Contributeur TENF du Mois", variant: "contributor", family: "special" },
@@ -51,9 +54,9 @@ const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   "Fondateurs TENF": { label: "Fondateurs TENF", variant: "staff-founder", family: "staff" },
   "Coordinateur TENF": { label: "Coordinateurs TENF", variant: "staff-coordinator", family: "staff" },
   "Modérateur TENF": { label: "Modérateur TENF", variant: "staff-moderator", family: "staff" },
-  "Modérateur en Autonomie": { label: "Modérateur en Autonomie", variant: "staff-moderator", family: "staff" },
-  "Modérateur en Accompagnement": { label: "Modérateur en Accompagnement", variant: "staff-trainee", family: "staff" },
-  "Modérateur en Découverte": { label: "Modérateur en Découverte", variant: "staff-trainee", family: "staff" },
+  "Modérateur en Autonomie": { label: "Modérateur en Autonomie", variant: "staff-autonomie", family: "staff" },
+  "Modérateur en Accompagnement": { label: "Modérateur en Accompagnement", variant: "staff-accompagnement", family: "staff" },
+  "Modérateur en Découverte": { label: "Modérateur en Découverte", variant: "staff-decouverte", family: "staff" },
   "Contributeur Invité TENF": { label: "Contributeur Invité TENF", variant: "contributor", family: "staff" },
   "VIP Élite": { label: "VIP", variant: "vip", family: "special" },
   VIP: { label: "VIP", variant: "vip", family: "special" },
@@ -162,20 +165,36 @@ export function getRoleBadgeVariant(value: string): BadgeVisualVariant {
   return ROLE_BADGE_CONFIG[normalized]?.variant || "default";
 }
 
-export function getRoleBadgeClassName(value: string): string {
+export type RoleBadgeClassOptions = {
+  /** Pastille compacte sur les cartes annuaire /membres */
+  grid?: boolean;
+};
+
+const STAFF_ANIMATED_VARIANTS = new Set<BadgeVisualVariant>([
+  "staff-coordinator",
+  "staff-moderator",
+  "staff-autonomie",
+  "staff-accompagnement",
+  "staff-decouverte",
+  "staff-trainee",
+  "active-support",
+  "contributor",
+  "vip",
+]);
+
+export function getRoleBadgeClassName(value: string, options?: RoleBadgeClassOptions): string {
   const variant = getRoleBadgeVariant(value);
-  const base = `role-badge role-badge--${variant}`;
-  if (
-    variant.startsWith("staff-") ||
-    variant === "active-support" ||
-    variant === "contributor"
-  ) {
-    return `${base} role-badge--animated role-badge--shimmer`;
+  const parts = [`role-badge`, `role-badge--${variant}`];
+
+  if (variant === "staff-founder") {
+    parts.push("role-badge--glow", "role-badge--shimmer");
+  } else if (STAFF_ANIMATED_VARIANTS.has(variant)) {
+    parts.push("role-badge--animated", "role-badge--shimmer");
   }
-  if (variant === "vip") {
-    return `${base} role-badge--shimmer`;
-  }
-  return base;
+
+  if (options?.grid) parts.push("member-grid-role-badge");
+
+  return parts.join(" ");
 }
 
 export function getRoleBadgeFamily(value: string): BadgeFamily {

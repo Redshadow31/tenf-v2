@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import MemberModal from "@/components/MemberModal";
 import MembresDirectoryMemberCard from "@/components/members/MembresDirectoryMemberCard";
+import theme from "@/components/members/membres-theme.module.css";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import { isExcludedFromMemberDiscover } from "@/lib/memberRoles";
 
@@ -777,57 +778,28 @@ export default function Page() {
   return (
     <div style={MEMBRES_PAGE_STYLE}>
       <div className="space-y-8 sm:space-y-10" style={MEMBRES_CONTAINER_STYLE}>
-      {/* HERO — vitrine publique + invitation TENF */}
-      <section
-        className="relative overflow-hidden rounded-3xl border"
-        style={{
-          padding: "clamp(1rem, 2.5vw, 2.75rem)",
-          borderColor: "rgba(145,70,255,0.38)",
-          background:
-            "linear-gradient(125deg, rgba(14,14,20,0.99) 0%, rgba(48,26,72,0.92) 48%, rgba(22,16,38,0.96) 100%)",
-          boxShadow: "0 24px 60px rgba(0,0,0,0.35), 0 0 80px rgba(124,58,237,0.12)",
-        }}
-      >
-        <div
-          className="pointer-events-none absolute -left-20 -top-20 h-60 w-60 rounded-full opacity-75 blur-3xl"
-          style={{ background: "rgba(167,139,250,0.35)" }}
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -bottom-24 right-[-10%] h-64 w-64 rounded-full opacity-45 blur-3xl"
-          style={{ background: "rgba(236,72,153,0.2)" }}
-          aria-hidden
-        />
-        <div className="relative grid items-stretch gap-6 lg:grid-cols-[1.35fr_1fr] lg:gap-8 xl:gap-10">
-          <div
-            className="relative rounded-2xl border"
-            style={{
-              padding: "clamp(1.25rem, 2vw, 2.25rem)",
-              borderColor: "rgba(255,255,255,0.08)",
-              backgroundColor: "rgba(255,255,255,0.03)",
-            }}
-          >
+      {/* Hero */}
+      <section className={`${theme.panel} ${theme.panelPaddingLg}`} aria-labelledby="membres-hero-title">
+        <div className={theme.panelOrbViolet} aria-hidden />
+        <div className={theme.panelOrbGreen} aria-hidden />
+        <div className={`${theme.panelInner} grid items-stretch gap-6 lg:grid-cols-[1.35fr_1fr] lg:gap-8`}>
+          <div className={`${theme.glassInset} relative`} style={{ padding: "clamp(1.25rem, 2vw, 2.25rem)" }}>
             <div className="flex flex-wrap items-center gap-2">
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]"
-                style={{ borderColor: "rgba(196,161,255,0.45)", color: "#e9d5ff" }}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-amber-300" aria-hidden />
+              <span className={theme.badgeViolet}>
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 Annuaire public
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
-                <HeartHandshake className="h-3.5 w-3.5 text-emerald-300" aria-hidden />
-                La New Family au grand jour
+              <span className={`${theme.badgeViolet} ${theme.badgeGreen}`}>
+                <HeartHandshake className="h-3.5 w-3.5" aria-hidden />
+                La New Family
               </span>
             </div>
             <h1
-              className="mt-4 font-black leading-[1.05] tracking-tight"
-              style={{ color: "var(--color-text)", fontSize: "clamp(1.85rem, 1.4rem + 1.8vw, 3.25rem)" }}
+              id="membres-hero-title"
+              className="mt-4 font-black leading-[1.05] tracking-tight text-white"
+              style={{ fontSize: "clamp(1.85rem, 1.4rem + 1.8vw, 3.25rem)" }}
             >
-              Trouve ta prochaine chaîne{" "}
-              <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-violet-200 bg-clip-text text-transparent">
-                coup de cœur
-              </span>
+              Trouve ta prochaine chaîne <span className={theme.titleGradient}>coup de cœur</span>
             </h1>
             <p
               className="mt-4 max-w-2xl leading-relaxed text-zinc-300"
@@ -839,56 +811,35 @@ export default function Page() {
               ouvrir les profils, tomber sur des univers différents et peut-être poser ta prochaine
               veille sur un live TENF.
             </p>
-            <p className="mt-3 text-xs leading-relaxed text-violet-200/75 sm:text-sm">
-              Astuce : utilise le tirage au sort pour sortir de ta zone de confort, ou file en bas
-              pour filtrer par rôle et chercher un jeu.
+            <p className="mt-3 text-xs leading-relaxed text-emerald-200/70 sm:text-sm">
+              Astuce : tirage au sort, filtres par rôle ou recherche par jeu — tout est en bas.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => openRandomMember()}
-                className="group inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:flex-none"
-                style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 14px 34px rgba(124,58,237,0.42)" }}
-              >
-                <Shuffle className="h-4 w-4 shrink-0 transition group-hover:rotate-12" aria-hidden />
+              <button type="button" onClick={() => openRandomMember()} className={`${theme.btnPrimary} min-h-[48px] flex-1 sm:flex-none`}>
+                <Shuffle className="h-4 w-4 shrink-0" aria-hidden />
                 Surprends-moi avec un profil
               </button>
               <button
                 type="button"
                 onClick={() => liveSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-red-400/35 hover:bg-red-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300 sm:flex-none"
+                className={`${theme.btnLive} min-h-[48px] flex-1 sm:flex-none`}
               >
-                <Radio className="h-4 w-4 shrink-0 text-red-400" aria-hidden />
-                Voir qui est en live ({formatStatValue(stats.liveCount, loadingLive)})
+                <Radio className="h-4 w-4 shrink-0" aria-hidden />
+                En live ({formatStatValue(stats.liveCount, loadingLive)})
               </button>
             </div>
-            <nav
-              className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-5 text-xs font-semibold sm:text-sm"
-              aria-label="Autres découvertes TENF"
-            >
-              <Link
-                href="/lives"
-                className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
-              >
+            <nav className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-5" aria-label="Autres découvertes TENF">
+              <Link href="/lives" className={theme.linkPill}>
                 Tous les lives <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
               </Link>
-              <Link
-                href="/decouvrir-createurs"
-                className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
-              >
-                Clips à découvrir <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
+              <Link href="/decouvrir-createurs" className={theme.linkPill}>
+                Clips <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
               </Link>
-              <Link
-                href="/evenements"
-                className="inline-flex items-center gap-1 rounded-full border border-white/12 px-3 py-1.5 text-zinc-200 transition hover:border-violet-400/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
-              >
-                Agenda événements <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
+              <Link href="/evenements" className={theme.linkPill}>
+                Événements <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
               </Link>
-              <Link
-                href="/auth/login"
-                className="inline-flex items-center gap-1 rounded-full border border-violet-400/35 bg-violet-500/10 px-3 py-1.5 text-violet-100 transition hover:bg-violet-500/18 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
-              >
-                Déjà membre ? Connexion <ArrowRight className="h-3 w-3 opacity-70" aria-hidden />
+              <Link href="/auth/login" className={`${theme.badgeViolet} ${theme.badgeGreen} !normal-case`}>
+                Connexion membre <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
             </nav>
           </div>
@@ -920,14 +871,12 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Lives — vitrine immersive */}
-      <section ref={liveSectionRef} className="space-y-4">
+      <section ref={liveSectionRef} className={`${theme.panel} ${theme.panelPadding}`}>
+        <div className={theme.panelOrbGreen} aria-hidden />
+        <div className={`${theme.panelInner} space-y-4`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2
-              className="flex items-center gap-2 font-black tracking-tight text-white"
-              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
-            >
+            <h2 className={`${theme.sectionTitle} flex items-center gap-2`}>
               <span className="relative flex h-3 w-3" aria-hidden>
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
@@ -940,16 +889,13 @@ export default function Page() {
               de rejoindre le live.
             </p>
           </div>
-          <Link
-            href="/lives"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-100 transition hover:bg-violet-500/18 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
-          >
+          <Link href="/lives" className={`${theme.btnSecondary} shrink-0`}>
             Voir tous les lives TENF
             <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
         </div>
         {loadingLive ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-zinc-400">
+          <div className={`${theme.emptyState} p-8 text-sm`}>
             On synchronise les vignettes Twitch…
           </div>
         ) : liveShowcaseMembers.length > 0 ? (
@@ -980,7 +926,7 @@ export default function Page() {
                         <span className="rounded-full border border-red-500/45 bg-red-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-100">
                           Live
                         </span>
-                        <span className={getRoleBadgeClassName(member.role)}>{getRoleBadgeLabel(member.role)}</span>
+                        <span className={getRoleBadgeClassName(member.role, { grid: true })}>{getRoleBadgeLabel(member.role)}</span>
                       </>
                     }
                     onOpenProfile={() => handleMemberClick(member)}
@@ -991,31 +937,26 @@ export default function Page() {
             })}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center">
-            <p className="text-sm leading-relaxed text-zinc-400">
-              Personne n’est détecté en live dans l’échantillon TENF pour l’instant — les créateurs ont peut-être rangé leur micro. Rafraîchis plus tard ou pars à l’aventure avec{" "}
-              <button type="button" className="font-bold text-violet-300 underline-offset-2 hover:underline" onClick={() => openRandomMember()}>
-                un profil au hasard
+          <div className={`${theme.emptyState} p-8`}>
+            <p className="text-sm leading-relaxed">
+              Personne n’est en live pour l’instant. Rafraîchis plus tard ou{" "}
+              <button type="button" className={`${theme.linkAccent} font-bold`} onClick={() => openRandomMember()}>
+                tire un profil au hasard
               </button>
               .
             </p>
           </div>
         )}
+        </div>
       </section>
 
       {/* Découverte personnalisée (connecté + Twitch lié) ou sélection du jour */}
       {showFollowStatuses ? (
-        <section
-          className="space-y-5 rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-950/25 via-transparent to-fuchsia-950/15"
-          style={{ padding: "clamp(1rem, 2vw, 2rem)" }}
-        >
+        <section className={`${theme.panel} ${theme.panelDiscover} ${theme.panelPadding} space-y-5`}>
+          <div className={theme.panelOrbViolet} aria-hidden />
+          <div className={`${theme.panelInner} space-y-5`}>
           <div>
-            <h2
-              className="font-black tracking-tight text-white"
-              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
-            >
-              Des chaînes que tu ne suis pas encore
-            </h2>
+            <h2 className={theme.sectionTitle}>Des chaînes que tu ne suis pas encore</h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
               On compare ton compte Twitch aux membres TENF : voici des profils sur lesquels tu n'as pas encore cliqué
               sur « suivre ». Ce n'est pas une obligation — juste une façon ludique de sortir de ta bulle et de
@@ -1025,7 +966,7 @@ export default function Page() {
           {discoverForYouMembers.length > 0 ? (
             <>
               <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-300/80">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300/80">
                   Trois cartes tirées pour te faire envie
                 </p>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -1046,7 +987,7 @@ export default function Page() {
                         }
                         badgeRow={
                           <>
-                            <span className={getRoleBadgeClassName(member.role)}>
+                            <span className={getRoleBadgeClassName(member.role, { grid: true })}>
                               {member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}
                             </span>
                             {member.activity !== "normal" ? (
@@ -1068,17 +1009,17 @@ export default function Page() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
                   Raccourcis vers {discoverForYouMembers.length} profil{discoverForYouMembers.length > 1 ? "s" : ""} — clic = fiche TENF
                 </p>
-                <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className={`${theme.glassInset} p-4`}>
                   <div className="flex flex-wrap gap-2">
                     {discoverForYouMembers.map((member) => (
                       <div
                         key={`discover-all-${member.login}`}
-                        className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] pl-1 pr-1 transition hover:border-violet-400/35"
+                        className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] pl-1 pr-1 transition hover:border-emerald-400/35"
                       >
                         <button
                           type="button"
                           onClick={() => handleMemberClick(member)}
-                          className="inline-flex items-center gap-2 rounded-full px-2 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-violet-500/15"
+                          className="inline-flex items-center gap-2 rounded-full px-2 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-emerald-500/12"
                         >
                           <img
                             src={member.avatar || `https://placehold.co/32x32?text=${member.displayName.charAt(0)}`}
@@ -1107,24 +1048,20 @@ export default function Page() {
               </div>
             </>
           ) : (
-            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-5 text-sm leading-relaxed text-emerald-100/90">
-              Tu suivais déjà une très grande partie des créateurs listés côté TENF — chapeau pour la curiosité. Continue à explorer la grille complète plus bas ou offre-toi un{" "}
-              <button type="button" className="font-bold text-white underline-offset-2 hover:underline" onClick={() => openRandomMember()}>
-                tirage au sort
+            <div className={theme.noticeSuccess}>
+              Tu suivais déjà une très grande partie des créateurs TENF — explore la grille ou{" "}
+              <button type="button" className={`${theme.linkAccent} font-bold`} onClick={() => openRandomMember()}>
+                tire au sort
               </button>
               .
             </div>
           )}
+          </div>
         </section>
       ) : (
         <section className="space-y-4">
           <div>
-            <h2
-              className="font-black tracking-tight text-white"
-              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
-            >
-              Pépites du jour (sans connexion Twitch)
-            </h2>
+            <h2 className={theme.sectionTitle}>Pépites du jour (sans connexion Twitch)</h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
               Tu navigues en invité·e : on te propose quand même une petite sélection pour te donner envie de fouiller
               les fiches. Connecte-toi avec Discord et lie Twitch pour débloquer le fil{" "}
@@ -1142,7 +1079,13 @@ export default function Page() {
                 description={member.description?.trim()}
                 badgeRow={
                   <>
-                    <span className={getRoleBadgeClassName(member.role)}>{member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}</span>
+                    <span
+                      className={getRoleBadgeClassName(member.isAffiliated ? "Affilié" : "Développement", {
+                        grid: true,
+                      })}
+                    >
+                      {member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}
+                    </span>
                     {member.activity !== "normal" ? (
                       <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
                         Actif·ve cette semaine
@@ -1162,12 +1105,7 @@ export default function Page() {
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2
-              className="font-black tracking-tight text-white"
-              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
-            >
-              Nouveaux dans la communauté
-            </h2>
+            <h2 className={theme.sectionTitle}>Nouveaux dans la communauté</h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-400">
               Intégrations récentes (30 derniers jours) : un super endroit pour passer dire bonjour et découvrir des
               chaînes toutes fraîches. Chaque fiche résume le style de stream et les liens utiles.
@@ -1182,8 +1120,8 @@ export default function Page() {
         </div>
 
         {recentIntegratedMembers.length > 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className={`${theme.panel} ${theme.panelPadding}`}>
+            <div className={`${theme.panelInner} grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`}>
               {recentIntegratedMembers.map((member) => (
                 <MembresDirectoryMemberCard
                   key={`recent-integrated-${member.login}`}
@@ -1195,7 +1133,7 @@ export default function Page() {
                   description={member.description?.trim()}
                   badgeRow={
                     <>
-                      <span className={getRoleBadgeClassName(member.role)}>
+                      <span className={getRoleBadgeClassName(member.role, { grid: true })}>
                         {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
                       </span>
                       {member.activity !== "normal" ? (
@@ -1212,18 +1150,15 @@ export default function Page() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-sm leading-relaxed text-zinc-400">
-            Pas d’arrivée très récente dans la fenêtre affichée — ce bandeau se remplira dès les prochaines intégrations. En attendant, explore la grille complète ou lance un tirage au sort.
+          <div className={`${theme.emptyState} text-sm`}>
+            Pas d’arrivée très récente — explore la grille ou lance un tirage au sort.
           </div>
         )}
       </section>
 
       {/* Recherche + filtres */}
-      <section
-        className="space-y-4 rounded-3xl border border-white/10 bg-black/20"
-        style={{ padding: "clamp(1rem, 2vw, 1.75rem)" }}
-        aria-labelledby="explorer-title"
-      >
+      <section className={`${theme.panel} ${theme.panelPadding} space-y-4`} aria-labelledby="explorer-title">
+        <div className={theme.panelInner}>
         <div>
           <h2 id="explorer-title" className="text-lg font-bold text-white sm:text-xl">
             Explorer toute la communauté
@@ -1244,13 +1179,7 @@ export default function Page() {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Pseudo Twitch, jeu, mot-clé dans la bio…"
             aria-label="Rechercher un membre par pseudo, jeu ou mot-clé"
-            className="w-full rounded-xl border py-3 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-violet-500/40"
-            style={{
-              backgroundColor: "var(--color-card)",
-              borderColor: searchQuery ? "var(--color-primary)" : "var(--color-border)",
-              color: "var(--color-text)",
-              boxShadow: "none",
-            }}
+            className={`${theme.field} py-3 pl-10 pr-4 text-sm`}
           />
           {searchQuery ? (
             <p className="mt-1.5 pl-1 text-xs text-zinc-500">
@@ -1278,23 +1207,13 @@ export default function Page() {
                 title={tooltip}
                 aria-pressed={isActive}
                 aria-label={disabled ? `${filter.label} — ${tooltip}` : filter.label}
-                className="group shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition-all min-h-[42px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
-                style={{
-                  backgroundColor: isActive ? "rgba(145,70,255,0.15)" : "var(--color-card)",
-                  borderColor: isActive ? "rgba(145,70,255,0.6)" : "var(--color-border)",
-                  color: disabled
-                    ? "rgba(148,163,184,0.6)"
-                    : isActive
-                      ? "var(--color-text)"
-                      : "var(--color-text-secondary)",
-                  opacity: disabled ? 0.65 : 1,
-                  cursor: disabled ? "not-allowed" : "pointer",
-                }}
+                className={`${theme.pill} shrink-0 ${isActive ? theme.pillActive : ""}`}
               >
                 {filter.label}
               </button>
             );
           })}
+        </div>
         </div>
       </section>
 
@@ -1302,12 +1221,7 @@ export default function Page() {
       <section className="space-y-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2
-              className="font-black tracking-tight text-white"
-              style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2rem)" }}
-            >
-              Annuaire complet
-            </h2>
+            <h2 className={theme.sectionTitle}>Annuaire complet</h2>
             <p className="mt-1 text-sm leading-relaxed text-zinc-400">
               <strong className="font-semibold text-zinc-200">
                 {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""}
@@ -1317,9 +1231,9 @@ export default function Page() {
             </p>
           </div>
           {filteredMembers.length > 0 ? (
-            <span className="inline-flex items-center gap-2 self-start rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-zinc-300 sm:self-end">
-              <Users className="h-3.5 w-3.5 text-violet-300" aria-hidden />
-              Triés : staff d'abord, puis mélange aléatoire
+            <span className={`${theme.matchBanner} self-start sm:self-end`}>
+              <Users className="h-3.5 w-3.5" aria-hidden />
+              Staff d&apos;abord, puis mélange aléatoire
             </span>
           ) : null}
         </div>
@@ -1337,20 +1251,20 @@ export default function Page() {
             <p className="text-sm text-zinc-500">Chargement des créateurs TENF…</p>
           </div>
         ) : visibleMembers.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-10 text-center">
-            <p className="text-sm leading-relaxed text-zinc-400">
-              Aucun résultat avec cette recherche ou ce filtre. Essaie un mot plus court, ou{" "}
+          <div className={`${theme.emptyState} p-10`}>
+            <p className="text-sm leading-relaxed">
+              Aucun résultat. Essaie un mot plus court, ou{" "}
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery("");
                   setActiveFilter("all");
                 }}
-                className="font-bold text-violet-300 underline-offset-2 hover:underline focus-visible:underline"
+                className={`${theme.linkAccent} font-bold`}
               >
                 réinitialise les filtres
-              </button>{" "}
-              pour retrouver tous les profils.
+              </button>
+              .
             </p>
           </div>
         ) : (
@@ -1375,7 +1289,7 @@ export default function Page() {
                     }
                     badgeRow={
                       <>
-                        <span className={getRoleBadgeClassName(member.role)}>
+                        <span className={getRoleBadgeClassName(member.role, { grid: true })}>
                           {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
                         </span>
                         {member.activity !== "normal" ? (
@@ -1403,7 +1317,7 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => setVisibleCount((prev) => prev + LOAD_MORE_COUNT)}
-                  className="group inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/10 px-6 py-3 text-sm font-bold text-violet-100 transition hover:bg-violet-500/18 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300"
+                  className={`${theme.btnSecondary} min-h-[48px]`}
                 >
                   Afficher {Math.min(LOAD_MORE_COUNT, filteredMembers.length - visibleCount)} profils de plus
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden />
@@ -1420,40 +1334,23 @@ export default function Page() {
       </section>
 
       {/* Tirage au sort — même ton que le hero */}
-      <section
-        className="relative overflow-hidden rounded-3xl border border-violet-400/25 bg-gradient-to-br from-violet-950/50 via-black/40 to-fuchsia-950/30 text-center"
-        style={{ padding: "clamp(1.5rem, 2.5vw, 2.75rem)" }}
-      >
-        <div
-          className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -left-16 bottom-[-3rem] h-48 w-48 rounded-full bg-fuchsia-500/15 blur-3xl"
-          aria-hidden
-        />
-        <Shuffle className="mx-auto h-10 w-10 text-violet-300" aria-hidden />
-        <h2
-          className="mt-4 font-black tracking-tight text-white"
-          style={{ fontSize: "clamp(1.4rem, 1.1rem + 1vw, 2.1rem)" }}
-        >
-          Pas d'idée ? Laisse le hasard choisir
-        </h2>
+      <section className={`${theme.panel} ${theme.panelPaddingLg} relative text-center`}>
+        <div className={theme.panelOrbViolet} aria-hidden />
+        <div className={theme.panelOrbGreen} aria-hidden />
+        <div className={theme.panelInner}>
+        <Shuffle className="mx-auto h-10 w-10 text-emerald-300" aria-hidden />
+        <h2 className={`${theme.sectionTitle} mt-4`}>Pas d&apos;idée ? Laisse le hasard choisir</h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-300">
-          Un clic ouvre une fiche tirée parmi les résultats actuels (filtres + recherche inclus). Idéal pour sortir de
-          sa zone de confort et tomber sur une chaîne qu'on n'aurait jamais ouverte autrement.
+          Un clic ouvre une fiche parmi tes filtres actuels — idéal pour sortir de ta zone de confort.
         </p>
-        <button
-          type="button"
-          onClick={() => openRandomMember(filteredMembers)}
-          className="group mt-6 inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-600 px-8 py-3 text-sm font-bold text-white shadow-[0_12px_40px_rgba(124,58,237,0.35)] transition hover:brightness-110 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-        >
-          <Shuffle className="h-4 w-4 transition group-hover:rotate-12" aria-hidden />
+        <button type="button" onClick={() => openRandomMember(filteredMembers)} className={`${theme.btnPrimary} mt-6 min-h-[48px]`}>
+          <Shuffle className="h-4 w-4" aria-hidden />
           Tirer un profil au hasard
         </button>
-        <p className="mt-4 text-[11px] uppercase tracking-wider text-violet-300/70">
-          Parmi {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""} correspondant à tes filtres
+        <p className="mt-4 text-[11px] uppercase tracking-wider text-emerald-300/70">
+          Parmi {filteredMembers.length} profil{filteredMembers.length > 1 ? "s" : ""} filtré{filteredMembers.length > 1 ? "s" : ""}
         </p>
+        </div>
       </section>
 
       {/* Modal membre */}
@@ -1487,19 +1384,21 @@ type HeroStatCardProps = {
 };
 
 function HeroStatCard({ icon: Icon, label, value, caption, tone, live }: HeroStatCardProps) {
-  const TONE_MAP: Record<HeroStatCardProps["tone"], { iconColor: string; hoverBorder: string }> = {
-    violet: { iconColor: "text-violet-400", hoverBorder: "hover:border-violet-400/25" },
-    amber: { iconColor: "text-amber-300", hoverBorder: "hover:border-amber-300/25" },
-    red: { iconColor: "text-red-400", hoverBorder: "hover:border-red-400/25" },
-  };
-  const t = TONE_MAP[tone];
+  const accent =
+    tone === "violet" ? "#c4b5fd" : tone === "amber" ? "#6ee7b7" : "#f87171";
+  const iconColor =
+    tone === "violet" ? "text-violet-400" : tone === "amber" ? "text-emerald-400" : "text-red-400";
   return (
     <div
-      className={`rounded-2xl border p-4 transition sm:p-5 ${t.hoverBorder}`}
-      style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.04)" }}
+      className={theme.statPill}
+      style={{
+        borderColor: `color-mix(in srgb, ${accent} 32%, rgba(255,255,255,0.1))`,
+        background: `color-mix(in srgb, ${accent} 8%, rgba(255,255,255,0.03))`,
+        padding: "1rem 1.15rem",
+      }}
     >
-      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
-        <Icon className={`h-4 w-4 ${t.iconColor}`} aria-hidden />
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>
+        <Icon className={`h-4 w-4 ${iconColor}`} aria-hidden />
         {label}
         {live ? (
           <span className="relative ml-auto flex h-2 w-2" aria-hidden>

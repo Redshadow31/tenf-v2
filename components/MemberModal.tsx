@@ -22,6 +22,7 @@ import {
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import StreamPlanningCalendar, { type StreamPlanningCalendarItem } from "@/components/member/StreamPlanningCalendar";
 import DiscordMarkdownPreview from "@/components/member/ui/DiscordMarkdownPreview";
+import theme from "@/components/members/membres-theme.module.css";
 
 type MemberModalProps = {
   member: {
@@ -228,42 +229,28 @@ export default function MemberModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
-      style={{ backgroundColor: "rgba(0, 0, 0, 0.78)", backdropFilter: "blur(10px)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="member-modal-title"
-      onClick={onClose}
+      role="presentation"
     >
+      <button type="button" className={`absolute inset-0 ${theme.modalBackdrop}`} aria-label="Fermer" onClick={onClose} />
       <div
-        className="relative flex max-h-[100dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-white/10 shadow-[0_-20px_80px_rgba(0,0,0,0.5)] sm:max-h-[92vh] sm:max-w-3xl sm:rounded-3xl sm:shadow-[0_32px_100px_rgba(0,0,0,0.55)] lg:max-w-4xl"
-        style={{ backgroundColor: "var(--color-card)" }}
+        className={`${theme.panel} ${theme.modalShell} relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-t-3xl sm:max-w-3xl sm:rounded-3xl lg:max-w-4xl`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="member-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* En-tête immersif */}
-        <div className="relative shrink-0 overflow-hidden border-b border-white/10">
-          <div className="pointer-events-none absolute inset-0">
-            <img
-              src={member.avatar}
-              alt=""
-              className="h-full w-full scale-125 object-cover opacity-[0.22] blur-3xl saturate-150"
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(165deg, rgba(88,28,135,0.45) 0%, rgba(15,15,20,0.92) 42%, var(--color-card) 100%)",
-              }}
-            />
-          </div>
-          <div className="pointer-events-none absolute -right-16 top-0 h-48 w-48 rounded-full bg-fuchsia-500/25 blur-3xl" />
-          <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-violet-500/20 blur-3xl" />
+        <div className={theme.panelOrbViolet} aria-hidden />
+        <div className={theme.panelOrbGreen} aria-hidden />
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-zinc-200 backdrop-blur-md transition hover:border-white/25 hover:bg-black/50 sm:right-4 sm:top-4"
-            aria-label="Fermer la fenêtre"
-          >
+        <div className={`${theme.panelInner} flex min-h-0 flex-1 flex-col`}>
+        <div className={theme.modalHero}>
+          <div className="pointer-events-none absolute inset-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={member.avatar} alt="" className="h-full w-full scale-125 object-cover opacity-[0.2] blur-3xl saturate-150" />
+            <div className={theme.modalHeroFade} />
+          </div>
+
+          <button type="button" onClick={onClose} className={`absolute right-3 top-3 z-20 ${theme.modalClose} sm:right-4 sm:top-4`} aria-label="Fermer la fenêtre">
             <X className="h-5 w-5" strokeWidth={2} />
           </button>
 
@@ -281,7 +268,7 @@ export default function MemberModal({
                   />
                 </div>
                 {member.isVip ? (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-violet-600 to-emerald-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
                     {member.vipBadge || "VIP"}
                   </span>
                 ) : null}
@@ -294,7 +281,7 @@ export default function MemberModal({
               </div>
 
               <div className="min-w-0 flex-1 text-center sm:text-left">
-                <p className="mb-1 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-300/90">
+                <p className={`${theme.badgeViolet} mb-2`}>
                   <Sparkles className="h-3.5 w-3.5" aria-hidden />
                   Fiche TENF
                 </p>
@@ -306,7 +293,7 @@ export default function MemberModal({
                   <button
                     type="button"
                     onClick={copyLogin}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/12 bg-white/5 px-2 py-1 text-[11px] font-semibold text-zinc-300 transition hover:border-violet-400/40 hover:bg-violet-500/10 hover:text-white"
+                    className={`${theme.btnSecondary} !min-h-0 !px-2 !py-1 !text-[11px]`}
                   >
                     {copiedLogin ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                     {copiedLogin ? "Copié" : "Copier le pseudo"}
@@ -347,7 +334,7 @@ export default function MemberModal({
                 href={twitchHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex shrink-0 snap-start items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 text-sm font-bold text-white shadow-[0_8px_28px_rgba(124,58,237,0.45)] transition hover:brightness-110 active:scale-[0.99]"
+                className={`${theme.btnPrimary} shrink-0 snap-start`}
               >
                 <Radio className="h-4 w-4 opacity-90" aria-hidden />
                 {twitchPrimaryLabel}
@@ -356,25 +343,25 @@ export default function MemberModal({
               <button
                 type="button"
                 onClick={() => jumpTo("planning")}
-                className="inline-flex shrink-0 snap-start items-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-violet-400/35 hover:bg-violet-500/10"
+                className={`${theme.btnSecondary} shrink-0 snap-start`}
               >
-                <CalendarDays className="h-4 w-4 text-violet-300" aria-hidden />
+                <CalendarDays className="h-4 w-4 text-emerald-300" aria-hidden />
                 Planning
               </button>
               <button
                 type="button"
                 onClick={() => jumpTo("reseaux")}
-                className="inline-flex shrink-0 snap-start items-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-violet-400/35 hover:bg-violet-500/10"
+                className={`${theme.btnSecondary} shrink-0 snap-start`}
               >
-                <Share2 className="h-4 w-4 text-violet-300" aria-hidden />
+                <Share2 className="h-4 w-4 text-emerald-300" aria-hidden />
                 Réseaux
               </button>
               <button
                 type="button"
                 onClick={() => jumpTo("soutien")}
-                className="inline-flex shrink-0 snap-start items-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-violet-400/35 hover:bg-violet-500/10"
+                className={`${theme.btnSecondary} shrink-0 snap-start`}
               >
-                <Heart className="h-4 w-4 text-pink-300" aria-hidden />
+                <Heart className="h-4 w-4 text-emerald-300" aria-hidden />
                 Soutien
               </button>
             </div>
@@ -382,62 +369,53 @@ export default function MemberModal({
         </div>
 
         {contextBanner ? (
-          <div className="relative shrink-0 border-b border-red-500/35 bg-gradient-to-r from-red-950/60 via-violet-950/40 to-transparent px-4 py-3 sm:px-6">
-            <p className="flex items-start gap-2.5 text-xs leading-relaxed text-red-50 sm:text-sm">
+          <div className={theme.contextLiveBanner}>
+            <p className="flex items-start gap-2.5">
               <Radio className="mt-0.5 h-4 w-4 shrink-0 animate-pulse text-red-400" aria-hidden />
               <span>{contextBanner}</span>
             </p>
           </div>
         ) : null}
 
-        {/* Onglets */}
-        <div className="shrink-0 border-b border-white/10 bg-black/20 px-3 py-2 sm:px-5">
-          <div className="flex gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className={`${theme.modalSection} !pb-2`} role="tablist" aria-label="Sections de la fiche membre">
+          <div className={`${theme.glassInset} flex gap-1 overflow-x-auto p-1`}>
             {TAB_META.map((tab) => {
               const selected = activeTab === tab.id;
+              const TabIcon =
+                tab.id === "profil"
+                  ? User
+                  : tab.id === "soutien"
+                    ? Heart
+                    : tab.id === "activite"
+                      ? Activity
+                      : tab.id === "planning"
+                        ? CalendarDays
+                        : Share2;
               return (
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={selected}
                   title={tab.hint}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`group/tab relative shrink-0 rounded-xl px-3 py-2 text-left transition sm:px-4 ${
-                    selected
-                      ? "bg-violet-500/20 text-white ring-1 ring-violet-400/40"
-                      : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
-                  }`}
+                  className={`${theme.modalTab} ${selected ? theme.modalTabActive : ""}`}
                 >
-                  <span className="flex items-center gap-2 text-sm font-bold">
-                    {tab.id === "profil" ? (
-                      <User className="h-4 w-4 opacity-80" />
-                    ) : tab.id === "soutien" ? (
-                      <Heart className="h-4 w-4 opacity-80" />
-                    ) : tab.id === "activite" ? (
-                      <Activity className="h-4 w-4 opacity-80" />
-                    ) : tab.id === "planning" ? (
-                      <CalendarDays className="h-4 w-4 opacity-80" />
-                    ) : (
-                      <Share2 className="h-4 w-4 opacity-80" />
-                    )}
+                  <span className="flex items-center gap-1.5">
+                    <TabIcon className="h-3.5 w-3.5 opacity-85" aria-hidden />
                     {tab.label}
                   </span>
-                  <span className="mt-0.5 hidden text-[10px] leading-tight text-zinc-500 group-hover/tab:text-zinc-400 sm:block">
-                    {tab.hint}
-                  </span>
+                  <span className={theme.modalTabHint}>{tab.hint}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Contenu */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+        <div className={theme.modalBody}>
           {activeTab === "profil" ? (
             <div className="space-y-4">
-              <div
-                className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent p-4 sm:p-5"
-                style={{ borderColor: "var(--color-border)" }}
-              >
+              <div className={`${theme.glassCard} ${theme.glassCardViolet} p-4 sm:p-5`}>
                 <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-white">
                   <Sparkles className="h-4 w-4 text-amber-300" aria-hidden />
                   À propos
@@ -450,10 +428,7 @@ export default function MemberModal({
                   emptyFallback="Ce créateur n’a pas encore rempli sa bio publique. Passe sur Twitch ou les réseaux pour mieux le·la connaître."
                 />
               </div>
-              <div
-                className="rounded-2xl border border-white/10 p-4 sm:p-5"
-                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
-              >
+              <div className={`${theme.glassCard} ${theme.glassCardGreen} p-4 sm:p-5`}>
                 <h3 className="mb-3 text-base font-bold text-white">Univers du stream</h3>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -475,7 +450,7 @@ export default function MemberModal({
                 <button
                   type="button"
                   onClick={() => jumpTo("planning")}
-                  className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-violet-300 transition hover:text-violet-200"
+                  className={`${theme.linkAccent} mt-4 inline-flex items-center gap-2 text-xs`}
                 >
                   Voir les créneaux annoncés
                   <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
@@ -503,7 +478,7 @@ export default function MemberModal({
                   href={twitchHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex flex-col rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-600/25 to-fuchsia-600/10 p-4 transition hover:-translate-y-0.5 hover:border-violet-400/50 hover:shadow-[0_16px_40px_rgba(124,58,237,0.25)]"
+                  className={`${theme.glassCard} ${theme.glassCardViolet} ${theme.glassCardInteractive} ${theme.actionCardLink} flex-col p-4`}
                 >
                   <span className="flex items-center gap-2 text-lg font-black text-white">
                     <Radio className="h-5 w-5" aria-hidden />
@@ -517,18 +492,18 @@ export default function MemberModal({
                 </a>
                 <Link
                   href="/lives/calendrier"
-                  className="group flex flex-col rounded-2xl border border-white/12 bg-white/[0.04] p-4 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.07]"
+                  className={`${theme.glassCard} ${theme.glassCardGreen} ${theme.glassCardInteractive} ${theme.actionCardLink} flex-col p-4`}
                 >
                   <span className="flex items-center gap-2 text-base font-bold text-white">
-                    <CalendarDays className="h-5 w-5 text-violet-300" aria-hidden />
+                    <CalendarDays className="h-5 w-5 text-emerald-300" aria-hidden />
                     Planning global TENF
                   </span>
                   <span className="mt-2 text-xs text-zinc-400">Repère d’autres créateurs et événements communautaires.</span>
-                  <span className="mt-3 text-sm font-semibold text-violet-300">Voir le calendrier →</span>
+                  <span className={`${theme.linkAccent} mt-3 text-sm`}>Voir le calendrier →</span>
                 </Link>
               </div>
               {followStatusConfig ? (
-                <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-center">
+                <div className={`${theme.glassInset} p-4 text-center`}>
                   <p className="text-xs font-medium text-zinc-400">Ton statut sur cette chaîne</p>
                   <p className={`mt-2 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${followStatusConfig.className}`}>
                     <span aria-hidden>{followStatusConfig.icon}</span>
@@ -545,9 +520,9 @@ export default function MemberModal({
                 Indicateurs publics pour situer le rythme du créateur — les stats Discord détaillées sont surtout utiles aux membres déjà sur le serveur.
               </p>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-violet-400/25">
+                <div className={`${theme.glassCard} ${theme.glassCardViolet} p-4`}>
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    <Activity className="h-4 w-4 text-violet-400" aria-hidden />
+                    <Activity className="h-4 w-4 text-emerald-400" aria-hidden />
                     Rythme
                   </div>
                   <p className="mt-2 text-sm font-bold text-white">
@@ -557,18 +532,18 @@ export default function MemberModal({
                 <button
                   type="button"
                   onClick={() => jumpTo("planning")}
-                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-violet-400/25"
+                  className={`${theme.glassCard} ${theme.glassCardGreen} ${theme.glassCardInteractive} p-4 text-left`}
                 >
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    <CalendarDays className="h-4 w-4 text-violet-400" aria-hidden />
+                    <CalendarDays className="h-4 w-4 text-emerald-400" aria-hidden />
                     Annonces
                   </div>
                   <p className="mt-2 text-sm font-bold text-white">{planningSummary}</p>
-                  <p className="mt-1 text-xs text-violet-300">Ouvrir l’onglet planning</p>
+                  <p className={`${theme.linkAccent} mt-1 text-xs`}>Ouvrir l’onglet planning</p>
                 </button>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className={`${theme.glassCard} ${theme.glassCardViolet} p-4`}>
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    <Heart className="h-4 w-4 text-pink-400" aria-hidden />
+                    <Heart className="h-4 w-4 text-emerald-400" aria-hidden />
                     Communauté
                   </div>
                   <p className="mt-2 text-sm font-bold text-white">Chaque visite sur Twitch aide la visibilité TENF.</p>
@@ -623,7 +598,7 @@ export default function MemberModal({
               </p>
               {loadingStreamPlannings ? (
                 <div className="flex flex-col items-center gap-2 py-10">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
                   <span className="text-sm text-zinc-500">Chargement du planning…</span>
                 </div>
               ) : (
@@ -702,14 +677,14 @@ export default function MemberModal({
               !member.socials?.twitter &&
               !member.socials?.tiktok &&
               !member.socials?.youtube ? (
-                <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center">
+                <div className={`${theme.emptyState} p-8`}>
                   <Share2 className="mx-auto h-10 w-10 text-zinc-600" aria-hidden />
                   <p className="mt-3 text-sm text-zinc-400">Aucun réseau renseigné sur cette fiche pour le moment.</p>
                   <a
                     href={twitchHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-violet-300 hover:text-violet-200"
+                    className={`${theme.linkAccent} mt-4 inline-flex items-center gap-2 text-sm`}
                   >
                     Retourner sur Twitch
                     <ExternalLink className="h-4 w-4" aria-hidden />
@@ -728,32 +703,15 @@ export default function MemberModal({
           ) : null}
         </div>
 
-        {/* Pied sticky */}
-        <div className="shrink-0 border-t border-white/10 bg-black/35 px-4 py-3 backdrop-blur-md sm:px-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="hidden text-xs text-zinc-500 sm:block">
-              <kbd className="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">Échap</kbd>{" "}
-              pour fermer
-            </p>
-            <div className="flex gap-2 sm:justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10 sm:flex-none sm:px-5"
-              >
-                Fermer
-              </button>
-              <a
-                href={twitchHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:brightness-110 sm:flex-none"
-              >
-                {twitchPrimaryLabel}
-                <ExternalLink className="h-4 w-4 opacity-90" aria-hidden />
-              </a>
-            </div>
-          </div>
+        <footer className={theme.modalFooter}>
+          <button type="button" onClick={onClose} className={`${theme.btnSecondary} flex-1 sm:flex-none`}>
+            Fermer
+          </button>
+          <a href={twitchHref} target="_blank" rel="noopener noreferrer" className={`${theme.btnPrimary} flex-1 sm:flex-none`}>
+            {twitchPrimaryLabel}
+            <ExternalLink className="h-4 w-4 opacity-90" aria-hidden />
+          </a>
+        </footer>
         </div>
       </div>
     </div>

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ChevronDown, ExternalLink, LogIn, Menu, PanelLeftOpen, Search, Sparkles, UserCircle2, X } from "lucide-react";
+import { ChevronDown, ExternalLink, LogIn, Menu, PanelLeftOpen, Search, UserCircle2, X } from "lucide-react";
+import HeaderPrimaryCta from "@/components/header/HeaderPrimaryCta";
 import { memberSidebarNavItemsForMobile } from "@/lib/navigation/memberSidebar";
 import { DISCORD_INVITE_URL, socialLinks, type SocialLink } from "@/lib/socialLinks";
 import { useMemberDesktopNavOptional } from "@/contexts/MemberDesktopNavContext";
@@ -501,7 +502,7 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
   const [memberUnreadNotifications, setMemberUnreadNotifications] = useState(0);
 
   const showStickyDiscord = isPublicContext(pathname);
-  // Le CTA Rejoindre TENF est masqué côté membre/admin pour ne pas polluer l'interface.
+  // CTA header (Rejoindre ou Lives) masqué sur /rejoindre et zones admin/member dédiées.
   const showJoinCta = showStickyDiscord && !pathname?.startsWith("/rejoindre");
 
   // Notifications membres (badge)
@@ -656,19 +657,8 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
 
           {/* Zone droite */}
           <div className="relative z-20 ml-auto flex shrink-0 items-center gap-[clamp(0.35rem,0.8vw,0.5rem)] sm:gap-[clamp(0.45rem,1vw,0.65rem)]">
-            {/* CTA Rejoindre TENF (toujours visible en contexte public) */}
-            {showJoinCta && (
-              <Link
-                href="/rejoindre"
-                className="inline-flex items-center gap-1.5 rounded-xl px-[clamp(0.65rem,1vw,0.85rem)] py-[clamp(0.45rem,0.65vw,0.55rem)] text-[clamp(0.65rem,0.6rem+0.2vw,0.8rem)] font-bold text-white transition motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 sm:text-[clamp(0.75rem,0.68rem+0.22vw,0.875rem)]"
-                style={{ backgroundColor: "var(--color-primary)" }}
-                aria-label="Rejoindre TENF"
-              >
-                <Sparkles size={14} aria-hidden className="shrink-0" />
-                <span className="hidden sm:inline">Rejoindre TENF</span>
-                <span className="sm:hidden">Rejoindre</span>
-              </Link>
-            )}
+            {/* CTA principal : Rejoindre TENF ou Lives (membre intégré) */}
+            {showJoinCta ? <HeaderPrimaryCta variant="desktop" /> : null}
 
             {/* Compte (desktop : selon session ; mobile : selon contexte) */}
             <div className="hidden xl:block">
@@ -741,16 +731,9 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
               className="flex max-h-[78dvh] flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-4"
             >
               {/* CTA principal */}
-              {showJoinCta && (
-                <Link
-                  href="/rejoindre"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white shadow-md focus-visible:outline-none focus-visible:ring-2"
-                  style={{ backgroundColor: "var(--color-primary)" }}
-                >
-                  <Sparkles size={16} aria-hidden /> Rejoindre TENF
-                </Link>
-              )}
+              {showJoinCta ? (
+                <HeaderPrimaryCta variant="mobile" onNavigate={() => setMobileMenuOpen(false)} />
+              ) : null}
 
               {/* Recherche mobile */}
               <HeaderSearch variant="mobile" onItemSelect={() => setMobileMenuOpen(false)} />
