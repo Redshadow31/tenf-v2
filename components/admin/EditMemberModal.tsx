@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
+  AtSign,
   Award,
   CalendarDays,
   ExternalLink,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import MemberIdentityHistoryPanel from "@/components/admin/members-gestion/MemberIdentityHistoryPanel";
 import MemberRoleHistoryPanel from "@/components/admin/members-gestion/MemberRoleHistoryPanel";
 
 /** Bloc section formulaire (cohérent dans tout le modal). */
@@ -98,13 +100,18 @@ export default function EditMemberModal({
   member,
   onSave,
 }: EditMemberModalProps) {
-  type EditTab = "comptes" | "role" | "suivi" | "badges" | "notes";
-  const tabOrder: EditTab[] = ["comptes", "role", "suivi", "badges", "notes"];
+  type EditTab = "comptes" | "historique_identite" | "role" | "suivi" | "badges" | "notes";
+  const tabOrder: EditTab[] = ["comptes", "historique_identite", "role", "suivi", "badges", "notes"];
   const tabMeta: Record<EditTab, { label: string; Icon: LucideIcon; hint: string }> = {
     comptes: {
       label: "Identité & comptes",
       Icon: User,
       hint: "Liens utilisés par Twitch, Discord et le site pour reconnaître ce membre.",
+    },
+    historique_identite: {
+      label: "Historique noms",
+      Icon: AtSign,
+      hint: "Changements de pseudo Twitch, Discord, nom affiché et IDs — consolidé depuis l'audit et la base.",
     },
     role: {
       label: "Rôle & statut",
@@ -374,6 +381,7 @@ export default function EditMemberModal({
         normalizeText(formData.twitchId) !== normalizeText(member.twitchId) ||
         normalizeText(formData.discord) !== normalizeText(member.discord) ||
         normalizeText(formData.discordId) !== normalizeText(member.discordId),
+      historique_identite: false,
       role:
         formData.role !== baseRole ||
         formData.statut !== member.statut ||
@@ -402,6 +410,7 @@ export default function EditMemberModal({
 
   const tabErrorState: Record<EditTab, boolean> = {
     comptes: !!validationErrors.twitch || !!validationErrors.discordId,
+    historique_identite: false,
     role: false,
     suivi: !!validationErrors.integrationDate || !!validationErrors.nextReviewAt,
     badges: false,
@@ -790,6 +799,20 @@ export default function EditMemberModal({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div
+                className={activeTab === "historique_identite" ? "space-y-6" : "hidden"}
+                role="tabpanel"
+                id="edit-member-tab-panel-historique_identite"
+                aria-labelledby="edit-member-tab-historique_identite"
+              >
+                <MemberIdentityHistoryPanel
+                  variant="full"
+                  twitchLogin={formData.twitch}
+                  discordId={formData.discordId}
+                  twitchId={formData.twitchId}
+                />
               </div>
 
               {/* Colonne droite */}

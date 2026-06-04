@@ -131,6 +131,9 @@ export const members = pgTable('members', {
     changedBy: string;
     reason?: string;
   }>>().default([]),
+  identityHistory: jsonb('identity_history').$type<
+    import('@/lib/admin/members-gestion/identityHistory').IdentityHistoryEntry[]
+  >().default([]),
   staffPeriods: jsonb('staff_periods').$type<
     import('@/lib/admin/members-gestion/staffPeriods').StaffPeriod[]
   >().default([]),

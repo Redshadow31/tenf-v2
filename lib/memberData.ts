@@ -121,6 +121,7 @@ export interface MemberData {
   lastReviewAt?: Date;
   nextReviewAt?: Date;
   roleHistory?: import("@/lib/admin/members-gestion/memberTimeline").MemberTimelineEntry[];
+  identityHistory?: import("@/lib/admin/members-gestion/identityHistory").IdentityHistoryEntry[];
   staffPeriods?: import("@/lib/admin/members-gestion/staffPeriods").StaffPeriod[];
   /** UUID Supabase (si chargé depuis la base). */
   memberId?: string;

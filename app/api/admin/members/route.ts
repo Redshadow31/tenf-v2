@@ -986,6 +986,7 @@ export async function PUT(request: NextRequest) {
     if (hasValueChanged(existingMember.isActive, updates.isActive)) sensitiveFieldsChanged.push("isActive");
     if (hasValueChanged(existingMember.isVip, updates.isVip)) sensitiveFieldsChanged.push("isVip");
     if (hasValueChanged(existingMember.shadowbanLives, updates.shadowbanLives)) sensitiveFieldsChanged.push("shadowbanLives");
+    if (hasValueChanged(existingMember.displayName, updates.displayName)) sensitiveFieldsChanged.push("displayName");
     if (hasValueChanged(existingMember.twitchLogin, updates.twitchLogin)) sensitiveFieldsChanged.push("twitchLogin");
     if (hasValueChanged(existingMember.twitchId, updates.twitchId)) sensitiveFieldsChanged.push("twitchId");
     if (hasValueChanged(existingMember.discordId, updates.discordId)) sensitiveFieldsChanged.push("discordId");
@@ -1094,6 +1095,29 @@ export async function PUT(request: NextRequest) {
           reason: (updates as any).roleChangeReason,
         }),
       ] as typeof existingMember.roleHistory;
+    }
+
+    // Journal des changements d'identité (pseudos, IDs)
+    {
+      const {
+        createIdentityChangeEntries,
+        memberDataToIdentitySnapshot,
+        normalizeIdentityHistory,
+      } = await import("@/lib/admin/members-gestion/identityHistory");
+      const mergedMember = { ...existingMember, ...updates };
+      const beforeSnap = memberDataToIdentitySnapshot(existingMember);
+      const afterSnap = memberDataToIdentitySnapshot(mergedMember);
+      const identityEntries = createIdentityChangeEntries({
+        before: beforeSnap,
+        after: afterSnap,
+        changedBy: admin.discordId || "admin",
+        changedByUsername: admin.username,
+        reason: effectiveReason,
+      });
+      if (identityEntries.length > 0) {
+        const prior = normalizeIdentityHistory(existingMember.identityHistory as unknown[]);
+        updates.identityHistory = [...prior, ...identityEntries];
+      }
     }
 
     // Ajouter updatedBy et updatedAt
