@@ -284,3 +284,37 @@ export function deleteTimelineEntry(
   }
   return list.filter((e) => e.id !== id);
 }
+
+/** Modifie uniquement la date d'un changement de rôle (manuel ou système). */
+export function patchTimelineEntryChangedAt(
+  history: MemberTimelineEntry[] | undefined,
+  id: string,
+  changedAt: string,
+): MemberTimelineEntry[] {
+  const list = normalizeTimeline(history as unknown[]);
+  const idx = list.findIndex((e) => e.id === id);
+  if (idx < 0) throw new Error("Événement introuvable.");
+  const existing = list[idx];
+  if (!affectsRoleTenure(existing)) {
+    throw new Error("Seuls les changements de rôle peuvent avoir leur date ajustée ici.");
+  }
+  const d = new Date(changedAt);
+  if (Number.isNaN(d.getTime())) throw new Error("Date invalide.");
+  const next = [...list];
+  next[idx] = { ...existing, changedAt: d.toISOString(), isBackfill: existing.isBackfill ?? true };
+  return next;
+}
+
+/** Supprime un changement de rôle (recalcule les périodes affichées). */
+export function deleteRoleTenureTimelineEntry(
+  history: MemberTimelineEntry[] | undefined,
+  id: string,
+): MemberTimelineEntry[] {
+  const list = normalizeTimeline(history as unknown[]);
+  const entry = list.find((e) => e.id === id);
+  if (!entry) throw new Error("Événement introuvable.");
+  if (!affectsRoleTenure(entry)) {
+    throw new Error("Seul un changement de rôle peut être retiré depuis les périodes.");
+  }
+  return list.filter((e) => e.id !== id);
+}

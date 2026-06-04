@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
-  Clock,
   Download,
   Loader2,
   Pencil,
@@ -18,7 +17,6 @@ import {
   analyzeStaffPilot,
   buildRoleTenures,
   formatDurationFr,
-  formatPeriodFr,
 } from "@/lib/admin/members-gestion/roleHistoryAnalytics";
 import {
   getTimelineEntryTitle,
@@ -27,6 +25,7 @@ import {
   type MemberTimelineEntry,
 } from "@/lib/admin/members-gestion/memberTimeline";
 import MemberRoleHistoryManualEditor from "@/components/admin/members-gestion/MemberRoleHistoryManualEditor";
+import MemberRoleTenureList from "@/components/admin/members-gestion/MemberRoleTenureList";
 import MemberStaffPeriodsEditor from "@/components/admin/members-gestion/MemberStaffPeriodsEditor";
 import MemberStaffJourneyLinks from "@/components/admin/members-gestion/MemberStaffJourneyLinks";
 import type { StaffPeriod } from "@/lib/admin/members-gestion/staffPeriods";
@@ -155,10 +154,7 @@ export default function MemberRoleHistoryPanel({
     [timeline],
   );
 
-  const tenuresNewestFirst = useMemo(() => [...tenures].reverse(), [tenures]);
   const showStaffBlock = staff.isCurrentlyStaff || staff.isFormerStaff;
-  const hasEstimatedOnly =
-    timeline.length === 0 && tenures.length <= 1;
 
   async function handleDelete(id: string) {
     if (!memberIdentifier || !onHistoryChange) return;
@@ -404,53 +400,14 @@ export default function MemberRoleHistoryPanel({
         </section>
       ) : null}
 
-      <section className={`${sectionClass} p-4`}>
-        <h4 className="flex items-center gap-2 text-sm font-semibold text-zinc-200">
-          <Clock className="h-4 w-4 text-indigo-300" aria-hidden />
-          Périodes par rôle
-          {hasEstimatedOnly ? (
-            <span className="rounded-full border border-zinc-500/40 bg-zinc-800/60 px-2 py-0.5 text-[10px] font-normal text-zinc-400">
-              Estimé
-            </span>
-          ) : null}
-        </h4>
-        <p className="mt-1 text-xs text-zinc-500">
-          Reconstruction à partir des changements de rôle enregistrés
-          {createdAt
-            ? ` · fiche créée le ${new Date(createdAt).toLocaleDateString("fr-FR")}`
-            : ""}
-          . Les notes et statuts n&apos;altèrent pas cette frise.
-        </p>
-        <ul className="mt-4 space-y-3">
-          {tenuresNewestFirst.map((tenure, index) => (
-            <li
-              key={`${tenure.role}-${tenure.from.toISOString()}-${index}`}
-              className={`relative rounded-xl border p-3 pl-4 ${
-                tenure.ongoing
-                  ? "border-indigo-400/35 bg-indigo-500/[0.08]"
-                  : "border-white/[0.06] bg-black/15"
-              }`}
-              style={{ borderLeftWidth: 4, borderLeftColor: tenure.isStaff ? "#a78bfa" : "#64748b" }}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <span className={getRoleBadgeClassName(tenure.role)}>{tenure.roleLabel}</span>
-                  {tenure.isStaffReduced ? (
-                    <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-400/90">
-                      activité réduite / pause
-                    </span>
-                  ) : null}
-                </div>
-                <span className="shrink-0 text-xs font-semibold tabular-nums text-indigo-200">
-                  {formatDurationFr(tenure.durationMs)}
-                  {tenure.ongoing ? " · en cours" : ""}
-                </span>
-              </div>
-              <p className="mt-1.5 text-xs text-zinc-500">{formatPeriodFr(tenure.from, tenure.to)}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <MemberRoleTenureList
+        roleHistory={timeline}
+        currentRole={currentRole}
+        createdAt={createdAt}
+        memberIdentifier={memberIdentifier}
+        editable={editable}
+        onHistoryChange={onHistoryChange}
+      />
 
       {(variant === "full" || editable) && sortedChanges.length > 0 ? (
         <section className={`${sectionClass} p-4`}>

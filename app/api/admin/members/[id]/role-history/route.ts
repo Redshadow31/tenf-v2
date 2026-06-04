@@ -4,8 +4,10 @@ import { requirePermission } from "@/lib/requireAdmin";
 import {
   appendTimelineEntry,
   createManualTimelineEntry,
+  deleteRoleTenureTimelineEntry,
   deleteTimelineEntry,
   normalizeTimeline,
+  patchTimelineEntryChangedAt,
   updateTimelineEntry,
   type CreateManualTimelineInput,
 } from "@/lib/admin/members-gestion/memberTimeline";
@@ -107,11 +109,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id: _omit, ...patch } = body as { id: string } & Partial<CreateManualTimelineInput>;
-    const roleHistory = updateTimelineEntry(
-      normalizeTimeline(member.roleHistory as unknown[]),
-      id,
-      patch,
-    );
+    const list = normalizeTimeline(member.roleHistory as unknown[]);
+    const existing = list.find((e) => e.id === id);
+    const patchKeys = Object.keys(patch).filter((k) => patch[k as keyof typeof patch] !== undefined);
+    const dateOnly =
+      patchKeys.length === 1 &&
+      patchKeys[0] === "changedAt" &&
+      typeof patch.changedAt === "string";
+
+    const roleHistory =
+      dateOnly && existing && existing.source === "system"
+        ? patchTimelineEntryChangedAt(list, id, patch.changedAt as string)
+        : updateTimelineEntry(list, id, patch);
 
     const updated = await memberRepository.update(member.twitchLogin, {
       roleHistory: roleHistory as unknown as MemberData["roleHistory"],
@@ -151,10 +160,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "id requis" }, { status: 400 });
     }
 
-    const roleHistory = deleteTimelineEntry(
-      normalizeTimeline(member.roleHistory as unknown[]),
-      id,
-    );
+    const list = normalizeTimeline(member.roleHistory as unknown[]);
+    const entry = list.find((e) => e.id === id);
+    const roleHistory = entry?.source === "manual"
+      ? deleteTimelineEntry(list, id)
+      : deleteRoleTenureTimelineEntry(list, id);
 
     const updated = await memberRepository.update(member.twitchLogin, {
       roleHistory: roleHistory as unknown as MemberData["roleHistory"],

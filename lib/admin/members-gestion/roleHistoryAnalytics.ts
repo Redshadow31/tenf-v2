@@ -26,6 +26,14 @@ export type RoleTenure = {
   ongoing: boolean;
 };
 
+/** Période estimée + liens vers les entrées d'historique modifiables. */
+export type RoleTenureDetail = RoleTenure & {
+  startEntryId: string | null;
+  endEntryId: string | null;
+  canEditDates: boolean;
+  canDeletePeriod: boolean;
+};
+
 export type StaffPilotSummary = {
   isCurrentlyStaff: boolean;
   isFormerStaff: boolean;
@@ -124,6 +132,73 @@ export function buildRoleTenures(
   }
 
   return tenures;
+}
+
+function attachTenureDetail(
+  tenure: RoleTenure,
+  startEntryId: string | null,
+  endEntryId: string | null,
+): RoleTenureDetail {
+  const canEditDates = Boolean(startEntryId || endEntryId);
+  const canDeletePeriod = Boolean(startEntryId);
+  return { ...tenure, startEntryId, endEntryId, canEditDates, canDeletePeriod };
+}
+
+/** Comme buildRoleTenures, avec les IDs d'événements pour édition / suppression. */
+export function buildRoleTenureDetails(
+  history: RoleHistoryEntry[] | undefined,
+  currentRole: string,
+  createdAt?: string | null,
+  now: Date = new Date(),
+): RoleTenureDetail[] {
+  const canonicalCurrent = toCanonicalMemberRole(currentRole || "");
+  const roleChangeEntries = normalizeTimeline(history as unknown[])
+    .filter(affectsRoleTenure)
+    .sort((a, b) => new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime());
+
+  if (roleChangeEntries.length === 0) {
+    const from = parseDate(createdAt) ?? now;
+    return [
+      attachTenureDetail(makeTenure(canonicalCurrent, from, null, now), null, null),
+    ];
+  }
+
+  const details: RoleTenureDetail[] = [];
+  const first = roleChangeEntries[0];
+  const firstChangeAt = parseDate(first.changedAt) ?? now;
+  const profileStart = parseDate(createdAt) ?? firstChangeAt;
+
+  if (first.fromRole) {
+    const fromRole = toCanonicalMemberRole(first.fromRole);
+    if (fromRole !== toCanonicalMemberRole(first.toRole || "")) {
+      details.push(
+        attachTenureDetail(
+          makeTenure(fromRole, profileStart, firstChangeAt, now),
+          null,
+          first.id,
+        ),
+      );
+    }
+  }
+
+  for (let i = 0; i < roleChangeEntries.length; i++) {
+    const entry = roleChangeEntries[i];
+    const from = parseDate(entry.changedAt) ?? now;
+    const next = roleChangeEntries[i + 1];
+    const nextChange = next ? parseDate(next.changedAt) : null;
+    const role = toCanonicalMemberRole(entry.toRole || entry.fromRole || canonicalCurrent);
+    details.push(
+      attachTenureDetail(makeTenure(role, from, nextChange, now), entry.id, next?.id ?? null),
+    );
+  }
+
+  const lastDetail = details[details.length - 1];
+  if (lastDetail && toCanonicalMemberRole(lastDetail.role) !== canonicalCurrent) {
+    const from = lastDetail.to ?? parseDate(roleChangeEntries[roleChangeEntries.length - 1].changedAt) ?? now;
+    details.push(attachTenureDetail(makeTenure(canonicalCurrent, from, null, now), null, null));
+  }
+
+  return details;
 }
 
 export function analyzeStaffPilot(

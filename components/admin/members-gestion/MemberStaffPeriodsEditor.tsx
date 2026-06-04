@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Loader2, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { getRoleBadgeClassName, ROLE_BADGE_PICKER_OPTIONS } from "@/lib/roleBadgeSystem";
 import {
   formatPeriodRangeFr,
@@ -36,10 +36,35 @@ export default function MemberStaffPeriodsEditor({
   onPeriodsChange: (periods: StaffPeriod[]) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
+
+  function periodToForm(period: StaffPeriod) {
+    return {
+      type: period.type,
+      label: period.label,
+      role: period.role || "",
+      from: period.from.slice(0, 10),
+      to: period.to ? period.to.slice(0, 10) : null,
+      notes: period.notes || "",
+      toOpen: !period.to,
+    };
+  }
+
+  function openEdit(period: StaffPeriod) {
+    setEditingId(period.id);
+    setForm(periodToForm(period));
+    setOpen(false);
+    setError(null);
+  }
+
+  function closeEdit() {
+    setEditingId(null);
+    setForm(defaultForm());
+  }
 
   const sorted = [...staffPeriods].sort(
     (a, b) => new Date(b.from).getTime() - new Date(a.from).getTime(),
@@ -64,7 +89,7 @@ export default function MemberStaffPeriodsEditor({
             label: form.label,
             role: form.role || undefined,
             from: form.from,
-            to: form.toOpen ? form.to || null : null,
+            to: !form.toOpen ? null : form.to || null,
             notes: form.notes || undefined,
           }),
         },
@@ -74,6 +99,39 @@ export default function MemberStaffPeriodsEditor({
       onPeriodsChange(json.staffPeriods);
       setForm(defaultForm());
       setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/admin/members/${encodeURIComponent(memberIdentifier)}/staff-periods`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingId,
+            type: form.type,
+            label: form.label,
+            role: form.role || undefined,
+            from: form.from,
+            to: !form.toOpen ? null : form.to || null,
+            notes: form.notes || undefined,
+          }),
+        },
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Mise à jour impossible");
+      onPeriodsChange(json.staffPeriods);
+      closeEdit();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
@@ -133,7 +191,123 @@ export default function MemberStaffPeriodsEditor({
         </p>
       ) : null}
 
-      {open ? (
+      {editingId ? (
+        <form onSubmit={handleUpdate} className="mt-4 space-y-3 border-t border-amber-400/20 pt-4">
+          <p className="text-xs font-semibold text-amber-100">Modifier la période confirmée</p>
+          {/* same fields as below - reuse by extracting - duplicate minimal for speed */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Type</label>
+              <select
+                value={form.type}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, type: e.target.value as StaffPeriodType }))
+                }
+                className={inputClass}
+              >
+                {(Object.keys(STAFF_PERIOD_TYPE_LABELS) as StaffPeriodType[]).map((t) => (
+                  <option key={t} value={t}>
+                    {STAFF_PERIOD_TYPE_LABELS[t]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Libellé court</label>
+              <input
+                type="text"
+                value={form.label}
+                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                className={inputClass}
+                required
+              />
+            </div>
+          </div>
+          {form.type === "staff_role" ? (
+            <div>
+              <label className={labelClass}>Rôle TENF</label>
+              <select
+                value={form.role || ""}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+                className={inputClass}
+                required
+              >
+                <option value="">—</option>
+                {ROLE_BADGE_PICKER_OPTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Début</label>
+              <input
+                type="date"
+                value={form.from}
+                onChange={(e) => setForm((f) => ({ ...f, from: e.target.value }))}
+                className={inputClass}
+                required
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Fin (optionnelle)</label>
+              <input
+                type="date"
+                value={form.to || ""}
+                onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
+                className={inputClass}
+                disabled={!form.toOpen}
+              />
+              <label className="mt-1.5 flex items-center gap-2 text-xs text-zinc-500">
+                <input
+                  type="checkbox"
+                  checked={!form.toOpen}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      toOpen: !e.target.checked,
+                      to: e.target.checked ? null : f.to,
+                    }))
+                  }
+                />
+                Toujours en cours
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Notes</label>
+            <textarea
+              value={form.notes || ""}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              rows={2}
+              className={inputClass}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={closeEdit}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-300"
+            >
+              <X className="h-3.5 w-3.5" />
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Enregistrer
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {open && !editingId ? (
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 border-t border-white/10 pt-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -282,6 +456,14 @@ export default function MemberStaffPeriodsEditor({
                     {formatDurationFr(periodDurationMs(period))}
                     {!period.to ? " · en cours" : ""}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => openEdit(period)}
+                    className="rounded p-1 text-zinc-500 hover:bg-indigo-500/20 hover:text-indigo-300"
+                    aria-label="Modifier la période"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => void handleDelete(period.id)}
