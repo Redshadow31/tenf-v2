@@ -4,6 +4,7 @@ import { addRaidFait, getCurrentMonthKey, getMonthKey } from './raidStorage';
 import { loadMemberDataFromStorage, getAllMemberData, updateMemberData } from './memberData';
 import { cacheTwitchId, getCachedTwitchId } from './twitchIdCache';
 import { getTwitchUserIdByLogin } from './twitchHelpers';
+import { isInactiveExitMemberRole } from './memberRoles';
 
 export interface TwitchRaidEvent {
   from_broadcaster_user_id: string;
@@ -25,7 +26,9 @@ function findMemberByTwitchIdOrLogin(
   allMembers: any[]
 ): any | null {
   const eligible = (m: any) =>
-    m.isArchived !== true && (m.isActive === true || m.role === "Nouveau");
+    m.isArchived !== true &&
+    !isInactiveExitMemberRole(m.role) &&
+    (m.isActive === true || m.role === "Nouveau");
 
   // PRIORITÉ 1: Chercher par Twitch ID (MANDATORY pour EventSub)
   if (twitchId) {

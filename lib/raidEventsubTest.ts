@@ -8,6 +8,7 @@ import {
   getTwitchOAuthToken,
   TwitchEventSubSubscription,
 } from '@/lib/twitchEventSub';
+import { isInactiveExitMemberRole } from '@/lib/memberRoles';
 
 const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
 const CONDITION_TYPE = 'to_broadcaster';
@@ -169,7 +170,7 @@ async function findRaidTrackedSupabaseMemberByEventIdentity(input: {
   if (input.twitchId) {
     const { data: byId, error: byIdError } = await supabaseAdmin
       .from('members')
-      .select('twitch_login,twitch_id,is_active')
+      .select('twitch_login,twitch_id,is_active,role')
       .eq('is_archived', false)
       .eq('twitch_id', input.twitchId)
       .limit(1);
@@ -177,7 +178,9 @@ async function findRaidTrackedSupabaseMemberByEventIdentity(input: {
       throw new Error(`[raidEventsubTest] Recherche membre Supabase par twitch_id impossible: ${byIdError.message}`);
     }
     const member = byId?.[0] as any;
-    if (member?.twitch_login) {
+    // Rôles de sortie (Départ / Banni) : plus suivis pour les raids à partir de leur sortie.
+    // Les events déjà « matched » restent en base (historique conservé).
+    if (member?.twitch_login && !isInactiveExitMemberRole(member.role)) {
       return {
         twitchLogin: String(member.twitch_login),
         twitchId: member.twitch_id ? String(member.twitch_id) : undefined,
@@ -189,7 +192,7 @@ async function findRaidTrackedSupabaseMemberByEventIdentity(input: {
   if (normalizedLogin) {
     const { data: byLogin, error: byLoginError } = await supabaseAdmin
       .from('members')
-      .select('twitch_login,twitch_id,is_active')
+      .select('twitch_login,twitch_id,is_active,role')
       .eq('is_archived', false)
       .eq('twitch_login', normalizedLogin)
       .limit(1);
@@ -199,7 +202,7 @@ async function findRaidTrackedSupabaseMemberByEventIdentity(input: {
       );
     }
     const member = byLogin?.[0] as any;
-    if (member?.twitch_login) {
+    if (member?.twitch_login && !isInactiveExitMemberRole(member.role)) {
       return {
         twitchLogin: String(member.twitch_login),
         twitchId: member.twitch_id ? String(member.twitch_id) : undefined,
@@ -501,6 +504,8 @@ async function getEligibleMembersWithTwitchId(): Promise<EligibleMember[]> {
     .map((row) => {
       const twitchLogin = String(row.twitch_login || '').toLowerCase().trim();
       if (!twitchLogin) return null;
+      // Rôles de sortie (Départ / Banni) : on ne crée plus d'abonnement EventSub pour eux.
+      if (isInactiveExitMemberRole(row.role)) return null;
       const fallbackResolved = resolvedMap.get(twitchLogin);
       const twitchId = String(row.twitch_id || fallbackResolved || '').trim();
       if (!twitchId) return null;
@@ -772,6 +777,7 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
       const fallbackFrom = allMembers.find(
         (m) =>
           m.isArchived !== true &&
+          !isInactiveExitMemberRole(m.role) &&
           ((!!m.twitchId && m.twitchId === input.event.from_broadcaster_user_id) ||
             m.twitchLogin?.toLowerCase() === input.event.from_broadcaster_user_login.toLowerCase())
       );
@@ -788,6 +794,7 @@ export async function saveRaidTestEvent(input: SaveRaidTestEventInput): Promise<
       const fallbackTo = allMembers.find(
         (m) =>
           m.isArchived !== true &&
+          !isInactiveExitMemberRole(m.role) &&
           ((!!m.twitchId && m.twitchId === input.event.to_broadcaster_user_id) ||
             m.twitchLogin?.toLowerCase() === input.event.to_broadcaster_user_login.toLowerCase())
       );

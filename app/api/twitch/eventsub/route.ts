@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { saveTwitchRaid, TwitchRaidEvent } from '@/lib/raidsTwitch';
+import { isInactiveExitMemberRole } from '@/lib/memberRoles';
 
 /**
  * POST - Handler pour les webhooks Twitch EventSub
@@ -122,6 +123,7 @@ export async function POST(request: NextRequest) {
       const fromMember = allMembers.find(
         (m) =>
           m.isArchived !== true &&
+          !isInactiveExitMemberRole(m.role) &&
           (m.isActive === true || m.role === "Nouveau") &&
           ((event.from_broadcaster_user_id && m.twitchId === event.from_broadcaster_user_id) ||
             (!m.twitchId && m.twitchLogin?.toLowerCase() === event.from_broadcaster_user_login.toLowerCase()))
@@ -130,6 +132,7 @@ export async function POST(request: NextRequest) {
       const toMember = allMembers.find(
         (m) =>
           m.isArchived !== true &&
+          !isInactiveExitMemberRole(m.role) &&
           (m.isActive === true || m.role === "Nouveau") &&
           ((event.to_broadcaster_user_id && m.twitchId === event.to_broadcaster_user_id) ||
             (!m.twitchId && m.twitchLogin?.toLowerCase() === event.to_broadcaster_user_login.toLowerCase()))

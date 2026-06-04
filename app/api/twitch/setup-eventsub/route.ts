@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ensureGlobalChannelRaidSubscription } from '@/lib/twitchEventSub';
 import { loadMemberDataFromStorage, getAllMemberData } from '@/lib/memberData';
 import { resolveAndCacheTwitchIds } from '@/lib/twitchIdResolver';
+import { isInactiveExitMemberRole } from '@/lib/memberRoles';
 
 /**
  * POST - Force la synchronisation EventSub (crée la subscription si elle n'existe pas)
@@ -23,9 +24,9 @@ export async function POST(request: NextRequest) {
     await loadMemberDataFromStorage();
     const allMembers = getAllMemberData();
 
-    // Filtrer les membres actifs avec un twitchLogin
+    // Filtrer les membres actifs avec un twitchLogin (hors rôles de sortie Départ / Banni)
     const membersWithTwitch = allMembers.filter(
-      m => m.isActive && m.twitchLogin && m.twitchLogin.trim() !== ''
+      m => m.isActive && !isInactiveExitMemberRole(m.role) && m.twitchLogin && m.twitchLogin.trim() !== ''
     );
 
     if (membersWithTwitch.length === 0) {
