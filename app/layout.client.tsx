@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import UserSidebar from "@/components/UserSidebar";
 import MemberGlobalNotificationHint from "@/components/MemberGlobalNotificationHint";
 import ConnectionTracker from "@/components/ConnectionTracker";
@@ -82,13 +83,13 @@ function MemberSiteLayout({
     (prefersReducedMotion ? "" : " xl:transition-[width,opacity] xl:duration-200 xl:ease-out");
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-hidden" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
+    <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
       <Header
         onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined}
         memberAreaHref={isMobileViewport && !isMemberArea ? "/member/dashboard" : undefined}
         showMemberMenuInBurger={isMemberArea}
       />
-      <div className="flex min-w-0 overflow-x-hidden">
+      <div className="flex min-w-0 flex-1 overflow-x-hidden">
         {shouldRenderDesktopSidebar ? (
           <div
             className={sidebarWrapperClass}
@@ -122,6 +123,7 @@ function MemberSiteLayout({
       ) : null}
       <MemberSidebarExpandRail />
       <MemberGlobalNotificationHint />
+      <Footer />
     </div>
   );
 }
