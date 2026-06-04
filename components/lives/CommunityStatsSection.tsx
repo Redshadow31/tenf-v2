@@ -1,115 +1,205 @@
-import { HeartHandshake, Radio, Sparkles, Users } from "lucide-react";
-import type { CSSProperties } from "react";
+"use client";
+
+import Link from "next/link";
+import { ArrowRight, HeartHandshake, Radio, Sparkles, Users } from "lucide-react";
+import styles from "@/components/lives/lives-discovery.module.css";
+import theme from "@/components/lives/lives-theme.module.css";
 
 type CommunityStatsSectionProps = {
-  liveCount: number;
+  filteredLiveCount: number;
+  totalLiveCount: number;
   totalMembers: number | null;
   activeMembers: number | null;
+  topGameLabel: string | null;
+  topGameCount: number;
+  onScrollToLives?: () => void;
+  embedded?: boolean;
 };
 
 type StatTone = "red" | "violet" | "amber" | "emerald";
+
 type StatItem = {
   label: string;
   value: string;
+  subValue?: string;
   caption: string;
   icon: typeof Radio;
   tone: StatTone;
   live?: boolean;
+  href?: string;
+  onClick?: () => void;
+  actionLabel?: string;
 };
 
-const TONE_STYLES: Record<StatTone, { iconColor: string; hoverBorder: string }> = {
-  red: { iconColor: "text-red-400", hoverBorder: "hover:border-red-400/25" },
-  violet: { iconColor: "text-violet-400", hoverBorder: "hover:border-violet-400/25" },
-  amber: { iconColor: "text-amber-300", hoverBorder: "hover:border-amber-300/25" },
-  emerald: { iconColor: "text-emerald-300", hoverBorder: "hover:border-emerald-300/25" },
+const TONE_CARD: Record<StatTone, string> = {
+  red: theme.glassCardRed,
+  violet: theme.glassCardViolet,
+  amber: theme.glassCardAmber,
+  emerald: theme.glassCardEmerald,
 };
+
+const TONE_ICON: Record<StatTone, string> = {
+  red: theme.iconRed,
+  violet: theme.iconViolet,
+  amber: theme.iconAmber,
+  emerald: theme.iconEmerald,
+};
+
+function StatCard({ item }: { item: StatItem }) {
+  const interactive = Boolean(item.href || item.onClick);
+  const cardClass = [
+    theme.glassCard,
+    styles.statCardPadding,
+    TONE_CARD[item.tone],
+    interactive ? `${theme.glassCardInteractive} ${styles.statActionGroup}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const inner = (
+    <>
+      <div className={styles.statLabel}>
+        <item.icon className={`h-4 w-4 shrink-0 ${TONE_ICON[item.tone]}`} aria-hidden />
+        <span>{item.label}</span>
+        {item.live ? (
+          <span className={styles.liveDot} aria-hidden>
+            <span className={styles.liveDotPing} />
+            <span className={styles.liveDotCore} />
+          </span>
+        ) : null}
+      </div>
+      <p className={styles.statValue}>{item.value}</p>
+      {item.subValue ? <p className={styles.statSub}>{item.subValue}</p> : null}
+      <p className={styles.statCaption}>{item.caption}</p>
+      {item.actionLabel ? (
+        <span className={styles.statAction}>
+          {item.actionLabel}
+          <ArrowRight className="h-3 w-3" aria-hidden />
+        </span>
+      ) : null}
+    </>
+  );
+
+  if (item.href) {
+    return (
+      <Link href={item.href} className={cardClass}>
+        {inner}
+      </Link>
+    );
+  }
+
+  if (item.onClick) {
+    return (
+      <button type="button" onClick={item.onClick} className={cardClass}>
+        {inner}
+      </button>
+    );
+  }
+
+  return <div className={cardClass}>{inner}</div>;
+}
 
 export default function CommunityStatsSection({
-  liveCount,
+  filteredLiveCount,
+  totalLiveCount,
   totalMembers,
   activeMembers,
+  topGameLabel,
+  topGameCount,
+  onScrollToLives,
+  embedded = false,
 }: CommunityStatsSectionProps) {
+  const liveSub =
+    filteredLiveCount !== totalLiveCount
+      ? `${filteredLiveCount} dans ta sélection · ${totalLiveCount} au total`
+      : totalLiveCount > 0
+        ? `${totalLiveCount} chaîne${totalLiveCount > 1 ? "s" : ""} Twitch`
+        : undefined;
+
   const stats: StatItem[] = [
     {
-      label: "Streamers en direct",
-      value: String(liveCount),
-      caption: "Détecté·es à l'instant sur Twitch",
+      label: "En direct",
+      value: String(filteredLiveCount),
+      subValue: liveSub,
+      caption:
+        topGameLabel && topGameCount > 0
+          ? `Tendance : ${topGameLabel}`
+          : "Synchronisé avec Twitch",
       icon: Radio,
       tone: "red",
-      live: liveCount > 0,
+      live: totalLiveCount > 0,
+      onClick: onScrollToLives,
+      actionLabel: onScrollToLives ? "Voir la grille" : undefined,
     },
     {
-      label: "Créateurs côté Discord",
+      label: "Communauté Discord",
       value: totalMembers !== null ? String(totalMembers) : "…",
-      caption: "Les humains derrière TENF",
+      caption: "Créateurs et membres TENF",
       icon: Users,
       tone: "violet",
+      href: "/membres",
+      actionLabel: "Annuaire",
     },
     {
-      label: "Membres actifs ce mois",
+      label: "Actifs ce mois",
       value: activeMembers !== null ? String(activeMembers) : "…",
-      caption: "Présents sur une fenêtre récente",
+      caption: "Présence récente sur le serveur",
       icon: Sparkles,
       tone: "amber",
+      href: "/membres",
+      actionLabel: "Explorer",
     },
     {
       label: "Esprit TENF",
-      value: "Entraide",
-      caption: "Au quotidien, sans hiérarchie de viewers",
+      value: totalLiveCount > 0 ? "Live" : "Entraide",
+      caption: "Raids, soutien, visibilité partagée",
       icon: HeartHandshake,
       tone: "emerald",
+      href: "/fonctionnement-tenf/comment-ca-marche",
+      actionLabel: "Le fonctionnement",
     },
   ];
 
-  const sectionStyle: CSSProperties = {
-    padding: "clamp(1rem, 2vw, 1.75rem)",
-    borderColor: "var(--color-border)",
-    backgroundColor: "var(--color-card)",
-    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-  };
+  const content = (
+    <>
+      <div className={styles.statsZoneHeader}>
+        <div>
+          <h2 id="community-stats-title" className={styles.statsZoneTitle}>
+            <span className={styles.statsZoneTitleIcon} aria-hidden>
+              <HeartHandshake className="h-4 w-4" />
+            </span>
+            Pulse communautaire
+          </h2>
+          <p className="mt-1 max-w-xl text-xs text-zinc-400 sm:text-sm">
+            Les mêmes chiffres que tes filtres — clique une carte pour agir.
+          </p>
+        </div>
+        <div className={styles.statsZonePills} aria-hidden>
+          <span className={styles.statMiniPill}>
+            {filteredLiveCount} / {totalLiveCount} lives
+          </span>
+          {topGameLabel && topGameCount > 0 ? (
+            <span className={styles.statMiniPillRed}>
+              {topGameLabel} · {topGameCount}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div className={styles.statsGrid}>
+        {stats.map((item) => (
+          <StatCard key={item.label} item={item} />
+        ))}
+      </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div aria-labelledby="community-stats-title">{content}</div>;
+  }
 
   return (
-    <section className="space-y-4 rounded-2xl border" style={sectionStyle} aria-labelledby="community-stats-title">
-      <div>
-        <h2
-          id="community-stats-title"
-          className="flex items-center gap-2 font-bold tracking-tight"
-          style={{ color: "var(--color-text)", fontSize: "clamp(1.1rem, 1rem + 0.5vw, 1.4rem)" }}
-        >
-          <HeartHandshake className="h-5 w-5 text-fuchsia-300" aria-hidden />
-          La communauté TENF en ce moment
-        </h2>
-        <p className="mt-1 text-sm text-zinc-400">
-          Un aperçu rapide de l'activité du jour — ces chiffres bougent en continu.
-        </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map((item) => {
-          const t = TONE_STYLES[item.tone];
-          return (
-            <div
-              key={item.label}
-              className={`rounded-xl border p-4 transition ${t.hoverBorder}`}
-              style={{ borderColor: "var(--color-border)", backgroundColor: "rgba(255,255,255,0.025)" }}
-            >
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-zinc-500">
-                <item.icon className={`h-4 w-4 ${t.iconColor}`} aria-hidden />
-                {item.label}
-                {item.live ? (
-                  <span className="relative ml-auto flex h-2 w-2" aria-hidden>
-                    <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-red-500 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-2 text-2xl font-bold tabular-nums" style={{ color: "var(--color-text)" }}>
-                {item.value}
-              </p>
-              <p className="mt-1 text-xs leading-snug text-zinc-400">{item.caption}</p>
-            </div>
-          );
-        })}
-      </div>
+    <section className={`space-y-4 ${theme.panel} ${theme.panelPadding}`}>
+      {content}
     </section>
   );
 }

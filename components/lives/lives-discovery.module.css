@@ -1,0 +1,372 @@
+/* Zone découverte Lives — bloc unifié violet / rouge */
+
+.discoveryZone {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  position: relative;
+}
+
+@media (min-width: 1280px) {
+  .discoveryZone {
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+    align-items: start;
+  }
+}
+
+.discoveryMain {
+  min-width: 0;
+}
+
+.discoveryRail {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: sticky;
+  top: clamp(4.5rem, 8vh, 6rem);
+}
+
+@media (min-width: 1280px) {
+  .discoveryRail {
+    display: flex;
+  }
+}
+
+/* Bloc unifié : coque via lives-theme.module.css (.panel) */
+
+.unifiedInner {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+/* Filtres (sans carte séparée) */
+.filtersBlock {
+  /* contenu seul dans le shell */
+}
+
+.matchBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, #9146ff 35%, transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, #9146ff 22%, transparent),
+    color-mix(in srgb, #dc2626 10%, transparent)
+  );
+  padding: 0.75rem 1rem;
+  font-size: clamp(0.8125rem, 1.2vw, 0.875rem);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
+}
+
+.matchCount {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(90deg, #e9d5ff, #fda4af);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pillRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.quickPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, #fff 8%, var(--color-border));
+  padding: 0.4rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+  background: color-mix(in srgb, #000 25%, var(--color-surface));
+  color: var(--color-text-secondary);
+}
+
+.quickPill:hover {
+  border-color: color-mix(in srgb, #9146ff 45%, var(--color-border));
+  color: var(--color-text);
+  transform: translateY(-1px);
+}
+
+.quickPillActive {
+  border-color: color-mix(in srgb, #9146ff 60%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, #9146ff 35%, #1a1028), color-mix(in srgb, #7c3aed 25%, #120c1c));
+  color: #f5f3ff;
+  box-shadow: 0 0 24px color-mix(in srgb, #9146ff 35%, transparent);
+}
+
+.quickPillRed.quickPillActive {
+  border-color: color-mix(in srgb, #dc2626 55%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, #dc2626 28%, #1a0a0a), color-mix(in srgb, #991b1b 20%, #120808));
+  color: #fecaca;
+  box-shadow: 0 0 20px color-mix(in srgb, #dc2626 30%, transparent);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, #9146ff 40%, transparent);
+  background: color-mix(in srgb, #9146ff 15%, transparent);
+  padding: 0.25rem 0.55rem 0.25rem 0.7rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #e9d5ff;
+}
+
+.chipRemove {
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 0.1rem;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.chipRemove:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Zone stats intégrée */
+.statsZoneHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.statsZoneTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.statsZoneTitleIcon {
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, color-mix(in srgb, #9146ff 40%, transparent), color-mix(in srgb, #dc2626 25%, transparent));
+  border: 1px solid color-mix(in srgb, #9146ff 35%, transparent);
+  color: #f5f3ff;
+}
+
+.statsZonePills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.statMiniPill {
+  border-radius: 9999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, #9146ff 30%, transparent);
+  background: color-mix(in srgb, #9146ff 12%, transparent);
+  color: #ddd6fe;
+}
+
+.statMiniPillRed {
+  border-color: color-mix(in srgb, #dc2626 35%, transparent);
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+  color: #fecaca;
+}
+
+.statsGrid {
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 1024px) {
+  .statsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.statCardPadding {
+  padding: 1rem 1.125rem;
+}
+
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, #fff 55%, transparent);
+}
+
+.statValue {
+  margin-top: 0.5rem;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  text-shadow: 0 2px 12px color-mix(in srgb, #000 40%, transparent);
+}
+
+.statSub {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #e9d5ff;
+}
+
+.statCaption {
+  margin-top: 0.35rem;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, #fff 50%, transparent);
+}
+
+.statAction {
+  margin-top: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #fff;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, gap 0.15s ease;
+}
+
+.statActionGroup:hover .statAction {
+  opacity: 1;
+  gap: 0.4rem;
+}
+
+.liveDot {
+  position: relative;
+  margin-left: auto;
+  display: flex;
+  height: 0.5rem;
+  width: 0.5rem;
+}
+
+.liveDotPing {
+  position: absolute;
+  display: inline-flex;
+  height: 100%;
+  width: 100%;
+  border-radius: 9999px;
+  background: #ef4444;
+  opacity: 0.75;
+  animation: lives-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.liveDotCore {
+  position: relative;
+  display: inline-flex;
+  height: 100%;
+  width: 100%;
+  border-radius: 9999px;
+  background: #ef4444;
+}
+
+@keyframes lives-ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Rail latéral */
+.railCard {
+  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  padding: 1rem;
+  font-size: 0.8125rem;
+  background: color-mix(in srgb, var(--color-card) 95%, transparent);
+}
+
+.railCardViolet {
+  border-color: color-mix(in srgb, #9146ff 35%, var(--color-border));
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, #9146ff 16%, var(--color-card)),
+    var(--color-card)
+  );
+  box-shadow: 0 8px 24px color-mix(in srgb, #9146ff 12%, transparent);
+}
+
+.railCardRed {
+  border-color: color-mix(in srgb, #dc2626 30%, var(--color-border));
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, #dc2626 12%, var(--color-card)),
+    var(--color-card)
+  );
+}
+
+.railLabel {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a78bfa;
+}
+
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, #9146ff 40%, transparent);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #f5f3ff;
+  background: linear-gradient(135deg, color-mix(in srgb, #9146ff 25%, transparent), color-mix(in srgb, #7c3aed 15%, transparent));
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, #c4b5fd 55%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, #9146ff 30%, transparent);
+}
+
+.refreshBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.refreshBtnSpinning svg {
+  animation: lives-spin 0.8s linear infinite;
+}
+
+@keyframes lives-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

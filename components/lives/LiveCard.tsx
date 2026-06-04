@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ExternalLink, Radio, User } from "lucide-react";
 import type { LiveMember } from "@/components/lives/types";
+import theme from "@/components/lives/lives-theme.module.css";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 function formatLiveDuration(startedAt: string): string {
@@ -37,14 +38,7 @@ export default function LiveCard({ live, onOpenMemberProfile }: LiveCardProps) {
 
   return (
     <article
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-0.5"
-      style={{
-        borderColor: live.isSpotlight ? "rgba(251,191,36,0.55)" : "var(--color-border)",
-        backgroundColor: "var(--color-card)",
-        boxShadow: live.isSpotlight
-          ? "0 14px 36px rgba(245,158,11,0.28)"
-          : "0 10px 30px rgba(0,0,0,0.24)",
-      }}
+      className={`group flex h-full flex-col ${theme.liveCard} ${live.isSpotlight ? theme.liveCardSpotlight : ""}`}
     >
       <div className="relative aspect-video w-full overflow-hidden">
         <img
@@ -187,8 +181,7 @@ export default function LiveCard({ live, onOpenMemberProfile }: LiveCardProps) {
             href={live.twitchUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-[1px] hover:opacity-95 md:py-2.5"
-            style={{ backgroundColor: "var(--color-primary)", boxShadow: "0 10px 22px rgba(145,70,255,0.24)" }}
+            className={`${theme.btnPrimary} w-full min-h-[44px] md:py-2.5`}
           >
             <Radio className="h-4 w-4 shrink-0 text-red-200" aria-hidden />
             {isDiscoverCta ? "Découvrir le créateur" : "Rejoindre le live"}

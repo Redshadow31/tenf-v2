@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentProps, type CSSProperties } from "react";
+import { useDeferredValue, useEffect, useMemo, useState, type ComponentProps, type CSSProperties } from "react";
 import { Dice5, ExternalLink, HeartHandshake, RefreshCcw, Sparkles } from "lucide-react";
 import CharityProgressBar from "@/components/lives/CharityProgressBar";
-import CommunityStatsSection from "@/components/lives/CommunityStatsSection";
 import JoinTENFSection from "@/components/lives/JoinTENFSection";
 import LiveCard from "@/components/lives/LiveCard";
-import LivesFilters from "@/components/lives/LivesFilters";
+import LivesDiscoveryPanel from "@/components/lives/LivesDiscoveryPanel";
+import RandomRaidModal from "@/components/lives/RandomRaidModal";
+import type { LivesQuickFilter, LivesSortMode } from "@/components/lives/livesDiscoveryTypes";
 import LivesHero from "@/components/lives/LivesHero";
 import LivesPhilosophyBanner from "@/components/lives/LivesPhilosophyBanner";
+import theme from "@/components/lives/lives-theme.module.css";
 import UpcomingEventsSection from "@/components/lives/UpcomingEventsSection";
 import MemberModal from "@/components/MemberModal";
 import type { LiveMember, LiveStream, PublicEventItem } from "@/components/lives/types";
@@ -158,6 +160,8 @@ export default function LivesPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [randomHint, setRandomHint] = useState<string | null>(null);
+  const [randomRaidLive, setRandomRaidLive] = useState<LiveMember | null>(null);
+  const [randomRaidOpen, setRandomRaidOpen] = useState(false);
   const [spotlightLogin, setSpotlightLogin] = useState<string | null>(null);
   const [spotlightDisplayName, setSpotlightDisplayName] = useState<string | null>(null);
   const [spotlightEncouragement, setSpotlightEncouragement] = useState<string | null>(null);
@@ -177,8 +181,14 @@ export default function LivesPageClient() {
   );
 
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [selectedGame, setSelectedGame] = useState("all");
   const [selectedRole, setSelectedRole] = useState("all");
+  const [quickFilter, setQuickFilter] = useState<LivesQuickFilter>("all");
+  const [sortMode, setSortMode] = useState<LivesSortMode>("tenf");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchWithTimeout = async (
     input: RequestInfo | URL,
@@ -272,6 +282,8 @@ export default function LivesPageClient() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchLivesAndContext() {
       try {
         setError(null);
@@ -511,14 +523,30 @@ export default function LivesPageClient() {
         setLiveMembers([]);
         setError("Impossible de charger les lives pour le moment.");
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setIsRefreshing(false);
+          setLastSyncedAt(new Date());
+        }
       }
     }
 
     fetchLivesAndContext();
-    const interval = setInterval(fetchLivesAndContext, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    const interval = setInterval(() => setRefreshKey((key) => key + 1), 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [refreshKey]);
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    setRefreshKey((key) => key + 1);
+  };
+
+  const scrollToLivesGrid = () => {
+    document.getElementById("lives-grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const availableGames = useMemo(
     () => Array.from(new Set(liveMembers.map((live) => live.game).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fr")),
@@ -529,9 +557,72 @@ export default function LivesPageClient() {
     [liveMembers]
   );
 
+  const gameCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    liveMembers.forEach((live) => {
+      if (!live.game) return;
+      counts[live.game] = (counts[live.game] || 0) + 1;
+    });
+    return counts;
+  }, [liveMembers]);
+
+  const topGame = useMemo(() => {
+    let label: string | null = null;
+    let count = 0;
+    for (const [game, gameCount] of Object.entries(gameCounts)) {
+      if (gameCount > count) {
+        label = game;
+        count = gameCount;
+      }
+    }
+    return { label, count };
+  }, [gameCounts]);
+
+  const matchesQuickFilter = useMemo(() => {
+    return (live: LiveMember, filter: LivesQuickFilter): boolean => {
+      if (filter === "all") return true;
+      const login = normalizeLoginKey(live.twitchLogin);
+      if (filter === "spotlight") {
+        return (
+          live.isSpotlight === true ||
+          (!!spotlightLogin && login === normalizeLoginKey(spotlightLogin)) ||
+          (!!spotlightDisplayName &&
+            normalizeText(live.displayName) === normalizeText(spotlightDisplayName))
+        );
+      }
+      if (filter === "celebrations") {
+        return live.isBirthdayToday === true || live.isAffiliateAnniversaryToday === true;
+      }
+      if (filter === "not_followed") {
+        return showFollowStatuses && followStatuses[login] === "not_followed";
+      }
+      return true;
+    };
+  }, [followStatuses, showFollowStatuses, spotlightDisplayName, spotlightLogin]);
+
+  const quickFilterCounts = useMemo(() => {
+    const counts: Record<LivesQuickFilter, number> = {
+      all: liveMembers.length,
+      spotlight: 0,
+      celebrations: 0,
+      not_followed: 0,
+    };
+    liveMembers.forEach((live) => {
+      if (matchesQuickFilter(live, "spotlight")) counts.spotlight += 1;
+      if (matchesQuickFilter(live, "celebrations")) counts.celebrations += 1;
+      if (matchesQuickFilter(live, "not_followed")) counts.not_followed += 1;
+    });
+    return counts;
+  }, [liveMembers, matchesQuickFilter]);
+
+  const lastSyncedLabel = useMemo(() => {
+    if (!lastSyncedAt) return "Synchronisation en cours…";
+    return `Mis à jour à ${lastSyncedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+  }, [lastSyncedAt]);
+
   const filteredLives = useMemo(() => {
     let result = [...liveMembers];
-    const normalizedSearch = normalizeText(search);
+    const normalizedSearch = normalizeText(deferredSearch);
 
     if (normalizedSearch) {
       result = result.filter((live) => {
@@ -546,6 +637,10 @@ export default function LivesPageClient() {
     }
     if (selectedRole !== "all") {
       result = result.filter((live) => live.role === selectedRole);
+    }
+
+    if (quickFilter !== "all") {
+      result = result.filter((live) => matchesQuickFilter(live, quickFilter));
     }
 
     const withPriority = result.map((live) => {
@@ -583,21 +678,37 @@ export default function LivesPageClient() {
       };
     });
 
-    withPriority.sort((a, b) => {
+    const sortByTenf = (a: (typeof withPriority)[number], b: (typeof withPriority)[number]) => {
       const priorityDiff = getLivePriority(b) - getLivePriority(a);
       if (priorityDiff !== 0) return priorityDiff;
-
       const aHash = stableHash(`${sessionShuffleSeed}:${a.twitchLogin.toLowerCase()}:${safeToDateMs(a.startedAt)}`);
       const bHash = stableHash(`${sessionShuffleSeed}:${b.twitchLogin.toLowerCase()}:${safeToDateMs(b.startedAt)}`);
       return aHash - bHash;
-    });
+    };
+
+    if (sortMode === "viewers") {
+      withPriority.sort((a, b) => b.viewerCount - a.viewerCount || sortByTenf(a, b));
+    } else if (sortMode === "recent") {
+      withPriority.sort(
+        (a, b) => safeToDateMs(a.startedAt) - safeToDateMs(b.startedAt) || sortByTenf(a, b)
+      );
+    } else if (sortMode === "alpha") {
+      withPriority.sort(
+        (a, b) => a.displayName.localeCompare(b.displayName, "fr") || sortByTenf(a, b)
+      );
+    } else {
+      withPriority.sort(sortByTenf);
+    }
 
     return withPriority;
   }, [
     liveMembers,
-    search,
+    deferredSearch,
     selectedGame,
     selectedRole,
+    quickFilter,
+    sortMode,
+    matchesQuickFilter,
     spotlightLogin,
     spotlightDisplayName,
     topRaiderLogin,
@@ -608,15 +719,35 @@ export default function LivesPageClient() {
     showFollowStatuses,
   ]);
 
+  const pickRandomFilteredLive = (): LiveMember | null => {
+    if (filteredLives.length === 0) return null;
+    return filteredLives[Math.floor(Math.random() * filteredLives.length)];
+  };
+
   const handlePickRandomLive = () => {
-    if (filteredLives.length === 0) {
+    const selected = pickRandomFilteredLive();
+    if (!selected) {
       setRandomHint("Aucun live ne correspond aux filtres actuels.");
       return;
     }
-    const randomIndex = Math.floor(Math.random() * filteredLives.length);
-    const selected = filteredLives[randomIndex];
     setRandomHint(`Sélection aléatoire : ${selected.displayName} — bonne découverte !`);
     window.open(selected.twitchUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handlePickRandomRaid = () => {
+    const selected = pickRandomFilteredLive();
+    if (!selected) {
+      setRandomHint("Aucun live ne correspond aux filtres actuels — élargis la sélection pour un raid.");
+      return;
+    }
+    setRandomRaidLive(selected);
+    setRandomRaidOpen(true);
+    setRandomHint(null);
+  };
+
+  const handlePickAnotherRandomRaid = () => {
+    const selected = pickRandomFilteredLive();
+    if (selected) setRandomRaidLive(selected);
   };
 
   function openLiveMemberModal(live: LiveMember) {
@@ -721,18 +852,10 @@ export default function LivesPageClient() {
     return (
       <div style={LIVES_PAGE_STYLE}>
         <div className="space-y-6" style={LIVES_CONTAINER_STYLE}>
-          <div
-            className="relative overflow-hidden rounded-3xl border"
-            style={{
-              padding: "clamp(1.5rem, 2vw, 2.5rem)",
-              borderColor: "rgba(145,70,255,0.3)",
-              background:
-                "linear-gradient(120deg, rgba(21,21,26,0.97) 0%, rgba(36,21,54,0.9) 60%, rgba(30,18,35,0.92) 100%)",
-            }}
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-violet-300">
-              On synchronise avec Twitch…
-            </p>
+          <div className={`${theme.panel} ${theme.panelPaddingLg}`}>
+            <div className={theme.panelOrbViolet} aria-hidden />
+            <div className={`${theme.panelInner} space-y-3`}>
+            <p className={theme.badgeViolet}>On synchronise avec Twitch…</p>
             <h1
               className="mt-3 font-extrabold tracking-tight"
               style={{ color: "var(--color-text)", fontSize: "clamp(1.6rem, 1.2rem + 1.5vw, 2.5rem)" }}
@@ -752,13 +875,13 @@ export default function LivesPageClient() {
             >
               <span className="block h-full w-1/2 animate-pulse bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500" />
             </div>
+            </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-32 animate-pulse rounded-2xl border"
-                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+                className={`h-32 animate-pulse rounded-2xl ${theme.glassCard} ${theme.glassCardViolet}`}
               />
             ))}
           </div>
@@ -781,7 +904,7 @@ export default function LivesPageClient() {
 
       <LivesPhilosophyBanner />
 
-      <LivesFilters
+      <LivesDiscoveryPanel
         search={search}
         onSearchChange={setSearch}
         selectedGame={selectedGame}
@@ -789,19 +912,32 @@ export default function LivesPageClient() {
         selectedRole={selectedRole}
         onRoleChange={setSelectedRole}
         games={availableGames}
+        gameCounts={gameCounts}
         roles={availableRoles}
+        quickFilter={quickFilter}
+        onQuickFilterChange={setQuickFilter}
+        quickFilterCounts={quickFilterCounts}
+        showNotFollowedFilter={showFollowStatuses}
+        sortMode={sortMode}
+        onSortModeChange={setSortMode}
+        filteredCount={filteredLives.length}
+        totalLiveCount={liveMembers.length}
+        totalMembers={totalMembers}
+        activeMembers={activeMembers}
+        topGameLabel={topGame.label}
+        topGameCount={topGame.count}
+        lastSyncedLabel={lastSyncedLabel}
+        isRefreshing={isRefreshing}
+        onRefresh={handleManualRefresh}
+        onScrollToLives={scrollToLivesGrid}
+        onPickRandomLive={handlePickRandomLive}
+        onPickRandomRaid={handlePickRandomRaid}
+        randomDisabled={filteredLives.length === 0}
+        spotlightDisplayName={spotlightDisplayName}
       />
 
       {error ? (
-        <div
-          className="flex items-start gap-3 rounded-xl border p-4 text-sm leading-relaxed"
-          style={{
-            borderColor: "rgba(239,68,68,0.4)",
-            color: "#fca5a5",
-            backgroundColor: "rgba(239,68,68,0.08)",
-          }}
-          role="alert"
-        >
+        <div className={theme.alertError} role="alert">
           <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-red-300" aria-hidden />
           <div>
             <p className="font-semibold">{error}</p>
@@ -813,48 +949,23 @@ export default function LivesPageClient() {
       ) : null}
 
       {randomHint ? (
-        <p
-          className="inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-100 sm:text-sm"
-          role="status"
-          aria-live="polite"
-        >
+        <p className={`${theme.badgeViolet} text-xs sm:text-sm`} role="status" aria-live="polite">
           <Dice5 className="h-3.5 w-3.5" aria-hidden />
           {randomHint}
         </p>
       ) : null}
 
-      <CommunityStatsSection
-        liveCount={liveMembers.length}
-        totalMembers={totalMembers}
-        activeMembers={activeMembers}
-      />
-
+      <div id="lives-grid" className="scroll-mt-24 space-y-6 sm:space-y-8">
       {spotlightLive ? (
         <section
-          className="relative overflow-hidden rounded-3xl border"
-          style={{
-            padding: "clamp(1.25rem, 2vw, 2.25rem)",
-            borderColor: "rgba(145,70,255,0.45)",
-            background:
-              "radial-gradient(circle at 12% 15%, rgba(145,70,255,0.22), rgba(145,70,255,0) 40%), linear-gradient(160deg, rgba(24,22,35,0.98), rgba(13,12,20,0.99))",
-            boxShadow: "0 22px 52px rgba(0,0,0,0.36)",
-          }}
+          className={`${theme.panel} ${theme.panelSpotlight} ${theme.panelPadding}`}
           aria-labelledby="spotlight-section-title"
         >
-          <div
-            className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl"
-            aria-hidden
-          />
-          <div className="relative grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+          <div className={theme.panelOrbFuchsia} aria-hidden />
+          <div className={theme.panelOrbViolet} aria-hidden />
+          <div className={`${theme.panelInner} grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-center`}>
             <div className="space-y-3">
-              <p
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.14em]"
-                style={{
-                  borderColor: "rgba(145,70,255,0.6)",
-                  color: "#d8c4ff",
-                  backgroundColor: "rgba(145,70,255,0.2)",
-                }}
-              >
+              <p className={theme.badgeViolet}>
                 <Sparkles className="h-3.5 w-3.5 text-amber-200" aria-hidden />
                 Spotlight TENF en cours
               </p>
@@ -873,7 +984,7 @@ export default function LivesPageClient() {
                 soutien à un membre. C'est notre façon de dire « on est là pour toi ce soir ».
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-violet-400/25 bg-violet-500/10 p-3">
+                <div className={`${theme.glassInset} ${theme.glassInsetViolet} p-3`}>
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-violet-200">
                     Au streamer Spotlight
                   </p>
@@ -882,7 +993,7 @@ export default function LivesPageClient() {
                     moment partagé.
                   </p>
                 </div>
-                <div className="rounded-xl border border-white/12 bg-white/[0.04] p-3">
+                <div className={`${theme.glassInset} p-3`}>
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-300">
                     À la communauté
                   </p>
@@ -906,26 +1017,14 @@ export default function LivesPageClient() {
 
       {isUpaPeriodActive && upaLiveMembers.length > 0 ? (
         <section
-          className="space-y-5 rounded-3xl border"
-          style={{
-            padding: "clamp(1.25rem, 2vw, 2.25rem)",
-            borderColor: "rgba(212,175,55,0.42)",
-            background:
-              "radial-gradient(circle at 10% 20%, rgba(212,175,55,0.2), rgba(212,175,55,0) 42%), radial-gradient(circle at 85% 12%, rgba(145,70,255,0.14), rgba(145,70,255,0) 40%), linear-gradient(160deg, rgba(24,24,34,0.97), rgba(12,12,18,0.99))",
-            boxShadow: "0 22px 52px rgba(0,0,0,0.38)",
-          }}
+          className={`space-y-5 ${theme.panel} ${theme.panelAmber} ${theme.panelPadding}`}
           aria-labelledby="upa-section-title"
         >
+          <div className={theme.panelOrbViolet} aria-hidden />
+          <div className={`${theme.panelInner} space-y-5`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.14em]"
-                style={{
-                  borderColor: "rgba(212,175,55,0.55)",
-                  color: "#f5df9d",
-                  backgroundColor: "rgba(212,175,55,0.13)",
-                }}
-              >
+              <p className={theme.badgeAmber}>
                 <HeartHandshake className="h-3.5 w-3.5" aria-hidden />
                 Semaine caritative UPA
               </p>
@@ -948,10 +1047,7 @@ export default function LivesPageClient() {
                 Cause soutenue : Ligue contre le cancer
               </p>
             </div>
-            <div
-              className="rounded-xl border px-3 py-2 text-right"
-              style={{ borderColor: "rgba(212,175,55,0.35)", backgroundColor: "rgba(212,175,55,0.08)" }}
-            >
+            <div className={`${theme.glassInset} ${theme.glassInsetAmber} px-3 py-2 text-right`}>
               <p className="text-sm font-bold" style={{ color: "#f5df9d" }}>
                 {upaLiveMembers.length} live{upaLiveMembers.length > 1 ? "s" : ""} UPA actif
                 {upaLiveMembers.length > 1 ? "s" : ""}
@@ -966,41 +1062,16 @@ export default function LivesPageClient() {
 
           <div className="flex flex-wrap gap-2 text-xs">
             {upaDateRangeLabel ? (
-              <span
-                className="inline-flex items-center rounded-full border px-3 py-1"
-                style={{
-                  borderColor: "rgba(255,255,255,0.2)",
-                  color: "rgba(255,255,255,0.84)",
-                  backgroundColor: "rgba(255,255,255,0.08)",
-                }}
-              >
-                {upaDateRangeLabel}
-              </span>
+              <span className={theme.badgeNeutral}>{upaDateRangeLabel}</span>
             ) : null}
-            <span
-              className="inline-flex items-center rounded-full border px-3 py-1"
-              style={{
-                borderColor: "rgba(145,70,255,0.35)",
-                color: "#d9c3ff",
-                backgroundColor: "rgba(145,70,255,0.14)",
-              }}
-            >
-              Priorité solidarité
-            </span>
+            <span className={theme.badgeViolet}>Priorité solidarité</span>
           </div>
 
           {charityStats?.available === true &&
           typeof charityStats.raised === "number" &&
           typeof charityStats.displayGoal === "number" &&
           typeof charityStats.currency === "string" ? (
-            <div
-              className="rounded-2xl border px-4 py-5"
-              style={{
-                borderColor: "rgba(212,175,55,0.42)",
-                background:
-                  "linear-gradient(165deg, rgba(212,175,55,0.12), rgba(145,70,255,0.06) 45%, rgba(0,0,0,0.2))",
-              }}
-            >
+            <div className={`${theme.glassCard} ${theme.glassCardAmber} px-4 py-5`}>
               <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#f5df9d" }}>
                 Cagnotte en direct
               </p>
@@ -1021,13 +1092,7 @@ export default function LivesPageClient() {
                 href={upaCharityCampaignHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition-all hover:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 sm:w-auto sm:px-5"
-                style={{
-                  borderColor: "rgba(212,175,55,0.55)",
-                  color: "#1a1407",
-                  background: "linear-gradient(160deg, #f0dc8f, #d4af37)",
-                  boxShadow: "0 12px 28px rgba(212,175,55,0.22)",
-                }}
+                className={`${theme.btnAmber} group w-full sm:w-auto`}
               >
                 <HeartHandshake className="h-4 w-4" aria-hidden />
                 Suivre la cagnotte en direct
@@ -1062,6 +1127,7 @@ export default function LivesPageClient() {
               />
             ))}
           </div>
+          </div>
         </section>
       ) : null}
 
@@ -1081,8 +1147,8 @@ export default function LivesPageClient() {
                 fiche pour découvrir la personne avant d'arriver sur Twitch.
               </p>
             </div>
-            <span className="inline-flex items-center gap-2 self-start rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-zinc-300 sm:self-end">
-              <Sparkles className="h-3.5 w-3.5 text-violet-300" aria-hidden />
+            <span className={`${theme.badgeNeutral} self-start sm:self-end`}>
+              <Sparkles className={`h-3.5 w-3.5 ${theme.iconViolet}`} aria-hidden />
               Mises en avant en haut, puis ordre aléatoire
             </span>
           </div>
@@ -1097,25 +1163,44 @@ export default function LivesPageClient() {
           </div>
         </section>
       ) : upaLiveMembers.length === 0 && spotlightLiveMembers.length === 0 ? (
-        <section
-          className="rounded-2xl border border-dashed p-8 text-center"
-          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
-        >
+        <section className={`${theme.panel} ${theme.panelPadding} text-center`}>
+          <div className={theme.panelOrbViolet} aria-hidden />
+          <div className={`${theme.panelInner} space-y-4`}>
           <div
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-violet-500/15 text-violet-300"
+            className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${theme.glassInset} ${theme.glassInsetViolet}`}
             aria-hidden
           >
-            <Sparkles className="h-6 w-6" />
+            <Sparkles className={`h-6 w-6 ${theme.iconViolet}`} />
           </div>
           <p className="mt-4 text-base font-bold" style={{ color: "var(--color-text)" }}>
             Personne en live avec ces filtres
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-            Soit la communauté est plus calme ce moment-ci, soit tes filtres sont trop précis. Élargis la recherche,
-            ou pars à l'aventure avec le tirage au sort en haut de page.
+            Soit la communauté est plus calme ce moment-ci, soit tes filtres sont trop précis.
+            {topGame.label && topGame.count > 0 ? (
+              <>
+                {" "}
+                En ce moment, <strong style={{ color: "var(--color-text)" }}>{topGame.label}</strong> concentre{" "}
+                {topGame.count} live{topGame.count > 1 ? "s" : ""}.
+              </>
+            ) : null}
           </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setSelectedGame("all");
+              setSelectedRole("all");
+              setQuickFilter("all");
+            }}
+            className={`${theme.btnSecondary} mt-4`}
+          >
+            Réinitialiser tous les filtres
+          </button>
+          </div>
         </section>
       ) : null}
+      </div>
 
       <UpcomingEventsSection events={upcomingEvents} allEventsHref="/evenements" />
 
@@ -1125,11 +1210,8 @@ export default function LivesPageClient() {
       {/* FAB mobile — repris uniquement quand au moins un live est cliquable */}
       <div className="fixed inset-x-3 bottom-3 z-40 md:hidden">
         <div
-          className="rounded-2xl border p-2 shadow-2xl backdrop-blur-sm"
-          style={{
-            borderColor: "rgba(145, 70, 255, 0.45)",
-            backgroundColor: "rgba(18, 18, 24, 0.92)",
-          }}
+          className={`rounded-2xl border p-2 shadow-2xl ${theme.panel}`}
+          style={{ borderColor: "rgba(145, 70, 255, 0.45)" }}
         >
           <button
             type="button"
@@ -1140,8 +1222,7 @@ export default function LivesPageClient() {
                 ? "Aucun live à tirer au sort pour l'instant"
                 : `Découvrir un live au hasard parmi ${filteredLives.length} lives`
             }
-            className="group flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-            style={{ backgroundColor: "var(--color-primary)" }}
+            className={`${theme.btnPrimary} group w-full`}
           >
             <Dice5 className="h-4 w-4 transition group-hover:rotate-12" aria-hidden />
             Découvrir un live au hasard
@@ -1153,6 +1234,24 @@ export default function LivesPageClient() {
           </button>
         </div>
       </div>
+
+      <RandomRaidModal
+        live={randomRaidLive}
+        isOpen={randomRaidOpen}
+        onClose={() => {
+          setRandomRaidOpen(false);
+          setRandomRaidLive(null);
+        }}
+        onPickAnother={handlePickAnotherRandomRaid}
+        onOpenMemberProfile={
+          randomRaidLive
+            ? () => {
+                setRandomRaidOpen(false);
+                openLiveMemberModal(randomRaidLive);
+              }
+            : undefined
+        }
+      />
 
       {liveMemberModalMember ? (
         <MemberModal
