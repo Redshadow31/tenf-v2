@@ -33,6 +33,7 @@ const BASE_LINKS: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/admin/audit-logs/historique-pages", label: "Historique des pages" },
   { href: "/admin/audit-logs/temps-reel", label: "Temps réel" },
   { href: "/admin/gestion-acces/retours-faq", label: "Retours FAQ rejoindre" },
+  { href: "/admin/gestion-acces/rgpd", label: "RGPD — accès & effacement" },
 ];
 
 function normalizePathForActive(pathname: string): string {

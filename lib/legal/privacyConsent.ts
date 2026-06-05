@@ -6,6 +6,7 @@
 
 export const PRIVACY_POLICY_PATH = "/confidentialite";
 export const LEGAL_NOTICE_PATH = "/mentions-legales";
+export const INTELLECTUAL_PROPERTY_PATH = "/propriete-intellectuelle";
 
 /** Message API / serveur (refus de requête). */
 export const PRIVACY_CONSENT_ERROR_API =

@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, Scale, Shield } from "lucide-react";
+import { Copyright, Mail, Scale, Shield } from "lucide-react";
 import styles from "./legal.module.css";
 import { TENF_FOUNDERS, TENF_OFFICIAL_EMAIL } from "@/lib/legal/constants";
-import { LEGAL_NOTICE_PATH, PRIVACY_POLICY_PATH } from "@/lib/legal/privacyConsent";
+import { INTELLECTUAL_PROPERTY_PATH, LEGAL_NOTICE_PATH, PRIVACY_POLICY_PATH } from "@/lib/legal/privacyConsent";
 
 export type LegalNavItem = { id: string; label: string };
 
 type LegalSideRailProps = {
-  variant: "mentions" | "privacy";
+  variant: "mentions" | "privacy" | "ip";
   navItems: LegalNavItem[];
 };
 
@@ -36,8 +36,8 @@ export function LegalSideRailLeft({ navItems }: { navItems: LegalNavItem[] }) {
   );
 }
 
-export function LegalSideRailRight({ variant }: { variant: "mentions" | "privacy" }) {
-  const Icon = variant === "privacy" ? Shield : Scale;
+export function LegalSideRailRight({ variant }: { variant: "mentions" | "privacy" | "ip" }) {
+  const Icon = variant === "privacy" ? Shield : variant === "ip" ? Copyright : Scale;
 
   return (
     <aside className={styles.sideRail} aria-label="Liens et contact">
@@ -63,7 +63,10 @@ export function LegalSideRailRight({ variant }: { variant: "mentions" | "privacy
             Mentions légales
           </Link>
           <Link href={PRIVACY_POLICY_PATH} className={styles.sideNavLink}>
-            Confidentialité
+            Politique de confidentialité
+          </Link>
+          <Link href={INTELLECTUAL_PROPERTY_PATH} className={styles.sideNavLink}>
+            Propriété intellectuelle
           </Link>
           <Link href="/contact" className={styles.sideNavLink}>
             Formulaire contact

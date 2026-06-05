@@ -152,6 +152,16 @@ export async function createFaqContact(input: {
   return item;
 }
 
+export async function deleteFaqContactsByIds(ids: string[]): Promise<number> {
+  if (!ids.length) return 0;
+  const idSet = new Set(ids);
+  const messages = await readAll();
+  const next = messages.filter((m) => !idSet.has(m.id));
+  const removed = messages.length - next.length;
+  if (removed > 0) await writeAll(next);
+  return removed;
+}
+
 export async function updateFaqContact(
   id: string,
   patch: {

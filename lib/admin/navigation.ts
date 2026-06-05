@@ -357,6 +357,11 @@ export const adminNavigation: NavItem[] = [
       },
       moderationSectionForAdministration(),
       {
+        href: "/admin/gestion-acces/rgpd",
+        label: "RGPD & données personnelles",
+        children: [{ href: "/admin/gestion-acces/rgpd", label: "Accès & effacement membre" }],
+      },
+      {
         href: "/admin/audit-logs",
         label: "Audit & conformité",
         children: [
@@ -676,6 +681,11 @@ export const adminNavigationSimple: NavItem[] = [
         ],
       },
       moderationSectionForAdministration(),
+      {
+        href: "/admin/gestion-acces/rgpd",
+        label: "RGPD & données personnelles",
+        children: [{ href: "/admin/gestion-acces/rgpd", label: "Accès & effacement membre" }],
+      },
       {
         href: "/admin/audit-logs",
         label: "Audit & conformité",

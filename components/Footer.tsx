@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ExternalLink, Mail, Ticket } from "lucide-react";
-import { TENF_OFFICIAL_EMAIL } from "@/lib/legal/constants";
 import { LEGAL_NOTICE_PATH, PRIVACY_POLICY_PATH } from "@/lib/legal/privacyConsent";
 import { DISCORD_TICKETS_CHANNEL_URL } from "@/lib/socialLinks";
 
@@ -30,14 +29,9 @@ export default function Footer() {
         {/* Mentions légales — compactes, sur une ligne quand la place le permet */}
         <p className="min-w-0 text-[11px] leading-tight sm:text-xs">
           <span className="font-semibold" style={{ color: "var(--color-text)" }}>
-            © {year} TENF
-          </span>
-          <span className="mx-1.5 opacity-50">•</span>
-          <span>Twitch Entraide New Family. Tous droits réservés.</span>
-          <span className="hidden sm:inline">
-            <span className="mx-1.5 opacity-50">•</span>
-            Textes, visuels, structure et contenus protégés.
-          </span>
+            © {year} Twitch Entraide New Family – TENF.
+          </span>{" "}
+          <span>Tous droits réservés. Textes, visuels, structure et contenus protégés.</span>
         </p>
 
         {/* Liens */}
@@ -57,16 +51,16 @@ export default function Footer() {
             className="text-[11px] font-medium transition-colors hover:opacity-80 sm:text-xs"
             style={{ color: "var(--color-text-secondary)" }}
           >
-            Confidentialité
+            Politique de confidentialité
           </Link>
-          <a
-            href={`mailto:${TENF_OFFICIAL_EMAIL}`}
+          <Link
+            href="/contact"
             className="inline-flex items-center gap-1.5 text-[11px] font-medium transition-colors hover:opacity-80 sm:text-xs"
             style={{ color: "var(--color-text)" }}
           >
             <Mail className="h-3.5 w-3.5" aria-hidden="true" />
             Contact
-          </a>
+          </Link>
 
           <a
             href={DISCORD_TICKETS_CHANNEL_URL}

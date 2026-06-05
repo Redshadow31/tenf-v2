@@ -302,6 +302,24 @@ const HUB_SECTIONS: HubSection[] = [
     ],
   },
   {
+    id: "rgpd-donnees",
+    eyebrow: "RGPD",
+    title: "RGPD & données personnelles",
+    subtitle: "Droit d'accès, export et effacement des données membre sur demande.",
+    icon: ShieldCheck,
+    accent: "indigo",
+    cards: [
+      {
+        href: "/admin/gestion-acces/rgpd",
+        title: "Accès & effacement membre",
+        description:
+          "Rechercher un utilisateur, exporter toutes ses données (JSON) ou les supprimer sur demande RGPD.",
+        badge: "RGPD",
+        icon: ShieldCheck,
+      },
+    ],
+  },
+  {
     id: "audit-conformite",
     eyebrow: "Conformité",
     title: "Audit & conformité",

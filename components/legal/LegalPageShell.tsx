@@ -1,15 +1,15 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowLeft, Scale, Shield } from "lucide-react";
+import { ArrowLeft, Copyright, Scale, Shield } from "lucide-react";
 import { TENF_OFFICIAL_EMAIL } from "@/lib/legal/constants";
-import { LEGAL_NOTICE_PATH, PRIVACY_POLICY_PATH } from "@/lib/legal/privacyConsent";
+import { INTELLECTUAL_PROPERTY_PATH, LEGAL_NOTICE_PATH, PRIVACY_POLICY_PATH } from "@/lib/legal/privacyConsent";
 import styles from "./legal.module.css";
 import { LegalSideRailLeft, LegalSideRailRight, type LegalNavItem } from "./LegalSideRail";
 
 type LegalPageShellProps = {
   title: string;
   subtitle: string;
-  icon: "mentions" | "privacy";
+  icon: "mentions" | "privacy" | "ip";
   navItems: LegalNavItem[];
   children: ReactNode;
 };
@@ -21,7 +21,7 @@ export default function LegalPageShell({
   navItems,
   children,
 }: LegalPageShellProps) {
-  const Icon = icon === "privacy" ? Shield : Scale;
+  const Icon = icon === "privacy" ? Shield : icon === "ip" ? Copyright : Scale;
 
   return (
     <main className={styles.page}>
@@ -57,7 +57,8 @@ export default function LegalPageShell({
             <nav className={styles.footerNav} aria-label="Autres pages légales">
               <Link href={LEGAL_NOTICE_PATH}>Mentions légales</Link>
               <Link href={PRIVACY_POLICY_PATH}>Politique de confidentialité</Link>
-              <a href={`mailto:${TENF_OFFICIAL_EMAIL}`}>Contact</a>
+              <Link href={INTELLECTUAL_PROPERTY_PATH}>Propriété intellectuelle</Link>
+              <Link href="/contact">Contact</Link>
             </nav>
           </div>
 
