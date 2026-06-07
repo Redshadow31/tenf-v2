@@ -188,7 +188,7 @@ export function buildDiscordActivityGuidanceModel(input: {
   firstName: string;
 }): DiscordActivityGuidanceModel {
   let encouragement: string;
-  let tips = [...DISCORD_PRACTICAL_TIPS];
+  let tips: string[] = [...DISCORD_PRACTICAL_TIPS];
   let tipsTitle = "Petites actions utiles";
 
   if (input.loadState === "unmatched") {

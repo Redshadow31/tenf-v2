@@ -14,6 +14,7 @@ import { evalDSubPanelClass, evalDZoneClass } from "@/lib/admin/evaluation-d/eva
 import {
   ENGAGEMENT_AVERAGE_BONUS_POINTS,
   ENGAGEMENT_AVERAGE_BONUS_THRESHOLD,
+  EVALUATION_BONUS_MAX,
   FINAL_SCORE_MAX,
   formatVipTierRulesSummary,
   SURVEILLER_FINAL_SCORE_THRESHOLD,

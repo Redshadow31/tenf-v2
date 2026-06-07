@@ -7,6 +7,7 @@ import {
 } from "@/lib/admin/evaluation-d/evaluationDMonthScores";
 import type { FinalNoteRecord, MemberEvaluationData } from "@/lib/admin/evaluation-d/evaluationDTypes";
 import { TIMEZONE_BONUS_POINTS } from "@/lib/evaluationBonusHelpers";
+import { calculateEngagementAverageBonus, getMemberHistoryDaysForMonth } from "@/lib/evaluationSynthesisHelpers";
 import { resolveEvaluationAutoSignal, type EvaluationAutoSignal } from "@/lib/admin/evaluation-d/evaluationDCommunityPassage";
 import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 

@@ -4,31 +4,9 @@
  */
 
 import type { MemberTimelineEntry } from "@/lib/admin/members-gestion/memberTimeline";
+import type { MemberRole } from "@/lib/memberRoles";
 
-export type MemberRole =
-  | "Nouveau"
-  | "Affilié"
-  | "Développement"
-  | "Admin"
-  | "Admin Coordinateur"
-  | "Modérateur"
-  | "Modérateur en formation"
-  | "Modérateur en Découverte"
-  | "Modérateur en Accompagnement"
-  | "Modérateur en Autonomie"
-  | "Modérateur en activité réduite"
-  | "Modérateur en pause"
-  | "Soutien TENF"
-  | "Contributeur Invité TENF"
-  | "Contributeur TENF du Mois"
-  | "Créateur Junior"
-  | "Les P'tits Jeunes"
-  | "Communauté"
-  | "Départ"
-  | "Banni"
-  | "Admin Adjoint"
-  | "Mentor"
-  | "Modérateur Junior";
+export type { MemberRole };
 
 export type MemberStatus = "Actif" | "Inactif";
 

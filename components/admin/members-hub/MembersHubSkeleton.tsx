@@ -1,10 +1,9 @@
 import MembersCockpitShell from "./MembersCockpitShell";
-import MembersHubCockpitAside from "./MembersHubCockpitAside";
 import { cockpitPanelClass } from "./membersHubStyles";
 
 export default function MembersHubSkeleton() {
   return (
-    <MembersCockpitShell aside={<MembersHubCockpitAside pendingTotal={0} />}>
+    <MembersCockpitShell aside={<div className={`${cockpitPanelClass} hidden h-full min-h-[12rem] animate-pulse xl:block`} />}>
       <div className="space-y-5 text-white" aria-busy="true" aria-label="Chargement du hub membres">
         <div className={`${cockpitPanelClass} animate-pulse p-5`} style={{ padding: "clamp(1.1rem, 0.9rem + 0.6vw, 1.8rem)" }}>
           <div className="h-3 w-32 rounded-full bg-white/10" />

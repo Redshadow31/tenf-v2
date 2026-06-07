@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   DashboardPanel,
   DashboardPanelHeader,
+  type DashboardTone,
 } from "@/components/member/dashboard/dashboardUi";
 
 type MembersHubPanelProps = {
@@ -13,7 +14,7 @@ type MembersHubPanelProps = {
   className?: string;
   id?: string;
   ariaLabelledBy?: string;
-  tone?: "neutral" | "accent" | "success" | "warning" | "danger" | "info";
+  tone?: DashboardTone;
   intensity?: "soft" | "medium" | "bold";
 };
 
@@ -48,7 +49,7 @@ type MembersHubPanelHeaderProps = {
   accentHex: string;
   titleId?: string;
   badge?: ReactNode;
-  tone?: "neutral" | "accent" | "success" | "warning" | "danger" | "info";
+  tone?: DashboardTone;
 };
 
 export function MembersHubPanelHeader({

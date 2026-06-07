@@ -5,7 +5,6 @@ import { Database, Sparkles, UserCheck, UserPlus, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { MembersHubCopyModel, MembersManagementPathsCounters } from "@/lib/admin/members/membersHubCopyModel";
 import { MembersHubPanel, MembersHubPanelHeader } from "@/components/admin/members-hub/MembersHubPanel";
-import type { MembersManagementPathsCounters } from "@/lib/admin/members/membersHubCopyModel";
 import { hubFocusRingClass } from "./membersHubStyles";
 
 type Props = {

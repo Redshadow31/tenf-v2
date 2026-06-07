@@ -19,7 +19,7 @@ export default function DiscoverGatePanel(props: DiscoverGatePanelProps) {
           <p className="text-sm leading-relaxed text-white/65">{props.body}</p>
           <button
             type="button"
-            onClick={loginWithDiscord}
+            onClick={() => loginWithDiscord()}
             className="inline-flex min-h-[40px] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-[#1f1a12]"
             style={{ backgroundColor: DISCOVER_ACCENT }}
           >

@@ -59,7 +59,7 @@ function AgendaRow({
   icon: Icon = CalendarRange,
 }: {
   label: string;
-  value: number;
+  value: string | number;
   hint: string;
   href: string;
   icon?: typeof CalendarRange;

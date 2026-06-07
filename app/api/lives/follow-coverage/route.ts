@@ -6,9 +6,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}));
+    const body = (await request.json().catch(() => ({}))) as { logins?: unknown };
     const logins = Array.isArray(body.logins)
-      ? body.logins.filter((login): login is string => typeof login === "string" && login.trim().length > 0)
+      ? body.logins.filter((login: unknown): login is string => typeof login === "string" && login.trim().length > 0)
       : [];
 
     if (logins.length === 0) {
