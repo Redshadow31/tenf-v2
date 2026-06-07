@@ -124,8 +124,10 @@ export default function MemberHistoryModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700 flex-shrink-0">
           <div>
-            <h2 className="text-2xl font-bold text-white">Historique de {memberName}</h2>
-            <p className="text-sm text-gray-400 mt-1">Twitch: {memberId}</p>
+            <h2 className="text-2xl font-bold text-white">Historique du membre</h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Chronologie des changements enregistrés pour {memberName} ({memberId})
+            </p>
           </div>
           <button
             onClick={onClose}

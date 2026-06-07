@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ExternalLink, Mail, Ticket } from "lucide-react";
-import { LEGAL_NOTICE_PATH, PRIVACY_POLICY_PATH } from "@/lib/legal/privacyConsent";
+import { INTELLECTUAL_PROPERTY_PATH, LEGAL_NOTICE_PATH, PRIVACY_POLICY_PATH } from "@/lib/legal/privacyConsent";
 import { DISCORD_TICKETS_CHANNEL_URL } from "@/lib/socialLinks";
 
 export default function Footer() {
@@ -52,6 +52,13 @@ export default function Footer() {
             style={{ color: "var(--color-text-secondary)" }}
           >
             Politique de confidentialité
+          </Link>
+          <Link
+            href={INTELLECTUAL_PROPERTY_PATH}
+            className="text-[11px] font-medium transition-colors hover:opacity-80 sm:text-xs"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            Propriété intellectuelle
           </Link>
           <Link
             href="/contact"

@@ -168,6 +168,7 @@ export default function LivesPageClient() {
   const [topRaiderLogin, setTopRaiderLogin] = useState<string | null>(null);
   const [topRaiderCount, setTopRaiderCount] = useState<number>(0);
   const [raidMetricsByLogin, setRaidMetricsByLogin] = useState<Record<string, RaidMetrics>>({});
+  const [tenfExplorerByLogin, setTenfExplorerByLogin] = useState<Record<string, boolean>>({});
   const [sessionShuffleSeed] = useState(() => `${Date.now()}-${Math.random()}`);
   const [followStatuses, setFollowStatuses] = useState<Record<string, FollowState>>({});
   const [showFollowStatuses, setShowFollowStatuses] = useState(false);
@@ -349,6 +350,43 @@ export default function LivesPageClient() {
           .filter((item): item is LiveMember => item !== null);
 
         setLiveMembers(mappedLives);
+
+        if (mappedLives.length > 0) {
+          try {
+            const coverageResponse = await fetchWithTimeout(
+              "/api/lives/follow-coverage",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+                body: JSON.stringify({ logins: mappedLives.map((live) => live.twitchLogin) }),
+                cache: "no-store",
+              },
+              10000
+            );
+            if (coverageResponse.ok && !cancelled) {
+              const coverageBody = await coverageResponse.json();
+              const rawCoverage =
+                coverageBody?.coverage && typeof coverageBody.coverage === "object"
+                  ? coverageBody.coverage
+                  : {};
+              const explorerMap: Record<string, boolean> = {};
+              Object.entries(rawCoverage).forEach(([login, entry]) => {
+                const normalizedLogin = normalizeLoginKey(login);
+                if (!normalizedLogin) return;
+                explorerMap[normalizedLogin] =
+                  typeof entry === "object" &&
+                  entry !== null &&
+                  (entry as { isTenfExplorer?: boolean }).isTenfExplorer === true;
+              });
+              setTenfExplorerByLogin(explorerMap);
+            }
+          } catch (coverageError) {
+            console.warn("[Lives Page] Couverture follows indisponible:", coverageError);
+            if (!cancelled) setTenfExplorerByLogin({});
+          }
+        } else if (!cancelled) {
+          setTenfExplorerByLogin({});
+        }
 
         try {
           const [homeResponse, allMembersResponse, eventsResponse, spotlightResponse, raidsResponse] =
@@ -670,6 +708,7 @@ export default function LivesPageClient() {
         isSolidarityRaider: uniqueTargets >= 5,
         isCommunityBooster: raidsDone > 15,
         isDiscoverer: metrics?.raidedNewMember === true,
+        isTenfExplorer: tenfExplorerByLogin[normalizedLogin] === true,
         isWarmlySupported: uniqueRaidersReceived >= 10,
         isBalancedSupport: hasRaidActivity && Math.abs(raidsDone - raidsReceived) <= 3,
         followState: showFollowStatuses
@@ -714,6 +753,7 @@ export default function LivesPageClient() {
     topRaiderLogin,
     topRaiderCount,
     raidMetricsByLogin,
+    tenfExplorerByLogin,
     sessionShuffleSeed,
     followStatuses,
     showFollowStatuses,

@@ -1,210 +1,220 @@
 "use client";
 
+import type { ComponentType } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  Heart,
   Link2,
   Loader2,
   LogIn,
+  MessageCircle,
   Radio,
   Twitch,
   Users2,
+  Zap,
 } from "lucide-react";
 import {
   hexToRgba,
   type MemberDashboardModel,
 } from "@/components/member/dashboard/memberDashboardModel";
 import { useLiveStreamsSnapshot } from "@/components/member/hooks/useLiveStreamsSnapshot";
+import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
+import {
+  DashboardBadge,
+  DashboardInnerCard,
+  DashboardPanel,
+  DashboardPanelHeader,
+} from "@/components/member/dashboard/dashboardUi";
 
 type LiveNetworkCardProps = {
   model: MemberDashboardModel;
+  variant?: "full" | "compact";
 };
 
-export default function LiveNetworkCard({ model }: LiveNetworkCardProps) {
+export default function LiveNetworkCard({ model, variant = "full" }: LiveNetworkCardProps) {
   const { accent } = model;
   const liveSnapshot = useLiveStreamsSnapshot();
+  const compact = variant === "compact";
 
   return (
-    <section
-      aria-labelledby="dashboard-network-title"
-      className="rounded-3xl border p-5 md:p-6"
-      style={{
-        borderColor: "rgba(145,70,255,0.25)",
-        background:
-          "linear-gradient(150deg, rgba(145,70,255,0.12), rgba(15,17,22,0.92))",
-      }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-violet-200/80">
-            Lives & réseau Twitch
-          </p>
-          <h2
-            id="dashboard-network-title"
-            className="mt-1 text-xl font-bold md:text-2xl"
-            style={{ color: "var(--color-text)" }}
-          >
-            La communauté vit aussi en live
-          </h2>
-        </div>
-        <Twitch className="h-7 w-7 text-violet-300/80" aria-hidden />
-      </div>
+    <DashboardPanel tone="violet" accentHex={accent} intensity="medium" ariaLabelledBy="dashboard-network-title">
+      <DashboardPanelHeader
+        kicker="En direct"
+        title="Lives & entraide"
+        icon={Zap}
+        tone="violet"
+        accentHex="#9146ff"
+        titleId="dashboard-network-title"
+        badge={
+          <DashboardBadge tone="violet" accentHex="#9146ff">
+            <Twitch className="h-3 w-3" aria-hidden />
+            Twitch
+          </DashboardBadge>
+        }
+      />
 
-      <p className="mt-2 text-sm leading-relaxed text-white/70">
-        TENF, ce n&apos;est pas qu&apos;un tableau : c&apos;est surtout des chaînes Twitch
-        qui se soutiennent. Voici un petit aperçu de ton réseau du moment.
-      </p>
+      {!compact ? (
+        <p className="-mt-2 mb-3 text-sm text-white/65">Raids détectés auto via Twitch.</p>
+      ) : null}
 
-      {/* Mini snapshot des lives en cours — chargement différé non bloquant */}
-      <div className="mt-3">
-        <LiveSnapshotPill snapshot={liveSnapshot} />
-      </div>
+      <LiveSnapshotPill snapshot={liveSnapshot} />
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[1.2fr_1fr]">
-        <div
-          className="rounded-2xl border p-4"
-          style={{
-            borderColor: "rgba(145,70,255,0.32)",
-            backgroundColor: "rgba(15,15,20,0.7)",
-          }}
-        >
-          <NetworkState model={model} />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link
-              href="/lives"
-              className="inline-flex min-h-[40px] items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              style={{
-                backgroundColor: "rgba(145,70,255,0.95)",
-                boxShadow: "0 10px 24px rgba(145,70,255,0.25)",
-              }}
-            >
-              <Twitch className="h-4 w-4" aria-hidden />
-              Voir les lives TENF
-            </Link>
-            <Link
-              href="/membres"
-              className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition hover:bg-white/5"
-              style={{
-                borderColor: "rgba(255,255,255,0.15)",
-                color: "var(--color-text)",
-              }}
-            >
-              <Users2 className="h-4 w-4" aria-hidden />
-              Explorer la communauté
-            </Link>
-          </div>
-        </div>
-
-        <ul
-          className="grid gap-2 rounded-2xl border p-4 text-sm"
-          style={{
-            borderColor: "rgba(255,255,255,0.08)",
-            backgroundColor: "rgba(255,255,255,0.03)",
-            color: "rgba(236,236,239,0.78)",
-          }}
-        >
-          <li className="flex items-start gap-2">
-            <Heart
-              className="mt-0.5 h-3.5 w-3.5 shrink-0"
-              style={{ color: hexToRgba(accent, 0.95) }}
-              aria-hidden
-            />
-            <span>
-              Suivre les chaînes membres aide à matcher avec d&apos;autres streamers.
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <Heart
-              className="mt-0.5 h-3.5 w-3.5 shrink-0"
-              style={{ color: hexToRgba(accent, 0.95) }}
-              aria-hidden
-            />
-            <span>Un passage rapide sur un live = un petit coup de pouce énorme.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <Heart
-              className="mt-0.5 h-3.5 w-3.5 shrink-0"
-              style={{ color: hexToRgba(accent, 0.95) }}
-              aria-hidden
-            />
-            <span>
-              Pas de pression : prends ce qui te plaît dans le planning et passe ton chemin
-              pour le reste.
-            </span>
-          </li>
+      {liveSnapshot.state === "ready" && liveSnapshot.streams.length > 0 ? (
+        <ul className={`space-y-2 ${compact ? "mt-3" : "mt-4"}`}>
+          {liveSnapshot.streams.slice(0, compact ? 2 : 3).map((stream) => (
+            <li key={stream.login}>
+              <a
+                href={`https://twitch.tv/${stream.login}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-3 rounded-xl border border-red-500/25 bg-gradient-to-r from-red-500/10 to-transparent px-3 py-2.5 transition hover:border-red-400/40 hover:from-red-500/16"
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/30 to-violet-600/20 text-xs font-black uppercase text-white ring-1 ring-white/10"
+                  aria-hidden
+                >
+                  {stream.login.slice(0, 2)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5 truncate text-sm font-bold text-white">
+                    <LiveDot />
+                    @{stream.login}
+                  </span>
+                  {stream.title && !compact ? (
+                    <span className="block truncate text-xs text-white/50">{stream.title}</span>
+                  ) : null}
+                </span>
+                {stream.viewers != null ? (
+                  <span className="shrink-0 rounded-md bg-black/40 px-2 py-0.5 text-[10px] font-bold text-red-200">
+                    {stream.viewers}
+                  </span>
+                ) : (
+                  <span className="shrink-0 text-[10px] font-bold text-red-300">LIVE</span>
+                )}
+              </a>
+            </li>
+          ))}
         </ul>
+      ) : null}
+
+      <div className={`mt-auto pt-3 ${compact ? "space-y-3" : "grid gap-3 sm:grid-cols-[1.2fr_1fr]"}`}>
+        <DashboardInnerCard accentHex="#9146ff" className="!p-3.5">
+          <NetworkState model={model} compact={compact} />
+          <div className={`mt-3 flex flex-wrap gap-2 ${compact ? "grid grid-cols-2" : ""}`}>
+            <CtaButton href="/lives" icon={Twitch} label="Lives" primary />
+            <CtaButton href={DISCORD_INVITE_URL} icon={MessageCircle} label="Discord" external discord />
+            {!compact ? (
+              <CtaButton href="/member/engagement/a-decouvrir" icon={Users2} label="Qui stream ?" />
+            ) : null}
+          </div>
+        </DashboardInnerCard>
+
+        {!compact ? (
+          <DashboardInnerCard className="!p-3.5 text-xs text-white/70">
+            <p className="font-bold text-white">Comment ça marche</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-4">
+              <li>Repère un live TENF</li>
+              <li>Passe dire bonjour — raid auto</li>
+              <li>Entraide sur Discord</li>
+            </ol>
+            <Link
+              href="/member/raids/historique"
+              className="mt-2 inline-flex items-center gap-1 font-semibold text-violet-300 hover:text-white"
+            >
+              Historique raids <ArrowRight className="h-3 w-3" aria-hidden />
+            </Link>
+          </DashboardInnerCard>
+        ) : null}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
 
-function NetworkState({ model }: { model: MemberDashboardModel }) {
+function LiveDot() {
+  return (
+    <span className="relative flex h-2 w-2 shrink-0">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-70" />
+      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+    </span>
+  );
+}
+
+function CtaButton({
+  href,
+  icon: Icon,
+  label,
+  primary,
+  discord,
+  external,
+}: {
+  href: string;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  primary?: boolean;
+  discord?: boolean;
+  external?: boolean;
+}) {
+  const className = `inline-flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition hover:brightness-110 ${
+    primary
+      ? "text-white shadow-md"
+      : discord
+        ? "border border-[#5865F2]/40 bg-[#5865F2]/12 text-white hover:bg-[#5865F2]/18"
+        : "border border-white/12 text-white/90 hover:bg-white/5"
+  }`;
+  const style = primary ? { backgroundColor: "rgba(145,70,255,0.95)", boxShadow: "0 6px 16px rgba(145,70,255,0.25)" } : undefined;
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className} style={style}>
+        <Icon className={`h-3.5 w-3.5 ${discord ? "text-[#5865F2]" : ""}`} aria-hidden />
+        {label}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={className} style={style}>
+      <Icon className="h-3.5 w-3.5" aria-hidden />
+      {label}
+    </Link>
+  );
+}
+
+function NetworkState({ model, compact }: { model: MemberDashboardModel; compact?: boolean }) {
   const { network } = model;
 
   if (network.state === "loading") {
     return (
-      <div className="flex items-center gap-2 text-sm text-white/70">
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        Chargement du score de soutien…
+      <div className="flex items-center gap-2 text-xs text-white/70">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        Suivi réseau…
       </div>
     );
   }
 
   if (network.state === "not_authenticated") {
     return (
-      <div className="space-y-2">
-        <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
-          Connecte-toi pour voir ton score réseau
-        </p>
-        <p className="text-xs text-white/60">
-          Une fois connecté·e, on calcule combien de chaînes membres tu suis sur Twitch.
-        </p>
-        <Link
-          href="/auth/login"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-violet-300 hover:text-white"
-        >
-          <LogIn className="h-4 w-4" aria-hidden />
-          Se connecter
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </Link>
-      </div>
+      <Link href="/auth/login" className="text-xs font-semibold text-violet-300 hover:text-white">
+        <LogIn className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+        Connecte-toi pour le suivi réseau
+      </Link>
     );
   }
 
   if (network.state === "twitch_unlinked") {
     return (
-      <div className="space-y-2">
-        <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
-          Lie ta chaîne Twitch pour activer le score
-        </p>
-        <p className="text-xs text-white/60">
-          Ça nous permet de savoir qui tu suis dans la communauté — rien de plus.
-        </p>
-        <Link
-          href="/member/profil/completer"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-violet-300 hover:text-white"
-        >
-          <Link2 className="h-4 w-4" aria-hidden />
-          Lier Twitch
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </Link>
-      </div>
+      <Link href="/member/profil/completer" className="text-xs font-semibold text-violet-300 hover:text-white">
+        <Link2 className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+        Lie Twitch pour activer le suivi
+      </Link>
     );
   }
 
   return (
-    <div className="space-y-1">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-white/55">
-        Score de soutien réseau
-      </p>
-      <p className="text-3xl font-black text-white tabular-nums">
-        {network.score}
-        <span className="text-base font-semibold text-white/45">%</span>
-      </p>
-      <p className="text-xs text-white/60">
-        {network.followed} chaîne{network.followed > 1 ? "s" : ""} suivie
-        {network.followed > 1 ? "s" : ""} sur {network.total} membres au total.
+    <div className="flex items-baseline justify-between gap-2">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">Follows membres</p>
+      <p className={`font-black tabular-nums text-white ${compact ? "text-xl" : "text-2xl"}`}>
+        {network.followed}
+        <span className="text-sm font-semibold text-white/40">/{network.total}</span>
       </p>
     </div>
   );
@@ -215,92 +225,40 @@ function LiveSnapshotPill({
 }: {
   snapshot: ReturnType<typeof useLiveStreamsSnapshot>;
 }) {
-  // État de chargement / placeholder propre : on n'occupe pas l'espace si la donnée n'arrive jamais
   if (snapshot.state === "loading") {
     return (
-      <span
-        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold"
-        style={{
-          borderColor: "rgba(255,255,255,0.1)",
-          backgroundColor: "rgba(255,255,255,0.03)",
-          color: "rgba(236,236,239,0.65)",
-        }}
-        aria-live="polite"
-      >
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-        Recherche des lives en cours…
+      <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] font-semibold text-white/60">
+        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+        Lives…
       </span>
     );
   }
 
   if (snapshot.state === "unavailable") {
     return (
-      <span
-        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold"
-        style={{
-          borderColor: "rgba(255,255,255,0.1)",
-          backgroundColor: "rgba(255,255,255,0.03)",
-          color: "rgba(236,236,239,0.55)",
-        }}
-      >
-        <Radio className="h-3.5 w-3.5" aria-hidden />
-        Aperçu live indisponible pour l&apos;instant
+      <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-white/50">
+        <Radio className="h-3 w-3" aria-hidden />
+        Aperçu indisponible
       </span>
     );
   }
 
   const { liveCount } = snapshot;
-  const tone = liveCount > 0 ? "rgba(239, 68, 68, 0.95)" : "rgba(255,255,255,0.45)";
+  const active = liveCount > 0;
   return (
     <Link
       href="/lives"
-      className="group inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+      className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold transition hover:-translate-y-0.5"
       style={{
-        borderColor:
-          liveCount > 0 ? "rgba(239, 68, 68, 0.35)" : "rgba(255,255,255,0.12)",
-        backgroundColor:
-          liveCount > 0 ? "rgba(239, 68, 68, 0.10)" : "rgba(255,255,255,0.04)",
-        color: liveCount > 0 ? "#fecaca" : "rgba(236,236,239,0.75)",
+        borderColor: active ? "rgba(239, 68, 68, 0.4)" : "rgba(255,255,255,0.12)",
+        backgroundColor: active ? "rgba(239, 68, 68, 0.12)" : "rgba(255,255,255,0.04)",
+        color: active ? "#fecaca" : "rgba(236,236,239,0.75)",
+        boxShadow: active ? "0 0 20px rgba(239,68,68,0.15)" : undefined,
       }}
-      aria-label={
-        liveCount > 0
-          ? `${liveCount} membre(s) actuellement en direct — voir les lives`
-          : "Aucun membre en direct — voir les lives"
-      }
     >
-      <span
-        className="relative inline-flex h-2.5 w-2.5 items-center justify-center"
-        aria-hidden
-      >
-        {liveCount > 0 ? (
-          <>
-            <span
-              className="absolute inset-0 animate-ping rounded-full opacity-70"
-              style={{ backgroundColor: tone }}
-            />
-            <span
-              className="relative h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: tone }}
-            />
-          </>
-        ) : (
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: tone }}
-          />
-        )}
-      </span>
-      {liveCount > 0 ? (
-        <>
-          {liveCount} membre{liveCount > 1 ? "s" : ""} en direct maintenant
-        </>
-      ) : (
-        <>Aucun live en cours — viens animer Discord !</>
-      )}
-      <ArrowRight
-        className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
-        aria-hidden
-      />
+      {active ? <LiveDot /> : <span className="h-2 w-2 rounded-full bg-white/30" aria-hidden />}
+      {active ? `${liveCount} en direct` : "Aucun live"}
+      <ArrowRight className="h-3 w-3" aria-hidden />
     </Link>
   );
 }

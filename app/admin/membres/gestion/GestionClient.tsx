@@ -61,7 +61,7 @@ import AdminToastStack from "@/components/admin/ui/AdminToastStack";
 import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
-import { toCanonicalMemberRole } from "@/lib/memberRoles";
+import { isHonoraryStaffRole, isInactiveExitMemberRole, toCanonicalMemberRole } from "@/lib/memberRoles";
 import { getRoleBadgeLabel, STAFF_MEMBER_ROLE_KEYS } from "@/lib/roleBadgeSystem";
 import { MemberRoleSelectOptions } from "@/components/admin/members-gestion/MemberRoleSelectOptions";
 import { getMemberRoleFilterOptions } from "@/lib/admin/members-gestion/memberListHelpers";
@@ -84,10 +84,15 @@ import {
   type GestionStatusTab,
   parseGestionStatusTabFromUrl,
 } from "@/lib/admin/members-gestion/memberPopulationFilters";
-import { isInactiveExitMemberRole } from "@/lib/memberRoles";
-import MembersCockpitShell from "@/components/admin/members-hub/MembersCockpitShell";
-import MembersGestionCockpitAside from "@/components/admin/members-hub/MembersGestionCockpitAside";
-import { cockpitPanelClass } from "@/components/admin/members-hub/membersHubStyles";
+import AdminDashboardLoadingScreen from "@/components/admin/dashboard/AdminDashboardLoadingScreen";
+import GestionKpiStrip from "@/components/admin/members-gestion/GestionKpiStrip";
+import GestionPageAside from "@/components/admin/members-gestion/GestionPageAside";
+import GestionPageHeader, { type GestionKpiId } from "@/components/admin/members-gestion/GestionPageHeader";
+import GestionStaffGuide from "@/components/admin/members-gestion/GestionStaffGuide";
+import VerifyDiscordNamesModal from "@/components/admin/members-gestion/VerifyDiscordNamesModal";
+import MemberBentoShell, { MemberBentoCell, MemberBentoRow } from "@/components/member/layout/MemberBentoShell";
+import { buildGestionCopyModel } from "@/lib/admin/members-gestion/gestionCopyModel";
+import { cockpitInputClass, cockpitPanelClass } from "@/components/admin/members-hub/membersHubStyles";
 
 export default function GestionClient() {
   const router = useRouter();
@@ -105,6 +110,11 @@ export default function GestionClient() {
     username: string;
     isFounder: boolean;
     canWrite: boolean;
+  } | null>(null);
+  const [staffProfile, setStaffProfile] = useState<{
+    displayName: string;
+    roleLabel: string;
+    rawRole: string | null;
   } | null>(null);
   const [hasAdvancedAccess, setHasAdvancedAccess] = useState(false);
   const [safeModeEnabled, setSafeModeEnabled] = useState(false);
@@ -250,6 +260,23 @@ export default function GestionClient() {
             roleData.role === "Mentor" ||
             roleData.role === "Modérateur Junior";
           const founderStatus = isFounder(user.id);
+          let displayName = user.username;
+          try {
+            const aliasResponse = await fetch("/api/admin/access/self", { cache: "no-store" });
+            if (aliasResponse.ok) {
+              const aliasData = await aliasResponse.json();
+              if (typeof aliasData.adminAlias === "string" && aliasData.adminAlias.trim()) {
+                displayName = aliasData.adminAlias.trim();
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+          setStaffProfile({
+            displayName,
+            roleLabel: roleData.role || "",
+            rawRole: roleData.rawRole ?? null,
+          });
           // Admin, Admin Adjoint et Fondateurs ont accès complet
           setCurrentAdmin({ 
             id: user.id, 
@@ -279,6 +306,11 @@ export default function GestionClient() {
             return;
           }
           setCurrentAdmin({ id: user.id, username: user.username, isFounder: founderStatus, canWrite: founderStatus });
+          setStaffProfile({
+            displayName: user.username,
+            roleLabel: founderStatus ? "Fondateur·rice TENF" : "Staff TENF",
+            rawRole: founderStatus ? "FONDATEUR" : null,
+          });
           setHasAdvancedAccess(founderStatus);
         }
       } else {
@@ -1065,6 +1097,78 @@ export default function GestionClient() {
     () => verifyDiscordRows.filter((row) => row.status === "updated"),
     [verifyDiscordRows]
   );
+
+  const gestionCounts = useMemo(
+    () => ({
+      total: members.length,
+      active: totalActiveMembers,
+      activeIntegrated: totalActiveMembersIntegrated,
+      activeNewRole: totalActiveNewRoleMembers,
+      suivi: totalInactiveMembers,
+      nouveaux: totalNewMembers,
+      incomplets: totalIncompleteMembers,
+      sansTwitchId: totalWithoutTwitchId,
+    }),
+    [
+      members.length,
+      totalActiveMembers,
+      totalActiveMembersIntegrated,
+      totalActiveNewRoleMembers,
+      totalInactiveMembers,
+      totalNewMembers,
+      totalIncompleteMembers,
+      totalWithoutTwitchId,
+    ],
+  );
+
+  const gestionCopy = useMemo(() => {
+    if (!staffProfile) return null;
+    return buildGestionCopyModel({
+      displayName: staffProfile.displayName,
+      roleLabel: staffProfile.roleLabel,
+      rawRole: staffProfile.rawRole,
+      counts: gestionCounts,
+    });
+  }, [staffProfile, gestionCounts]);
+
+  const activeKpiFilters = useMemo(
+    () => ({
+      total: presetFilter === "all" && statusTab === "actifs",
+      actifs: statusTab === "actifs" && presetFilter === "all",
+      suivi: statusTab === "suivi_pause" || statusTab === "communaute",
+      nouveaux: statusTab === "nouveaux",
+      incomplets: presetFilter === "incomplets",
+      "no-twitch-id": presetFilter === "sans_twitch_id",
+    }),
+    [presetFilter, statusTab],
+  );
+
+  function handleGestionKpiClick(id: GestionKpiId) {
+    switch (id) {
+      case "total":
+        setPresetFilter("all");
+        setStatusTab("actifs");
+        break;
+      case "actifs":
+        setStatusTab("actifs");
+        setPresetFilter("all");
+        break;
+      case "suivi":
+        setStatusTab("suivi_pause");
+        break;
+      case "nouveaux":
+        setStatusTab("nouveaux");
+        break;
+      case "incomplets":
+        setPresetFilter("incomplets");
+        break;
+      case "no-twitch-id":
+        setPresetFilter("sans_twitch_id");
+        break;
+      default:
+        break;
+    }
+  }
 
   const totalArchivedMembers = archivedMembers.length;
   const STATUS_TAB_LABELS: Record<GestionStatusTab, string> = {
@@ -2464,22 +2568,14 @@ export default function GestionClient() {
     },
   ];
 
-  if (loading) {
+  if (loading || !gestionCopy) {
     return (
-      <MembersCockpitShell layout="fullWidth" aside={<MembersGestionCockpitAside />}>
-        <div className="flex min-h-[50vh] items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <div className="relative mx-auto mb-6 h-16 w-16">
-            <div className="absolute inset-0 animate-ping rounded-full bg-indigo-500/20" />
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-500/40 bg-gradient-to-br from-indigo-500/20 to-fuchsia-600/10 shadow-[0_0_40px_rgba(99,102,241,0.25)]">
-              <Users className="h-8 w-8 text-indigo-200" aria-hidden />
-            </div>
-          </div>
-          <p className="text-lg font-semibold text-white">Chargement de la communauté TENF</p>
-          <p className="mt-2 text-sm text-zinc-400">Récupération des membres depuis la base centralisée…</p>
-        </div>
-        </div>
-      </MembersCockpitShell>
+      <div className="-mx-4 md:-mx-6">
+        <AdminDashboardLoadingScreen
+          title={gestionCopy?.loadingTitle ?? "Chargement de l'annuaire TENF"}
+          subtitle={gestionCopy?.loadingSubtitle ?? "Récupération des membres depuis la base centralisée…"}
+        />
+      </div>
     );
   }
 
@@ -2499,165 +2595,58 @@ export default function GestionClient() {
         }
         onClose={() => setActionNotice(null)}
       />
-      <MembersCockpitShell
-        layout="fullWidth"
-        aside={
-          <MembersGestionCockpitAside
-            newCount={totalNewMembers}
-            incompleteCount={totalIncompleteMembers}
-            inactiveCount={totalInactiveMembers}
-          />
-        }
-      >
-        {/* En-tête compact : tagline + titre + actualiser, KPI inline cliquables */}
-        <section className={`relative overflow-hidden ${cockpitPanelClass} mb-3 px-3 py-3 md:px-4 md:py-3.5`}>
-          <div
-            className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-fuchsia-500/12 blur-3xl"
-            aria-hidden
-          />
-          <div className="relative flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                <Sparkles className="h-3 w-3 text-amber-300" aria-hidden />
-                <span>TENF · Pilotage membres</span>
-                <span className="hidden text-slate-600 md:inline" aria-hidden>·</span>
-                <span className="hidden md:inline text-slate-500 normal-case tracking-normal font-normal">
-                  Trouve un créateur, comprends son état, ouvre sa fiche.
-                </span>
-              </div>
-              <h1 className="mt-0.5 bg-gradient-to-r from-white via-indigo-100 to-cyan-200 bg-clip-text text-xl font-bold tracking-tight text-transparent md:text-[1.45rem]">
-                Gestion des membres
-              </h1>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
+      <MemberBentoShell accentHex={gestionCopy.accent} className="-mx-4 md:-mx-6">
+        <MemberBentoRow stretch>
+          <MemberBentoCell span={7} stretch>
+            <GestionPageHeader
+              copy={gestionCopy}
+              onRefresh={() => {
                 void loadMembers();
                 void loadArchivedMembers();
               }}
-              className={`${subtleButtonClass} shrink-0 py-1.5`}
-              title="Rafraîchir les données membres"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span className="hidden md:inline">Actualiser</span>
-            </button>
-          </div>
-          {/* KPI compacts : pills cliquables pour filtrer directement */}
-          <div className="relative mt-2.5 flex flex-wrap items-stretch gap-1.5">
-            {(() => {
-              const kpis = [
-                {
-                  id: "total" as const,
-                  label: "Total",
-                  value: members.length,
-                  Icon: Users,
-                  toneActive: "border-white/25 bg-white/10 text-white",
-                  toneIdle: "border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.07]",
-                  iconColor: "text-slate-400",
-                  onClick: () => {
-                    setPresetFilter("all");
-                    setStatusTab("actifs");
-                  },
-                  isActive: presetFilter === "all" && statusTab === "actifs",
-                },
-                {
-                  id: "actifs" as const,
-                  label: "Actifs",
-                  value: totalActiveMembers,
-                  hint:
-                    totalActiveNewRoleMembers > 0
-                      ? `${totalActiveMembersIntegrated} intégrés · ${totalActiveNewRoleMembers} en pipeline`
-                      : "dont staff si actif",
-                  Icon: UserCheck,
-                  toneActive: "border-emerald-400/55 bg-emerald-500/22 text-emerald-100",
-                  toneIdle: "border-emerald-500/30 bg-emerald-500/12 text-emerald-100/95 hover:bg-emerald-500/18",
-                  iconColor: "text-emerald-300",
-                  onClick: () => {
-                    setStatusTab("actifs");
-                    setPresetFilter("all");
-                  },
-                  isActive: statusTab === "actifs" && presetFilter === "all",
-                },
-                {
-                  id: "suivi" as const,
-                  label: "Suivi communauté",
-                  value: totalInactiveMembers,
-                  hint: "à accompagner hors staff",
-                  Icon: HeartHandshake,
-                  toneActive: "border-rose-400/55 bg-rose-500/22 text-rose-100",
-                  toneIdle: "border-rose-500/30 bg-rose-500/10 text-rose-100/95 hover:bg-rose-500/16",
-                  iconColor: "text-rose-300",
-                  onClick: () => setStatusTab("suivi_pause"),
-                  isActive: statusTab === "suivi_pause" || statusTab === "communaute",
-                },
-                {
-                  id: "nouveaux" as const,
-                  label: "Nouveaux",
-                  value: totalNewMembers,
-                  hint: "rôle « Nouveau »",
-                  Icon: Sparkles,
-                  toneActive: "border-violet-400/55 bg-violet-500/22 text-violet-100",
-                  toneIdle: "border-violet-500/30 bg-violet-500/10 text-violet-100/95 hover:bg-violet-500/18",
-                  iconColor: "text-violet-300",
-                  onClick: () => setStatusTab("nouveaux"),
-                  isActive: statusTab === "nouveaux",
-                },
-                {
-                  id: "incomplets" as const,
-                  label: "À compléter",
-                  value: totalIncompleteMembers,
-                  hint: "fiche < 80 %",
-                  Icon: AlertCircle,
-                  toneActive: "border-amber-400/55 bg-amber-500/22 text-amber-100",
-                  toneIdle: "border-amber-500/30 bg-amber-500/10 text-amber-100/95 hover:bg-amber-500/18",
-                  iconColor: "text-amber-300",
-                  onClick: () => setPresetFilter("incomplets"),
-                  isActive: presetFilter === "incomplets",
-                },
-                {
-                  id: "no-twitch-id" as const,
-                  label: "Sans Twitch ID",
-                  value: totalWithoutTwitchId,
-                  hint: "à lier / sync",
-                  Icon: Zap,
-                  toneActive: "border-cyan-400/55 bg-cyan-500/22 text-cyan-100",
-                  toneIdle: "border-cyan-500/30 bg-cyan-500/10 text-cyan-100/95 hover:bg-cyan-500/18",
-                  iconColor: "text-cyan-300",
-                  onClick: () => setPresetFilter("sans_twitch_id"),
-                  isActive: presetFilter === "sans_twitch_id",
-                },
-              ];
-              return kpis.map((kpi) => (
-                <button
-                  key={kpi.id}
-                  type="button"
-                  onClick={kpi.onClick}
-                  aria-pressed={kpi.isActive}
-                  title={kpi.hint || `Filtrer : ${kpi.label}`}
-                  className={`group inline-flex min-w-[100px] items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/45 ${
-                    kpi.isActive ? kpi.toneActive : kpi.toneIdle
-                  }`}
-                >
-                  <kpi.Icon className={`h-4 w-4 shrink-0 ${kpi.iconColor} opacity-90`} aria-hidden />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide leading-none opacity-90">
-                      {kpi.label}
-                    </p>
-                    <p className="mt-0.5 text-base font-bold tabular-nums leading-none">{kpi.value}</p>
-                  </div>
-                </button>
-              ));
-            })()}
-          </div>
-        </section>
+            />
+          </MemberBentoCell>
+          <MemberBentoCell span={5} stretch>
+            <GestionPageAside
+              copy={gestionCopy}
+              newCount={totalNewMembers}
+              incompleteCount={totalIncompleteMembers}
+              inactiveCount={totalInactiveMembers}
+            />
+          </MemberBentoCell>
+        </MemberBentoRow>
 
+        <MemberBentoRow stretch>
+          <MemberBentoCell span={12} stretch>
+            <GestionKpiStrip
+              copy={gestionCopy}
+              counts={gestionCounts}
+              activeFilters={activeKpiFilters}
+              onKpiClick={handleGestionKpiClick}
+            />
+          </MemberBentoCell>
+        </MemberBentoRow>
+
+        <MemberBentoRow stretch>
+          <MemberBentoCell span={12} stretch>
+            <GestionStaffGuide copy={gestionCopy} />
+          </MemberBentoCell>
+        </MemberBentoRow>
+
+        <MemberBentoRow>
+          <MemberBentoCell span={12}>
         <GestionTeamShortcuts
           expanded={showTeamShortcuts}
           onToggle={() => setShowTeamShortcuts((v) => !v)}
         />
 
         {/* Barre de recherche et actions — version compacte */}
-        <div className="mb-3 sticky top-2 z-40 rounded-2xl border border-white/[0.08] bg-zinc-950/95 p-2.5 shadow-sm ring-1 ring-inset ring-white/[0.03] backdrop-blur">
+        <div className={`sticky top-2 z-40 ${cockpitPanelClass} p-2.5 backdrop-blur`}>
+          <div className="mb-2 border-b border-white/[0.06] pb-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-200/75">{gestionCopy.toolbarKicker}</p>
+            <p className="text-sm font-semibold text-white">{gestionCopy.toolbarTitle}</p>
+            <p className="text-xs text-zinc-500">{gestionCopy.toolbarIntro}</p>
+          </div>
           <div className="flex flex-col gap-2">
             {/* Ligne principale : recherche + presets + filtres + affichage + actions */}
             <div className="flex flex-wrap items-center gap-2">
@@ -2665,16 +2654,16 @@ export default function GestionClient() {
                 <input
                   id="gestion-search-input"
                   type="search"
-                  placeholder="Rechercher : pseudo Twitch ou Discord, nom, ID, lien…"
+                  placeholder={gestionCopy.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-[#353a50] bg-[#121623]/85 px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-300/55 focus-visible:ring-2 focus-visible:ring-indigo-400/35"
+                  className={`${cockpitInputClass} w-full py-2`}
                   aria-label="Rechercher un membre"
                   aria-describedby="gestion-search-help"
                   title="Recherche dans : pseudo Twitch, pseudo Discord, nom, ID Discord, lien Twitch, identifiant site"
                 />
                 <span id="gestion-search-help" className="sr-only">
-                  La recherche couvre pseudo Twitch, pseudo Discord, nom, ID Discord et ID Twitch, lien Twitch et identifiant site.
+                  {gestionCopy.searchHelp}
                 </span>
               </div>
               <select
@@ -2693,7 +2682,8 @@ export default function GestionClient() {
                 <option value="integration_session_alignee">Aligné session</option>
                 <option value="vip">VIP</option>
                 <option value="inactifs">En pause</option>
-                <option value="staff">Staff</option>
+                <option value="staff">Staff actif</option>
+                <option value="ancien_staff">Anciens staff (honorifique)</option>
               </select>
               <button
                 type="button"
@@ -4035,11 +4025,16 @@ export default function GestionClient() {
             </div>
           )}
         </div>
+          </MemberBentoCell>
+        </MemberBentoRow>
+      </MemberBentoShell>
 
         {/* Modal motif audit — actions de masse sensibles (rôle / statut) */}
         {currentAdmin?.isFounder && (
           <GestionBulkReasonModal
             open={bulkReasonModalOpen}
+            copy={gestionCopy.modals.bulkReason}
+            accentHex={gestionCopy.accent}
             draft={bulkAuditReasonDraft}
             loading={bulkLoading}
             onDraftChange={setBulkAuditReasonDraft}
@@ -4066,6 +4061,8 @@ export default function GestionClient() {
               isOpen={isBulkImportOpen}
               onClose={() => setIsBulkImportOpen(false)}
               onImport={handleBulkImport}
+              modalCopy={gestionCopy.modals.bulkImport}
+              accentHex={gestionCopy.accent}
             />
             <VerifyListModalV2
               isOpen={isVerifyListOpen}
@@ -4143,116 +4140,20 @@ export default function GestionClient() {
 
         {/* Modal de vérification des pseudos Discord */}
         {showVerifyDiscordNamesModal && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-            onClick={() => {
+          <VerifyDiscordNamesModal
+            open={showVerifyDiscordNamesModal}
+            onClose={() => {
               if (!syncingDiscordNames) setShowVerifyDiscordNamesModal(false);
             }}
-          >
-            <div
-              className="bg-[#1a1a1d] border border-gray-700 rounded-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-5 border-b border-gray-700">
-                <div>
-                  <h3 className="text-xl font-bold text-white">Vérification des pseudos Discord</h3>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Interroge Discord via chaque ID, synchronise les pseudos différents, puis affiche le résultat détaillé.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowVerifyDiscordNamesModal(false)}
-                  disabled={syncingDiscordNames}
-                  className="text-gray-400 hover:text-white disabled:opacity-50"
-                >
-                  Fermer
-                </button>
-              </div>
-
-              <div className="p-5 border-b border-gray-700 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleVerifyDiscordNames()}
-                  disabled={syncingDiscordNames}
-                  className="bg-blue-500/14 hover:bg-blue-500/24 border border-blue-400/35 text-blue-200 font-semibold px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <RefreshCw className={`w-4 h-4 ${syncingDiscordNames ? "animate-spin" : ""}`} />
-                  {syncingDiscordNames ? "Vérification en cours..." : "Lancer la vérification"}
-                </button>
-                <span className="text-xs text-gray-400">
-                  Traitement progressif par lots (20 membres), comme la page Donnée Discord.
-                </span>
-              </div>
-
-              <div className="p-5 space-y-3">
-                {verifyDiscordError ? (
-                  <div className="rounded-lg border border-red-500/40 bg-red-900/20 px-3 py-2 text-sm text-red-200">
-                    {verifyDiscordError}
-                  </div>
-                ) : null}
-                {verifyDiscordInfo ? (
-                  <div className="rounded-lg border border-emerald-500/40 bg-emerald-900/20 px-3 py-2 text-sm text-emerald-200">
-                    {verifyDiscordInfo}
-                  </div>
-                ) : null}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="rounded-lg border border-gray-700 bg-[#0e0e10] px-3 py-2 text-sm text-gray-200">
-                    Résultats chargés: <strong>{verifyDiscordRows.length}</strong>
-                  </div>
-                  <div className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-                    Pseudos changés: <strong>{verifyDiscordUpdatedRows.length}</strong>
-                  </div>
-                  <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-                    Non modifiés / autres: <strong>{Math.max(0, verifyDiscordRows.length - verifyDiscordUpdatedRows.length)}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-5 pb-5 overflow-y-auto space-y-4">
-                {verifyDiscordUpdatedRows.length > 0 ? (
-                  <div className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 p-3">
-                    <p className="text-sm font-semibold text-emerald-200 mb-2">Pseudos Discord mis à jour</p>
-                    <div className="space-y-2">
-                      {verifyDiscordUpdatedRows.map((row) => (
-                        <div key={`updated-${row.twitchLogin}`} className="text-xs text-emerald-100">
-                          <span className="font-semibold">{row.displayName}</span> ({row.twitchLogin}) • ID: {row.discordId} •{" "}
-                          {row.storedDiscordUsername || "vide"} → {row.fetchedDiscordUsername || "introuvable"}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="rounded-lg border border-gray-700 bg-[#0e0e10] p-3">
-                  <p className="text-sm font-semibold text-gray-200 mb-2">Détail complet</p>
-                  {verifyDiscordRows.length === 0 ? (
-                    <p className="text-xs text-gray-400">Lance la vérification pour voir les résultats membre par membre.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {verifyDiscordRows.map((row) => (
-                        <div key={`${row.twitchLogin}-${row.discordId}`} className="rounded border border-gray-700 bg-[#141418] p-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs font-semibold text-white">
-                              {row.displayName} <span className="text-gray-400">({row.twitchLogin})</span>
-                            </p>
-                            <span className="text-[11px] rounded-full border border-gray-600 px-2 py-0.5 text-gray-300">
-                              {row.status}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-gray-400 mt-1">
-                            ID Discord: {row.discordId} • Base: {row.storedDiscordUsername || "vide"} • Discord:{" "}
-                            {row.fetchedDiscordUsername || "introuvable"}
-                            {row.error ? ` • ${row.error}` : ""}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+            copy={gestionCopy.modals.verifyDiscord}
+            accentHex={gestionCopy.accent}
+            loading={syncingDiscordNames}
+            error={verifyDiscordError}
+            info={verifyDiscordInfo}
+            rows={verifyDiscordRows}
+            updatedRows={verifyDiscordUpdatedRows}
+            onLaunch={() => void handleVerifyDiscordNames()}
+          />
         )}
 
         {/* Modal de fusion de membres */}
@@ -4333,9 +4234,10 @@ export default function GestionClient() {
               }
             }}
             loading={mergeLoading}
+            modalCopy={gestionCopy.modals.merge}
+            accentHex={gestionCopy.accent}
           />
         )}
-      </MembersCockpitShell>
     </>
   );
 }

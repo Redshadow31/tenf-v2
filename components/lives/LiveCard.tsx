@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ExternalLink, Radio, User } from "lucide-react";
 import type { LiveMember } from "@/components/lives/types";
 import theme from "@/components/lives/lives-theme.module.css";
-import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import { getRoleBadgeClassName, getRoleBadgeLabel, resolvePublicDiscoveryRoleBadge } from "@/lib/roleBadgeSystem";
 
 function formatLiveDuration(startedAt: string): string {
   const start = new Date(startedAt).getTime();
@@ -28,13 +28,15 @@ export default function LiveCard({ live, onOpenMemberProfile }: LiveCardProps) {
     Date.now() - integrationTs <= NEW_MEMBER_WINDOW_MS;
   const isVipMember = live.isVip === true;
   const isDiscoverCta = live.followState === "not_followed";
-  const hasMutualSupportBadge =
+  const hasEngagementBadge =
     live.isSolidarityRaider ||
     live.isCommunityBooster ||
     live.isDiscoverer ||
+    live.isTenfExplorer ||
     live.isWarmlySupported ||
     live.isBalancedSupport;
   const titleLabel = live.title?.trim() || "Titre indisponible";
+  const publicRoleBadge = resolvePublicDiscoveryRoleBadge(live.role);
 
   return (
     <article
@@ -103,31 +105,36 @@ export default function LiveCard({ live, onOpenMemberProfile }: LiveCardProps) {
           </div>
         ) : null}
         <div className="flex min-h-[3.5rem] flex-wrap content-start gap-1.5 text-[11px] md:min-h-[3.75rem] md:gap-2 md:text-xs">
-          {hasMutualSupportBadge ? (
+          {hasEngagementBadge ? (
             <>
               {live.isSolidarityRaider ? (
                 <span className="rounded-full border border-emerald-300/50 bg-emerald-500/20 px-2.5 py-1 font-semibold text-emerald-200">
-                  🤝 Raid solidaire
+                  🤝 Raideur·se solidaire
                 </span>
               ) : null}
               {live.isCommunityBooster ? (
                 <span className="rounded-full border border-indigo-300/50 bg-indigo-500/20 px-2.5 py-1 font-semibold text-indigo-200">
-                  💪 Booster commu
+                  💪 Moteur d&apos;entraide
                 </span>
               ) : null}
               {live.isDiscoverer ? (
                 <span className="rounded-full border border-lime-300/50 bg-lime-500/20 px-2.5 py-1 font-semibold text-lime-200">
-                  🌱 Decouvreur
+                  🌱 Raid de bienvenue
+                </span>
+              ) : null}
+              {live.isTenfExplorer ? (
+                <span className="rounded-full border border-teal-300/50 bg-teal-500/20 px-2.5 py-1 font-semibold text-teal-200">
+                  🗺️ Explorateur·rice TENF
                 </span>
               ) : null}
               {live.isWarmlySupported ? (
                 <span className="rounded-full border border-rose-300/50 bg-rose-500/20 px-2.5 py-1 font-semibold text-rose-200">
-                  💜 Accueil chaleureux
+                  💜 Point de rencontre
                 </span>
               ) : null}
               {live.isBalancedSupport ? (
                 <span className="rounded-full border border-cyan-300/50 bg-cyan-500/20 px-2.5 py-1 font-semibold text-cyan-200">
-                  ⚖️ Equilibre entraide
+                  ⚖️ Entraide équilibrée
                 </span>
               ) : null}
             </>
@@ -166,11 +173,9 @@ export default function LiveCard({ live, onOpenMemberProfile }: LiveCardProps) {
           <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
             {live.game || "Jeu non renseigne"}
           </span>
-          <span
-            className={getRoleBadgeClassName(live.role)}
-          >
-            {getRoleBadgeLabel(live.role)}
-          </span>
+          {publicRoleBadge ? (
+            <span className={publicRoleBadge.className}>{publicRoleBadge.label}</span>
+          ) : null}
           <span className="rounded-full border px-2.5 py-1" style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}>
             Duree : {formatLiveDuration(live.startedAt)}
           </span>

@@ -4,6 +4,7 @@ import { memberRepository } from '@/lib/repositories';
 import { getAllFollowValidationsForMonth, getLastMonthWithData } from '@/lib/followStorage';
 import { getCurrentMonthKey } from '@/lib/evaluationStorage';
 import { getLatestFollowEngagementOverview } from '@/lib/admin/followEngagement';
+import { FOLLOW_NEUTRAL_POINTS } from '@/lib/evaluationFollowPolicy';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -149,8 +150,9 @@ export async function GET(request: NextRequest) {
 
     const totalSheets = sheets.length;
     const snapshotScoreByLogin = new Map<string, number>();
+    let overview: Awaited<ReturnType<typeof getLatestFollowEngagementOverview>> | null = null;
     try {
-      const overview = await getLatestFollowEngagementOverview();
+      overview = await getLatestFollowEngagementOverview();
       for (const row of overview?.rows || []) {
         const login = normalizeLogin(row?.memberTwitchLogin || "");
         if (!login) continue;
@@ -166,21 +168,44 @@ export async function GET(request: NextRequest) {
     }
 
     const pointsMap: Record<string, number> = {};
+    const rawPointsMap: Record<string, number> = {};
+    const statusByLogin: Record<string, "measured" | "unknown"> = {};
     const hasSheets = totalSheets > 0;
     const hasAnySnapshot = snapshotScoreByLogin.size > 0;
 
     for (const login of memberLogins) {
       const sheetPts = sheetScoreByLogin.get(login) ?? 0;
       const snapPts = snapshotScoreByLogin.get(login);
-      let finalPts: number;
+      const hasSnapshotRow = (overview?.rows || []).some(
+        (row: { memberTwitchLogin?: string }) =>
+          normalizeLogin(row?.memberTwitchLogin || "") === login
+      );
+
+      let status: "measured" | "unknown";
+      let rawPts: number;
+      let adjustedPts: number;
+
       if (snapPts !== undefined) {
-        finalPts = snapPts;
+        status = "measured";
+        rawPts = snapPts;
+        adjustedPts = snapPts;
       } else if (hasSheets) {
-        finalPts = sheetPts;
+        status = "measured";
+        rawPts = sheetPts;
+        adjustedPts = sheetPts;
+      } else if (hasSnapshotRow) {
+        status = "measured";
+        rawPts = 0;
+        adjustedPts = 0;
       } else {
-        finalPts = 0;
+        status = "unknown";
+        rawPts = 0;
+        adjustedPts = FOLLOW_NEUTRAL_POINTS;
       }
-      pointsMap[login] = finalPts;
+
+      rawPointsMap[login] = rawPts;
+      pointsMap[login] = adjustedPts;
+      statusByLogin[login] = status;
     }
 
     let blendHint = "";
@@ -196,6 +221,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       points: pointsMap,
+      rawPoints: rawPointsMap,
+      statusByLogin,
+      followPolicy: {
+        neutralPoints: FOLLOW_NEUTRAL_POINTS,
+        unknownCount: Object.values(statusByLogin).filter((s) => s === "unknown").length,
+      },
       month: monthKey,
       dataSourceMonth: dataSourceMonth !== monthKey ? dataSourceMonth : undefined,
       followBlend: {

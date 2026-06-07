@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import MemberSurface from "@/components/member/ui/MemberSurface";
+import MemberBentoShell, { MemberBentoCell, MemberBentoRow } from "@/components/member/layout/MemberBentoShell";
 import EmptyFeatureCard from "@/components/member/ui/EmptyFeatureCard";
 import ProfileHero from "@/components/member/profil/ProfileHero";
 import ProfileSubNav, { type ProfileNavItem } from "@/components/member/profil/ProfileSubNav";
@@ -10,9 +10,10 @@ import ProfileActivityGrid from "@/components/member/profil/ProfileActivityGrid"
 import ProfileTwitchPanel from "@/components/member/profil/ProfileTwitchPanel";
 import ProfileDetailsPanel from "@/components/member/profil/ProfileDetailsPanel";
 import ProfilePlanningSection from "@/components/member/profil/ProfilePlanningSection";
-import ProfileValidationSection from "@/components/member/profil/ProfileValidationSection";
 import ProfileOnboardingCallout from "@/components/member/profil/ProfileOnboardingCallout";
-import ProfileAside from "@/components/member/profil/ProfileAside";
+import ProfileStatusStack from "@/components/member/profil/ProfileStatusStack";
+import ProfileBioCard from "@/components/member/profil/ProfileBioCard";
+import { buildMemberProfileModel } from "@/components/member/profil/memberProfileModel";
 import type { MemberOverview } from "@/components/member/hooks/useMemberOverview";
 
 type MemberApiResponse = {
@@ -71,36 +72,6 @@ const PROFILE_NAV: ProfileNavItem[] = [
   { id: "profile-details", label: "Infos & bio" },
   { id: "validation", label: "Validation" },
 ];
-
-function formatDateFr(value?: string | null): string {
-  if (!value) return "Non renseignée";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Non renseignée";
-  return date.toLocaleDateString("fr-FR");
-}
-
-function ProfilePageSkeleton() {
-  return (
-    <MemberSurface layout="fluid" wide>
-      <div className="animate-pulse space-y-[clamp(0.75rem,1.2vw,1.5rem)]">
-        <div className="h-[clamp(10rem,18vw,16rem)] rounded-[clamp(1rem,1.5vw,1.5rem)] bg-white/[0.06]" />
-        <div className="h-[clamp(3rem,5vw,4.5rem)] rounded-2xl bg-white/[0.04]" />
-        <div className="grid gap-[clamp(0.75rem,1.2vw,1.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(15rem,22rem)]">
-          <div className="space-y-[clamp(0.75rem,1.2vw,1.5rem)]">
-            <div className="h-44 rounded-2xl bg-white/[0.05]" />
-            <div className="h-48 rounded-2xl bg-white/[0.05]" />
-            <div className="h-60 rounded-2xl bg-white/[0.05]" />
-          </div>
-          <div className="space-y-[clamp(0.75rem,1.2vw,1.5rem)]">
-            <div className="h-72 rounded-2xl bg-white/[0.05]" />
-            <div className="h-44 rounded-2xl bg-white/[0.05]" />
-            <div className="h-56 rounded-2xl bg-white/[0.05]" />
-          </div>
-        </div>
-      </div>
-    </MemberSurface>
-  );
-}
 
 export default function MemberProfilePage() {
   const searchParams = useSearchParams();
@@ -200,34 +171,60 @@ export default function MemberProfilePage() {
     }
   }, []);
 
-  const completionChecklist = useMemo(() => {
-    if (!profileData) return [];
-    const m = profileData.member;
-    const list: Array<{ label: string; status: "ok" | "warning" | "missing" }> = [
-      { label: "Avatar", status: m.avatar ? "ok" : "missing" },
-      { label: "Bio", status: m.bio ? "ok" : "warning" },
-      { label: "Lien Twitch", status: m.socials.twitch ? "ok" : "missing" },
-      {
-        label: "Réseaux sociaux",
-        status:
-          m.socials.instagram || m.socials.tiktok || m.socials.twitter ? "ok" : "warning",
-      },
-      { label: "Planning live", status: plannings.length > 0 ? "ok" : "warning" },
-      { label: "Présentation prête", status: m.bio ? "ok" : "warning" },
-      {
-        label: "Profil valide",
-        status: m.profileValidationStatus === "valide" ? "ok" : "warning",
-      },
-    ];
-    return list;
-  }, [profileData, plannings.length]);
+  const upcomingPlannings = useMemo(
+    () =>
+      plannings.filter((planning) => {
+        const startsAt = new Date(`${planning.date}T${planning.time}:00`).getTime();
+        return startsAt >= Date.now();
+      }),
+    [plannings],
+  );
+
+  const nextPlanning = useMemo(
+    () =>
+      upcomingPlannings
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(`${a.date}T${a.time}:00`).getTime() -
+            new Date(`${b.date}T${b.time}:00`).getTime(),
+        )[0] || null,
+    [upcomingPlannings],
+  );
+
+  const model = useMemo(() => {
+    if (!profileData) return null;
+    const member = profileData.member;
+    const hasPublicProfileLink =
+      !!member.twitchLogin &&
+      !member.twitchLogin.startsWith("nouveau_") &&
+      !member.twitchLogin.startsWith("nouveau-");
+    const needsOnboarding =
+      member.role === "Nouveau" ||
+      member.twitchLogin.startsWith("nouveau_") ||
+      member.twitchLogin.startsWith("nouveau-") ||
+      searchParams?.get("onboarding") === "1";
+
+    return buildMemberProfileModel({
+      member,
+      overview,
+      planningCount: upcomingPlannings.length,
+      upcomingLives: upcomingPlannings.length,
+      nextPlanning,
+      twitchConnected: twitchLinkStatus.connected,
+      needsOnboarding,
+      hasPublicProfileLink,
+      publicProfileHref: `/membres?member=${encodeURIComponent(member.twitchLogin)}`,
+      livePlanningHref: LIVE_PLANNING_ROUTE,
+    });
+  }, [profileData, overview, upcomingPlannings, nextPlanning, twitchLinkStatus.connected, searchParams]);
 
   if (loading) return <ProfilePageSkeleton />;
-  if (error || !profileData) {
+  if (error || !profileData || !model) {
     return (
-      <MemberSurface layout="fluid" wide>
+      <MemberBentoShell>
         <EmptyFeatureCard title="Mon profil" description={error || "Impossible de charger le profil."} />
-      </MemberSurface>
+      </MemberBentoShell>
     );
   }
 
@@ -272,155 +269,94 @@ export default function MemberProfilePage() {
       eventPresenceHistory: [],
     };
 
-  const profilePercent = safeOverview.profile?.percent ?? 0;
-  const vip = safeOverview.vip;
-
-  const validationLabel =
-    member.profileValidationStatus === "valide"
-      ? "Profil valide par le staff"
-      : member.profileValidationStatus === "en_cours_examen"
-        ? "Modifications en attente de validation"
-        : "Informations manquantes";
-  const validationTone: "success" | "warning" | "neutral" =
-    member.profileValidationStatus === "valide"
-      ? "success"
-      : member.profileValidationStatus === "en_cours_examen"
-        ? "warning"
-        : "neutral";
-
-  const hasPublicProfileLink =
-    !!member.twitchLogin &&
-    !member.twitchLogin.startsWith("nouveau_") &&
-    !member.twitchLogin.startsWith("nouveau-");
-  const publicProfileHref = `/membres?member=${encodeURIComponent(member.twitchLogin)}`;
-
-  const needsOnboarding =
-    member.role === "Nouveau" ||
-    member.twitchLogin.startsWith("nouveau_") ||
-    member.twitchLogin.startsWith("nouveau-") ||
-    searchParams?.get("onboarding") === "1";
-
   const twitchLinkedNow = searchParams?.get("twitch_linked") === "1";
   const twitchError = searchParams?.get("twitch_error") || null;
   const twitchStartHref = `/api/auth/twitch/link/start?callbackUrl=${encodeURIComponent(TWITCH_LINK_CALLBACK)}`;
 
-  const upcomingPlannings = plannings.filter((planning) => {
-    const startsAt = new Date(`${planning.date}T${planning.time}:00`).getTime();
-    return startsAt >= Date.now();
-  });
-  const nextPlanning =
-    upcomingPlannings
-      .slice()
-      .sort(
-        (a, b) =>
-          new Date(`${a.date}T${a.time}:00`).getTime() -
-          new Date(`${b.date}T${b.time}:00`).getTime(),
-      )[0] || null;
-
-  const vipLabel = vip?.activeThisMonth
-    ? "VIP TENF actif ce mois-ci"
-    : vip
-      ? "VIP TENF — pas ce mois-ci"
-      : "VIP — indisponible";
-
-  const quickActions = [
-    { label: "Compléter mon profil", href: "/member/profil/completer" },
-    { label: "Modifier mon planning", href: LIVE_PLANNING_ROUTE },
-    hasPublicProfileLink
-      ? { label: "Voir ma fiche publique", href: publicProfileHref }
-      : { label: "Voir ma fiche publique", soon: true },
-    { label: "Déclarer un raid", href: "/member/raids/declarer" },
-    { label: "Voir mes formations", href: "/member/formations/validees" },
-    { label: "Voir mon activité", href: "/member/activite" },
-  ];
-
   return (
-    <MemberSurface layout="fluid" wide>
-      <ProfileHero
-        avatar={member.avatar}
-        displayName={member.displayName}
-        twitchLogin={member.twitchLogin}
-        role={member.role}
-        profilePercent={profilePercent}
-        vipLabel={vipLabel}
-        vipActive={!!vip?.activeThisMonth}
-        validationLabel={validationLabel}
-        validationTone={validationTone}
-        integrationDone={member.tenfSummary.integration.integrated}
-        upcomingLives={upcomingPlannings.length}
-        hasPublicProfileLink={hasPublicProfileLink}
-        publicProfileHref={publicProfileHref}
-        livePlanningHref={LIVE_PLANNING_ROUTE}
-      />
+    <MemberBentoShell accentHex={model.accent}>
+      <ProfileSubNav items={PROFILE_NAV} accentHex={model.accent} />
 
-      <ProfileSubNav items={PROFILE_NAV} />
+      {model.needsOnboarding ? <ProfileOnboardingCallout /> : null}
 
-      <div className="grid grid-cols-1 gap-[clamp(0.6rem,0.95vw,1.1rem)] xl:grid-cols-[minmax(0,1fr)_clamp(16rem,min(26vw,22rem))] xl:items-start">
-        <main className="grid min-w-0 grid-cols-12 gap-[clamp(0.6rem,0.95vw,1.1rem)]">
-          {needsOnboarding ? (
-            <div className="col-span-12">
-              <ProfileOnboardingCallout />
-            </div>
-          ) : null}
+      <MemberBentoRow>
+        <MemberBentoCell span={7}>
+          <ProfileHero model={model} />
+        </MemberBentoCell>
+        <MemberBentoCell span={5}>
+          <ProfileStatusStack model={model} validationStatus={member.profileValidationStatus} />
+        </MemberBentoCell>
+      </MemberBentoRow>
 
-          <div className="col-span-12">
-            <ProfileActivityGrid
-              upcomingEvents={safeOverview.upcomingEvents?.length ?? 0}
-              raidsThisMonth={safeOverview.stats.raidsThisMonth}
-              presencesThisMonth={safeOverview.stats.eventPresencesThisMonth}
-              formationsValidated={safeOverview.stats.formationsValidated}
-              vipStatusLabel={vip?.statusLabel || "—"}
-            />
-          </div>
+      <MemberBentoRow>
+        <MemberBentoCell span={12}>
+          <ProfileActivityGrid
+            model={model}
+            upcomingEvents={safeOverview.upcomingEvents?.length ?? 0}
+            raidsThisMonth={safeOverview.stats.raidsThisMonth}
+            presencesThisMonth={safeOverview.stats.eventPresencesThisMonth}
+            formationsValidated={safeOverview.stats.formationsValidated}
+            vipStatusLabel={safeOverview.vip?.statusLabel || "—"}
+          />
+        </MemberBentoCell>
+      </MemberBentoRow>
 
-          <div className="col-span-12 xl:col-span-6">
-            <ProfileTwitchPanel
-              status={twitchLinkStatus}
-              startHref={twitchStartHref}
-              reconnectHref={twitchStartHref}
-              twitchLinkedNow={twitchLinkedNow}
-              twitchError={twitchError}
-              onDisconnect={handleDisconnectTwitch}
-              disconnecting={disconnectingTwitch}
-            />
-          </div>
+      <MemberBentoRow>
+        <MemberBentoCell span={7}>
+          <ProfileTwitchPanel
+            status={twitchLinkStatus}
+            startHref={twitchStartHref}
+            reconnectHref={twitchStartHref}
+            twitchLinkedNow={twitchLinkedNow}
+            twitchError={twitchError}
+            onDisconnect={handleDisconnectTwitch}
+            disconnecting={disconnectingTwitch}
+          />
+        </MemberBentoCell>
+        <MemberBentoCell span={5}>
+          <ProfilePlanningSection plannings={plannings} planningHref={LIVE_PLANNING_ROUTE} compact />
+        </MemberBentoCell>
+      </MemberBentoRow>
 
-          <div className="col-span-12 xl:col-span-6">
-            <ProfilePlanningSection plannings={plannings} planningHref={LIVE_PLANNING_ROUTE} />
-          </div>
+      <MemberBentoRow>
+        <MemberBentoCell span={8}>
+          <ProfileDetailsPanel member={member} />
+        </MemberBentoCell>
+        <MemberBentoCell span={4}>
+          <ProfileBioCard
+            model={model}
+            member={{
+              displayName: member.displayName,
+              twitchLogin: member.twitchLogin,
+              avatar: member.avatar,
+              bio: member.bio,
+            }}
+          />
+        </MemberBentoCell>
+      </MemberBentoRow>
+    </MemberBentoShell>
+  );
+}
 
-          <div className="col-span-12 xl:col-span-8">
-            <ProfileDetailsPanel member={member} />
-          </div>
-
-          <div className="col-span-12 xl:col-span-4">
-            <ProfileValidationSection
-              status={member.profileValidationStatus}
-              label={validationLabel}
-              tone={validationTone}
-            />
-          </div>
-        </main>
-
-        <ProfileAside
-          percent={profilePercent}
-          items={completionChecklist}
-          nextPlanning={nextPlanning}
-          integrationDate={formatDateFr(member.tenfSummary.integration.date)}
-          twitchConnected={twitchLinkStatus.connected}
-          livePlanningHref={LIVE_PLANNING_ROUTE}
-          member={{
-            displayName: member.displayName,
-            twitchLogin: member.twitchLogin,
-            avatar: member.avatar,
-            bio: member.bio,
-            socials: member.socials,
-          }}
-          hasPublicProfileLink={hasPublicProfileLink}
-          publicProfileHref={publicProfileHref}
-          quickActions={quickActions}
-        />
+function ProfilePageSkeleton() {
+  return (
+    <MemberBentoShell>
+      <div className="flex w-full animate-pulse flex-col gap-3">
+        <div className="h-11 rounded-[1.35rem] border border-white/[0.06] bg-white/[0.04]" />
+        <div className="grid gap-3 lg:grid-cols-12">
+          <div className="h-48 rounded-[1.35rem] border border-white/[0.06] bg-white/[0.04] lg:col-span-7" />
+          <div className="h-48 rounded-[1.35rem] border border-white/[0.06] bg-white/[0.04] lg:col-span-5" />
+        </div>
+        <div className="h-28 rounded-[1.35rem] border border-white/[0.06] bg-white/[0.04]" />
+        <div className="grid gap-3 lg:grid-cols-12">
+          <div className="h-40 rounded-[1.35rem] border border-white/[0.06] bg-white/[0.04] lg:col-span-7" />
+          <div className="h-40 rounded-[1.35rem] border border-white/[0.06] bg-white/[0.04] lg:col-span-5" />
+        </div>
+        <div className="grid gap-3 lg:grid-cols-12">
+          <div className="h-44 rounded-[1.35rem] border border-white/[0.06] bg-white/[0.04] lg:col-span-8" />
+          <div className="h-44 rounded-[1.35rem] border border-white/[0.06] bg-white/[0.04] lg:col-span-4" />
+        </div>
       </div>
-    </MemberSurface>
+    </MemberBentoShell>
   );
 }

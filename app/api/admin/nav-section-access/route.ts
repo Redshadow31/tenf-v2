@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedAdmin } from "@/lib/requireAdmin";
 import { adminModerationCharterAccessBlocked } from "@/lib/adminModerationCharterGate";
 import { isAdminPathAllowedDuringCharterBlock } from "@/lib/adminModerationCharterGatePaths";
+import { getDevAdminRolePreview, isDevAdminRolePreviewActive } from "@/lib/admin/devRolePreview";
 import { hasAdvancedAdminAccess } from "@/lib/advancedAccess";
 import { loadSectionPermissionsCache, hasSectionAccess } from "@/lib/sectionPermissions";
 import { allAdminNavHrefsUnion } from "@/lib/admin/navigation";
@@ -19,12 +20,15 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const [charterBlocked, advancedBypass] = await Promise.all([
+    const [charterBlocked, advancedBypass, previewActive] = await Promise.all([
       adminModerationCharterAccessBlocked(admin.discordId),
       hasAdvancedAdminAccess(admin.discordId),
+      isDevAdminRolePreviewActive(),
     ]);
 
-    if (advancedBypass) {
+    const previewRole = previewActive ? await getDevAdminRolePreview() : null;
+
+    if (advancedBypass && !previewActive) {
       return NextResponse.json({ bypass: true, allowedHrefs: null });
     }
 
@@ -40,6 +44,7 @@ export async function GET() {
     return NextResponse.json({
       bypass: false,
       allowedHrefs,
+      devRolePreview: previewRole,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Erreur serveur";

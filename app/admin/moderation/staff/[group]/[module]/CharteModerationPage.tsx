@@ -344,6 +344,7 @@ export default function CharteModerationPage() {
                 onProfileFilterChange={setProfileFilter}
                 relevantCount={relevantSectionCount}
                 totalCount={CHARTE_SECTIONS.length}
+                onNavigateToArticle={scrollToArticle}
               />
             ) : null}
 
@@ -404,6 +405,7 @@ export default function CharteModerationPage() {
                   isValidationCooldownActive={isValidationCooldownActive}
                   remainingCooldownSeconds={remainingCooldownSeconds}
                   onToggle={toggleSection}
+                  onNavigateToArticle={scrollToArticle}
                   profileRelevant={
                     viewerProfile?.charteAudience
                       ? isSectionRelevantForViewer(section, viewerProfile.charteAudience)
@@ -475,7 +477,8 @@ export default function CharteModerationPage() {
                   />
                   <span>
                     Je confirme appliquer cette charte avec neutralité, méthode et responsabilité — quel que soit mon
-                    statut staff (modération, soutien, découverte, accompagnement, pause, activité réduite).
+                    statut staff (fondateur, admin coordinateur, modération, soutien TENF, découverte, accompagnement,
+                    pause ou activité réduite).
                   </span>
                 </label>
 

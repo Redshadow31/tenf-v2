@@ -17,6 +17,7 @@ export type MemberRole =
   | "Modérateur en activité réduite"
   | "Modérateur en pause"
   | "Soutien TENF"
+  | "Ancien Staff TENF"
   | "Contributeur Invité TENF"
   | "Contributeur TENF du Mois"
   | "Créateur Junior"
@@ -62,6 +63,7 @@ const CANONICAL_MEMBER_ROLES: MemberRole[] = [
   "Modérateur en activité réduite",
   "Modérateur en pause",
   "Soutien TENF",
+  "Ancien Staff TENF",
   "Contributeur Invité TENF",
   "Contributeur TENF du Mois",
   "Créateur Junior",
@@ -82,6 +84,12 @@ export function toCanonicalMemberRole(role: string): MemberRole {
     return role as MemberRole;
   }
   return "Affilié";
+}
+
+/** Rôle honorifique « Ancien Staff TENF » — reconnaissance passée, pas une fonction active. */
+export function isHonoraryStaffRole(role: string | undefined | null): boolean {
+  if (!role?.trim()) return false;
+  return toCanonicalMemberRole(role.trim()) === "Ancien Staff TENF";
 }
 
 /** Après passage Communauté : hors périmètre des listes « à découvrir » / engagement follow. */

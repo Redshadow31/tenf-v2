@@ -1,13 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Activity,
   Bell,
   Calendar,
   ClipboardList,
   Cog,
-  Flag,
   GraduationCap,
-  Briefcase,
   History,
   LayoutDashboard,
   ListChecks,
@@ -15,17 +12,14 @@ import {
   Radio,
   Rocket,
   Shield,
-  Smartphone,
-  Sparkles,
   Target,
   UserCircle,
-  UserCog,
   Users,
 } from "lucide-react";
 import { DISCORD_INVITE_URL } from "@/lib/socialLinks";
 
 /** Identifiants stables — ne jamais brancher la logique métier sur `section.title`. */
-export type SidebarSectionId = "home" | "me" | "community" | "activity" | "learning" | "support";
+export type SidebarSectionId = "me" | "community" | "activity" | "learning";
 
 export type SidebarNavItem = {
   href: string;
@@ -36,6 +30,8 @@ export type SidebarNavItem = {
   external?: boolean;
   /** Mots-clés pour la recherche rapide (insensible à la casse côté UI). */
   keywords?: string[];
+  /** Préfixes de chemin qui activent ce lien (ex. hub « Mon mois »). */
+  activePrefixes?: string[];
   /** Lien désactivé : grisé, non cliquable (ex. fonctionnalité bientôt disponible). */
   disabled?: boolean;
   /** Court libellé affiché à côté d’un lien désactivé (ex. « Bientôt »). */
@@ -48,32 +44,63 @@ export type SidebarNavSection = {
   items: SidebarNavItem[];
 };
 
+/** Sidebar complète sur l’espace membre et l’annuaire ; version compacte ailleurs. */
+export function isMemberSidebarFullContext(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return pathname.startsWith("/member") || pathname.startsWith("/membres");
+}
+
+export function isMemberSidebarNavItemActive(
+  pathname: string,
+  item: Pick<SidebarNavItem, "href" | "activePrefixes">,
+): boolean {
+  if (pathname === item.href) return true;
+  if (item.href.startsWith("/") && item.href !== "/" && !item.href.startsWith("/api/") && pathname.startsWith(`${item.href}/`)) {
+    return true;
+  }
+  return item.activePrefixes?.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? false;
+}
+
+/** Raccourcis épinglés (sidebar « En un clic », menu burger mobile). */
+export const memberSidebarPinnedItems: SidebarNavItem[] = [
+  {
+    href: "/member/dashboard",
+    label: "Tableau de bord",
+    icon: LayoutDashboard,
+    keywords: ["accueil", "dashboard", "home", "synthèse"],
+  },
+  {
+    href: "/member/notifications",
+    label: "Mes nouvelles",
+    icon: Bell,
+    keywords: ["notif", "notifications", "nouvelles", "news", "alertes"],
+  },
+];
+
+/** Lien d’aide affiché en bas du menu (hors accordéon). */
+export const memberSidebarFooterLink: SidebarNavItem = {
+  href: "/guides/espace-membre",
+  label: "Aide & ressources",
+  icon: Shield,
+  keywords: ["aide", "guide", "faq", "charte", "contact", "ressources", "repères"],
+};
+
+const MEMBER_MONTH_ACTIVITY_PREFIXES = [
+  "/member/evenements",
+  "/member/engagement/score",
+  "/member/objectifs",
+  "/member/progression",
+  "/member/activite",
+] as const;
+
 /**
- * Navigation membre TENF — sections plates (section → liens), sans groupe intermédiaire.
+ * Navigation membre TENF — 4 sections : Moi, Communauté, Mon mois, Parcours.
  * Source unique pour la sidebar desktop, le drawer mobile et le menu burger.
  */
 export const memberSidebarSections: SidebarNavSection[] = [
   {
-    id: "home",
-    title: "Accueil",
-    items: [
-      {
-        href: "/member/dashboard",
-        label: "Tableau de bord",
-        icon: LayoutDashboard,
-        keywords: ["accueil", "dashboard", "home", "synthèse"],
-      },
-      {
-        href: "/member/notifications",
-        label: "Mes nouvelles",
-        icon: Bell,
-        keywords: ["notif", "notifications", "nouvelles", "news", "alertes"],
-      },
-    ],
-  },
-  {
     id: "me",
-    title: "Moi sur TENF",
+    title: "Moi",
     items: [
       { href: "/member/profil", label: "Mon profil", icon: UserCircle, keywords: ["profil", "fiche", "présentation", "moi"] },
       {
@@ -93,28 +120,14 @@ export const memberSidebarSections: SidebarNavSection[] = [
   },
   {
     id: "community",
-    title: "Communauté & entraide",
+    title: "Communauté",
     items: [
-      { href: "/membres", label: "Annuaire membres", icon: Users, keywords: ["annuaire", "membres", "liste", "découvrir"] },
-      { href: "/lives", label: "Lives en cours", icon: Radio, keywords: ["live", "stream", "direct", "twitch"] },
-      {
-        href: "/decouvrir-createurs",
-        label: "Découvrir des créateurs",
-        icon: Sparkles,
-        keywords: ["clips", "créateurs", "découverte", "twitch", "tenf"],
-      },
-      { href: "/member/raids/historique", label: "Mes raids", icon: History, keywords: ["raid", "raids", "historique", "entraide"] },
-      {
-        href: "/member/raids/statistiques",
-        label: "Mes stats raids",
-        icon: Activity,
-        keywords: ["raid", "stats", "statistiques", "performance"],
-      },
-      { href: "/member/raids/declarer", label: "Signaler un raid", icon: Rocket, keywords: ["raid", "déclarer", "signaler"] },
+      { href: "/lives", label: "Lives TENF", icon: Radio, keywords: ["live", "lives", "twitch", "stream", "direct", "entraide"] },
+      { href: "/member/raids/historique", label: "Mes raids", icon: History, keywords: ["raid", "raids", "historique", "entraide", "stats", "statistiques", "pilotage"] },
       {
         href: "/member/engagement/a-decouvrir",
         label: "À découvrir",
-        icon: Flag,
+        icon: Target,
         keywords: ["découverte", "chaînes", "communauté"],
       },
       { href: "/member/engagement/amis", label: "Mes amis", icon: Users, keywords: ["amis", "suivis", "réseau"] },
@@ -131,62 +144,50 @@ export const memberSidebarSections: SidebarNavSection[] = [
         external: true,
         keywords: ["discord", "serveur", "salon", "communauté", "rejoindre"],
       },
+      {
+        href: "/member/raids/declarer",
+        label: "Signaler un raid (secours)",
+        icon: Rocket,
+        keywords: ["raid", "déclarer", "signaler", "manuel", "secours", "absent"],
+      },
     ],
   },
   {
     id: "activity",
-    title: "Activité du mois",
+    title: "Mon mois",
     items: [
-      { href: "/member/evenements", label: "Agenda TENF", icon: Calendar, keywords: ["agenda", "événements", "calendrier", "planning"] },
       {
-        href: "/member/evenements/inscriptions",
-        label: "Mes inscriptions",
-        icon: ClipboardList,
-        keywords: ["inscription", "événement", "event"],
-      },
-      { href: "/member/evenements/presences", label: "Mes présences", icon: Users, keywords: ["présence", "événement", "event"] },
-      {
-        href: "/member/engagement/score",
-        label: "Mon score d’engagement",
-        icon: Activity,
-        keywords: ["score", "points", "xp", "engagement", "participation"],
-      },
-      { href: "/member/objectifs", label: "Objectifs du mois", icon: Target, keywords: ["objectifs", "mois", "défis"] },
-      { href: "/member/progression", label: "Ma progression", icon: Activity, keywords: ["progression", "parcours", "niveau"] },
-      { href: "/member/activite", label: "Mon activité du mois", icon: Calendar, keywords: ["activité", "mois", "résumé"] },
-      {
-        href: "/member/activite/historique",
-        label: "Historique d’activité",
-        icon: History,
-        keywords: ["historique", "activité", "passé"],
+        href: "/member/activite",
+        label: "Mon activité du mois",
+        icon: Calendar,
+        activePrefixes: [...MEMBER_MONTH_ACTIVITY_PREFIXES],
+        keywords: [
+          "activité",
+          "mois",
+          "résumé",
+          "agenda",
+          "événements",
+          "calendrier",
+          "inscription",
+          "présence",
+          "score",
+          "engagement",
+          "objectifs",
+          "progression",
+          "historique",
+        ],
       },
     ],
   },
   {
     id: "learning",
-    title: "Parcours TENF",
+    title: "Parcours",
     items: [
       {
         href: "/member/academy",
         label: "TENF Academy",
         icon: GraduationCap,
-        keywords: ["academy", "formation", "apprendre", "parcours"],
-        disabled: true,
-        disabledHint: "Bientôt",
-      },
-      {
-        href: "/member/academy/postuler",
-        label: "Postuler à l’Academy",
-        icon: ClipboardList,
-        keywords: ["academy", "candidature", "postuler"],
-        disabled: true,
-        disabledHint: "Bientôt",
-      },
-      {
-        href: "/member/academy/parcours",
-        label: "Mon parcours Academy",
-        icon: Flag,
-        keywords: ["academy", "parcours", "suivi"],
+        keywords: ["academy", "formation", "apprendre", "parcours", "candidature"],
         disabled: true,
         disabledHint: "Bientôt",
       },
@@ -202,75 +203,127 @@ export const memberSidebarSections: SidebarNavSection[] = [
         icon: ListChecks,
         keywords: ["formation", "validé", "terminé", "certificat"],
       },
-      { href: "/member/evaluations", label: "Mon évaluation", icon: ClipboardList, keywords: ["évaluation", "bilan", "retour"] },
       {
-        href: "/member/evaluations/historique",
-        label: "Historique des évaluations",
-        icon: History,
-        keywords: ["évaluation", "historique", "cycles"],
-      },
-    ],
-  },
-  {
-    id: "support",
-    title: "Aide & repères",
-    items: [
-      { href: "/charte", label: "Charte TENF", icon: Shield, keywords: ["charte", "règles", "cadre"] },
-      {
-        href: "/fonctionnement-tenf/faq",
-        label: "FAQ",
-        icon: MessageSquare,
-        keywords: ["faq", "aide", "question", "comment"],
-      },
-      { href: "/contact", label: "Contacter le staff", icon: MessageSquare, keywords: ["contact", "staff", "aide", "message"] },
-      {
-        href: "/partenariats",
-        label: "Partenariats",
-        icon: Briefcase,
-        keywords: ["partenaire", "partenariat", "collaboration"],
-      },
-      {
-        href: "/postuler",
-        label: "Rejoindre l’équipe TENF",
+        href: "/member/evaluations",
+        label: "Mon évaluation",
         icon: ClipboardList,
-        keywords: ["postuler", "staff", "bénévole", "candidature", "équipe"],
+        keywords: ["évaluation", "bilan", "retour"],
+        disabled: true,
+        disabledHint: "Bientôt",
       },
     ],
   },
 ];
 
-/** Raccourcis vers l’espace admin — affichés dans un bloc séparé (ne pas mélanger au fil membre). */
-export const memberSidebarAdminShortcuts: SidebarNavItem[] = [
-  { href: "/admin/dashboard", label: "Tableau de bord admin", icon: LayoutDashboard, adminOnly: true },
-  { href: "/admin/membres/gestion", label: "Membres", icon: Users, adminOnly: true },
-  /** URL canonique (redirect 301 depuis `/admin/events` dans next.config.js). */
-  { href: "/admin/communaute/evenements", label: "Événements", icon: Calendar, adminOnly: true },
-  { href: "/admin/engagement/raids-a-valider", label: "Raids à valider", icon: Rocket, adminOnly: true },
-];
-
-/** Liens admin additionnels (menu « Plus » ou page dédiée). */
-export const memberSidebarAdminMoreItems: SidebarNavItem[] = [
-  { href: "/admin/onboarding/staff", label: "Onboarding staff", icon: UserCog, adminOnly: true },
-  { href: "/admin/onboarding/staff-mobile", label: "Onboarding (mobile)", icon: Smartphone, adminOnly: true },
-  { href: "/admin/profils", label: "Profils site", icon: UserCircle, adminOnly: true },
-  { href: "/admin/evaluations", label: "Évaluations", icon: Shield, adminOnly: true },
-];
-
-/** Liens aplatis pour le menu burger mobile (espace membre), hors liens purement externes si besoin d’exclure */
+/** Liens aplatis pour le menu burger mobile (espace membre). */
 export const memberSidebarNavItemsForMobile: {
   href: string;
   label: string;
   external?: boolean;
   disabled?: boolean;
   disabledHint?: string;
-}[] = memberSidebarSections.flatMap((s) =>
-  s.items
-    .filter((i) => !i.adminOnly)
-    .map((i) => ({
-      href: i.href,
-      label: i.label,
-      external: i.external,
-      disabled: i.disabled,
-      disabledHint: i.disabledHint,
+}[] = [
+  ...memberSidebarPinnedItems.map((i) => ({
+    href: i.href,
+    label: i.label,
+    external: i.external,
+    disabled: i.disabled,
+    disabledHint: i.disabledHint,
+  })),
+  ...memberSidebarSections.flatMap((s) =>
+    s.items
+      .filter((i) => !i.adminOnly)
+      .map((i) => ({
+        href: i.href,
+        label: i.label,
+        external: i.external,
+        disabled: i.disabled,
+        disabledHint: i.disabledHint,
+      })),
+  ),
+  {
+    href: memberSidebarFooterLink.href,
+    label: memberSidebarFooterLink.label,
+  },
+];
+
+export type MemberSidebarSearchEntry = {
+  href: string;
+  label: string;
+  sectionTitle: string;
+  keywords?: string[];
+  external?: boolean;
+  disabled?: boolean;
+};
+
+export function normalizeMemberSidebarSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/** Entrées indexées pour la recherche header + filtre sidebar. */
+export function buildMemberSidebarSearchEntries(): MemberSidebarSearchEntry[] {
+  const entries: MemberSidebarSearchEntry[] = [
+    ...memberSidebarPinnedItems.map((item) => ({
+      href: item.href,
+      label: item.label,
+      sectionTitle: "Raccourcis",
+      keywords: item.keywords,
+      external: item.external,
+      disabled: item.disabled,
     })),
-);
+    ...memberSidebarSections.flatMap((section) =>
+      section.items
+        .filter((item) => !item.adminOnly)
+        .map((item) => ({
+          href: item.href,
+          label: item.label,
+          sectionTitle: section.title,
+          keywords: item.keywords,
+          external: item.external,
+          disabled: item.disabled,
+        })),
+    ),
+    {
+      href: memberSidebarFooterLink.href,
+      label: memberSidebarFooterLink.label,
+      sectionTitle: "Aide",
+      keywords: memberSidebarFooterLink.keywords,
+    },
+  ];
+  return entries;
+}
+
+export function filterMemberSidebarSearchEntries(
+  query: string,
+  entries: MemberSidebarSearchEntry[],
+  limit = 8,
+): MemberSidebarSearchEntry[] {
+  const q = normalizeMemberSidebarSearchText(query);
+  if (!q) return [];
+  return entries
+    .filter((item) => {
+      if (normalizeMemberSidebarSearchText(item.label).includes(q)) return true;
+      if (normalizeMemberSidebarSearchText(item.sectionTitle).includes(q)) return true;
+      if (item.keywords?.some((keyword) => normalizeMemberSidebarSearchText(keyword).includes(q))) return true;
+      return false;
+    })
+    .slice(0, limit);
+}
+
+export function memberSidebarNavItemMatchesQuery(
+  query: string,
+  item: { label: string; keywords?: string[] },
+  section: Pick<SidebarNavSection, "title" | "id">,
+): boolean {
+  const q = normalizeMemberSidebarSearchText(query);
+  if (!q) return true;
+  if (normalizeMemberSidebarSearchText(item.label).includes(q)) return true;
+  if (normalizeMemberSidebarSearchText(section.title).includes(q)) return true;
+  if (normalizeMemberSidebarSearchText(section.id).includes(q)) return true;
+  if (item.keywords?.some((keyword) => normalizeMemberSidebarSearchText(keyword).includes(q))) return true;
+  return false;
+}

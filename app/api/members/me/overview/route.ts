@@ -5,6 +5,11 @@ import { getAuthenticatedAdmin } from "@/lib/requireAdmin";
 import { eventRepository, memberRepository, vipRepository } from "@/lib/repositories";
 import { getMonthKey, loadRaidsFaits } from "@/lib/raidStorage";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import {
+  isFormationEventCategory,
+  loadMemberOverviewPresences,
+  type ResolvedMemberEvent,
+} from "@/lib/member/memberOverviewAttendance";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -58,43 +63,72 @@ function getIdentityAliases(rawValue?: unknown): string[] {
   return Array.from(aliases);
 }
 
-function isUuidLike(value?: string): boolean {
-  if (!value) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
+async function queryMemberPresenceRows(
+  filter: "twitch" | "discord",
+  value: string,
+): Promise<Record<string, unknown>[]> {
+  if (!value) return [];
+  let query = supabaseAdmin
+    .from("event_presences")
+    .select("event_id,present,validated_at,created_at,twitch_login,discord_id")
+    .eq("present", true)
+    .limit(5000);
 
-function safeTimestamp(value?: string | null): number {
-  if (!value) return 0;
-  const ts = new Date(value).getTime();
-  return Number.isNaN(ts) ? 0 : ts;
-}
+  query = filter === "twitch" ? query.eq("twitch_login", value.toLowerCase()) : query.eq("discord_id", value);
 
-function dedupeMemberPresences(
-  rows: Array<{ event_id: string; present: boolean; validated_at: string | null; created_at: string | null }>
-): Array<{ event_id: string; present: boolean; validated_at: string | null; created_at: string | null }> {
-  const byEvent = new Map<string, { event_id: string; present: boolean; validated_at: string | null; created_at: string | null }>();
-  for (const row of rows) {
-    const key = String(row.event_id || "");
-    if (!key) continue;
-
-    const existing = byEvent.get(key);
-    if (!existing) {
-      byEvent.set(key, row);
-      continue;
+  const { data, error } = await query;
+  if (error) {
+    const message = (error.message || "").toLowerCase();
+    if (message.includes("validated_at") || message.includes("column")) {
+      let retryQuery = supabaseAdmin
+        .from("event_presences")
+        .select("event_id,present,created_at,twitch_login,discord_id")
+        .eq("present", true)
+        .limit(5000);
+      retryQuery =
+        filter === "twitch" ? retryQuery.eq("twitch_login", value.toLowerCase()) : retryQuery.eq("discord_id", value);
+      const retry = await retryQuery;
+      return (retry.data || []) as Record<string, unknown>[];
     }
-
-    const existingTs = Math.max(safeTimestamp(existing.validated_at), safeTimestamp(existing.created_at));
-    const currentTs = Math.max(safeTimestamp(row.validated_at), safeTimestamp(row.created_at));
-    if (currentTs >= existingTs) {
-      byEvent.set(key, row);
-    }
+    throw error;
   }
-  return Array.from(byEvent.values());
+  return (data || []) as Record<string, unknown>[];
 }
+
+function mergeResolvedEventsIntoCalendar(
+  eventById: Map<string, CalendarEventLike>,
+  resolved: Map<string, ResolvedMemberEvent>,
+) {
+  for (const [id, event] of resolved) {
+    if (eventById.has(id)) continue;
+    eventById.set(id, {
+      id: event.id,
+      title: event.title,
+      description: "",
+      date: event.date,
+      category: event.category,
+      isPublished: true,
+      createdAt: event.date,
+      createdBy: "system",
+    });
+  }
+}
+
+type CalendarEventLike = {
+  id: string;
+  title: string;
+  description: string;
+  date: Date;
+  category: string;
+  location?: string;
+  isPublished: boolean;
+  createdAt: Date;
+  createdBy: string;
+  updatedAt?: Date;
+};
 
 function isFormationCategory(category?: string | null): boolean {
-  const key = normalize(category);
-  return key.includes("formation");
+  return isFormationEventCategory(category);
 }
 
 function getCurrentMonthKey(): string {
@@ -519,59 +553,31 @@ export async function GET() {
 
     let memberPresenceRows: Array<{ event_id: string; present: boolean; validated_at: string | null; created_at: string | null }> = [];
     try {
-      const allEventIds = Array.from(new Set(allEvents.map((event) => String(event.id)).filter(Boolean)));
-      const chunkSize = 200;
-      const chunks: string[][] = [];
-      for (let i = 0; i < allEventIds.length; i += chunkSize) {
-        chunks.push(allEventIds.slice(i, i + chunkSize));
+      const { presenceRows, resolvedEvents } = await loadMemberOverviewPresences({
+        identity,
+        discordId,
+        memberTwitchLogin,
+        getIdentityAliases,
+        getMemberPresencesWithEvents: (login) => eventRepository.getMemberPresencesWithEvents(login),
+        queryPresenceRows: queryMemberPresenceRows,
+      });
+      memberPresenceRows = presenceRows;
+      mergeResolvedEventsIntoCalendar(eventById as Map<string, CalendarEventLike>, resolvedEvents);
+
+      for (const row of presenceRows) {
+        const rawId = String(row.event_id || "");
+        if (!rawId || eventById.has(rawId)) continue;
+        try {
+          const fetched = await eventRepository.findById(rawId);
+          if (fetched?.id) {
+            eventById.set(String(fetched.id), fetched as CalendarEventLike);
+          }
+        } catch {
+          /* best effort */
+        }
       }
-
-      const chunkRows = await Promise.all(
-        chunks.map(async (ids) => {
-          const baseQuery = () =>
-            supabaseAdmin
-              .from("event_presences")
-              .select("event_id,present,validated_at,created_at,twitch_login,discord_id")
-              .eq("present", true)
-              .limit(5000);
-
-          const uuidIds = ids.filter((id) => isUuidLike(id));
-          const legacyIds = ids.filter((id) => !isUuidLike(id));
-          const rows: any[] = [];
-
-          if (uuidIds.length > 0) {
-            const { data } = await baseQuery().in("event_id", uuidIds);
-            if (data?.length) rows.push(...data);
-          }
-
-          if (legacyIds.length > 0) {
-            const { data, error } = await baseQuery().in("event_id", legacyIds);
-            if (!error && data?.length) {
-              rows.push(...data);
-            }
-          }
-
-          return rows;
-        })
-      );
-
-      const filteredRows = chunkRows
-        .flat()
-        .filter((row: any) => {
-          const twitchAliases = getIdentityAliases(row.twitch_login);
-          const discordAliases = getIdentityAliases(row.discord_id);
-          return [...twitchAliases, ...discordAliases].some((alias) => identity.has(alias));
-        });
-
-      memberPresenceRows = dedupeMemberPresences(
-        filteredRows.map((row: any) => ({
-          event_id: String(row.event_id),
-          present: Boolean(row.present),
-          validated_at: row.validated_at || null,
-          created_at: row.created_at || null,
-        }))
-      );
-    } catch {
+    } catch (presenceLoadError) {
+      console.warn("[members/me/overview] loadMemberOverviewPresences failed:", presenceLoadError);
       memberPresenceRows = [];
     }
 
@@ -618,20 +624,28 @@ export async function GET() {
     eventPresenceHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     formationHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const trackedEvents = allEvents
-      .map((event) => {
-        const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
-        if (Number.isNaN(eventDate.getTime())) {
-          return null;
-        }
-        return {
-          id: String(event.id),
-          title: event.title || "Evenement",
-          date: eventDate,
-          category: event.category || "Evenement",
-        };
-      })
-      .filter((event): event is { id: string; title: string; date: Date; category: string } => Boolean(event));
+    const trackedEventIds = new Set<string>();
+    const trackedEvents: Array<{ id: string; title: string; date: Date; category: string }> = [];
+
+    function pushTrackedEvent(event: CalendarEventLike | (typeof allEvents)[number]) {
+      const id = String(event.id || "");
+      if (!id || trackedEventIds.has(id)) return;
+      const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+      if (Number.isNaN(eventDate.getTime())) return;
+      trackedEventIds.add(id);
+      trackedEvents.push({
+        id,
+        title: event.title || "Evenement",
+        date: eventDate,
+        category: event.category || "Evenement",
+      });
+    }
+
+    for (const event of allEvents) pushTrackedEvent(event as CalendarEventLike);
+    for (const presence of memberPresences) {
+      const event = eventById.get(String(presence.event_id || ""));
+      if (event) pushTrackedEvent(event);
+    }
 
     const memberTwitchLoginNormalized = normalize(memberTwitchLogin);
     let discordPointsBackendAvailable = false;

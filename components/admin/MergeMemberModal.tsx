@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import { GESTION_MODAL_COPY_DEFAULT } from "@/lib/admin/members-gestion/gestionCopyModel";
+import type { GestionModalCopy } from "@/lib/admin/members-gestion/gestionCopyModel";
+import GestionModalShell, {
+  gestionModalGhostBtnClass,
+  gestionModalPrimaryBtnClass,
+} from "@/components/admin/members-gestion/GestionModalShell";
 
 interface MemberToMerge {
   twitchLogin: string;
@@ -29,6 +35,8 @@ interface MergeMemberModalProps {
   currentDuplicateIndex?: number;
   onNextDuplicate?: () => void;
   onPreviousDuplicate?: () => void;
+  modalCopy?: GestionModalCopy;
+  accentHex?: string;
 }
 
 export default function MergeMemberModal({
@@ -41,6 +49,8 @@ export default function MergeMemberModal({
   currentDuplicateIndex = 0,
   onNextDuplicate,
   onPreviousDuplicate,
+  modalCopy = GESTION_MODAL_COPY_DEFAULT.merge,
+  accentHex = "#8b5cf6",
 }: MergeMemberModalProps) {
   const [selectedFields, setSelectedFields] = useState<Record<string, number>>({});
 
@@ -113,43 +123,52 @@ export default function MergeMemberModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-white">
-              Fusionner les membres en doublon
-            </h2>
-            {allDuplicates.length > 1 && (
-              <p className="text-sm text-gray-400 mt-1">
-                Doublon {currentDuplicateIndex + 1} sur {allDuplicates.length}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+    <GestionModalShell
+      open={isOpen}
+      onClose={onClose}
+      title={modalCopy.title}
+      subtitle={
+        allDuplicates.length > 1
+          ? `${modalCopy.subtitle} Doublon ${currentDuplicateIndex + 1} sur ${allDuplicates.length}.`
+          : modalCopy.subtitle
+      }
+      size="lg"
+      accentHex={accentHex}
+      disableClose={loading}
+      footer={
+        <div className="flex flex-wrap gap-2">
+          {allDuplicates.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={onPreviousDuplicate}
+                disabled={loading || currentDuplicateIndex === 0}
+                className={gestionModalGhostBtnClass}
+              >
+                ← Précédent
+              </button>
+              <button
+                type="button"
+                onClick={onNextDuplicate}
+                disabled={loading || currentDuplicateIndex === allDuplicates.length - 1}
+                className={gestionModalGhostBtnClass}
+              >
+                Suivant →
+              </button>
+            </>
+          )}
+          <button type="button" onClick={onClose} className={`flex-1 ${gestionModalGhostBtnClass}`} disabled={loading}>
+            {modalCopy.cancel}
+          </button>
+          <button type="button" onClick={handleMerge} disabled={loading} className={`flex-1 ${gestionModalPrimaryBtnClass}`}>
+            {loading ? "Fusion en cours…" : `${modalCopy.confirm} (${members.length})`}
           </button>
         </div>
-
-        <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-          <p className="text-sm text-yellow-300">
-            ⚠️ Ces membres ont été détectés comme doublons (même Discord mais chaînes Twitch différentes).
-            Sélectionnez les informations à conserver pour chaque champ. Le membre fusionné remplacera les doublons.
+      }
+    >
+        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <p className="text-sm text-amber-100">
+            Doublons détectés (même Discord, chaînes Twitch différentes). Choisis, champ par champ, quelle version conserver — la fusion remplace les entrées en double.
           </p>
         </div>
 
@@ -267,44 +286,7 @@ export default function MergeMemberModal({
             </div>
           </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex gap-3">
-          {allDuplicates.length > 1 && (
-            <>
-              <button
-                onClick={onPreviousDuplicate}
-                disabled={loading || currentDuplicateIndex === 0}
-                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ← Précédent
-              </button>
-              <button
-                onClick={onNextDuplicate}
-                disabled={loading || currentDuplicateIndex === allDuplicates.length - 1}
-                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Suivant →
-              </button>
-            </>
-          )}
-          <button
-            onClick={onClose}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition-colors"
-            disabled={loading}
-          >
-            Annuler
-          </button>
-          <button
-            onClick={handleMerge}
-            disabled={loading}
-            className="flex-1 bg-[#9146ff] hover:bg-[#5a32b4] text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "Fusion en cours..." : `Fusionner ${members.length} membre(s)`}
-          </button>
-        </div>
-      </div>
-    </div>
+    </GestionModalShell>
   );
 }
 

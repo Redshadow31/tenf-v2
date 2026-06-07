@@ -1,17 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, ArrowUpRight, Database, ShieldCheck, UserCheck2 } from "lucide-react";
+import { Activity, ArrowUpRight, Database, HeartPulse, ShieldCheck, UserCheck2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import {
-  MEMBERS_QUALITY_SCORE_EXPLAINER,
-  type MembersQualityTier,
-} from "@/lib/admin/members/membersQualityScore";
-import {
-  hubFocusRingClass,
-  hubSectionLabelClass,
-  hubSectionTitleClass,
-} from "./membersHubStyles";
+import type { MembersQualityTier } from "@/lib/admin/members/membersQualityScore";
+import type { MembersHubCopyModel } from "@/lib/admin/members/membersHubCopyModel";
+import { MembersHubPanel, MembersHubPanelHeader } from "@/components/admin/members-hub/MembersHubPanel";
+import { hubFocusRingClass } from "./membersHubStyles";
 
 type Tone = "indigo" | "violet" | "emerald" | "amber" | "rose" | "cyan";
 
@@ -22,6 +17,7 @@ type HealthCardProps = {
   caption: string;
   icon: LucideIcon;
   tone: Tone;
+  openLabel: string;
 };
 
 const toneClass: Record<Tone, { border: string; bg: string; iconBox: string; valueText: string; halo: string }> = {
@@ -69,49 +65,34 @@ const toneClass: Record<Tone, { border: string; bg: string; iconBox: string; val
   },
 };
 
-function HealthCard({ label, href, value, caption, icon: Icon, tone }: HealthCardProps) {
+function HealthCard({ label, href, value, caption, icon: Icon, tone, openLabel }: HealthCardProps) {
   const tones = toneClass[tone];
   return (
     <Link
       href={href}
       className={`group relative overflow-hidden rounded-2xl border ${tones.border} ${tones.bg} p-4 transition hover:-translate-y-0.5 ${hubFocusRingClass}`}
     >
-      <span
-        className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full ${tones.halo} blur-2xl transition group-hover:scale-110`}
-        aria-hidden
-      />
+      <span className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full ${tones.halo} blur-2xl`} aria-hidden />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className={hubSectionLabelClass}>{label}</p>
-          <p
-            className={`mt-2 font-bold ${tones.valueText}`}
-            style={{ fontSize: "clamp(1.45rem, 1.2rem + 0.9vw, 2.1rem)", lineHeight: 1.05 }}
-          >
-            {value}
-          </p>
-          <p
-            className="mt-1.5 text-slate-400 group-hover:text-slate-300"
-            style={{ fontSize: "clamp(0.7rem, 0.68rem + 0.08vw, 0.78rem)", lineHeight: 1.45 }}
-          >
-            {caption}
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">{label}</p>
+          <p className={`mt-2 text-3xl font-bold tabular-nums ${tones.valueText}`}>{value}</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-white/45 group-hover:text-white/60">{caption}</p>
         </div>
-        <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tones.iconBox}`}
-          aria-hidden
-        >
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tones.iconBox}`} aria-hidden>
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <span className="relative mt-3 inline-flex items-center gap-1 text-[0.7rem] font-semibold text-slate-300 group-hover:text-white">
-        Ouvrir
-        <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
+      <span className="relative mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-white/50 group-hover:text-white">
+        {openLabel}
+        <ArrowUpRight className="h-3 w-3" aria-hidden />
       </span>
     </Link>
   );
 }
 
 type Props = {
+  copy: MembersHubCopyModel;
   totalMembers: number;
   validatedProfiles: number;
   qualityScore: number;
@@ -129,14 +110,8 @@ const QUALITY_TIER_TONE: Record<MembersQualityTier, Tone> = {
   critique: "rose",
 };
 
-const QUALITY_TIER_LABEL: Record<MembersQualityTier, string> = {
-  excellent: "Excellent",
-  ok: "Stable",
-  fragile: "Fragile",
-  critique: "Critique",
-};
-
 export default function MembersHealthCards({
+  copy,
   totalMembers,
   validatedProfiles,
   qualityScore,
@@ -146,73 +121,58 @@ export default function MembersHealthCards({
   incomplete,
   profileValidationPending,
 }: Props) {
-  const validatedRate =
-    totalMembers > 0 ? Math.round((validatedProfiles / totalMembers) * 100) : 0;
+  const validatedRate = totalMembers > 0 ? Math.round((validatedProfiles / totalMembers) * 100) : 0;
   const accessPending = profileValidationPending + incomplete;
 
   return (
-    <section aria-labelledby="members-hub-health">
-      <header className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <p className={hubSectionLabelClass}>Santé de la communauté</p>
-          <h2
-            id="members-hub-health"
-            className={`mt-1.5 ${hubSectionTitleClass}`}
-            style={{ fontSize: "clamp(1.05rem, 0.9rem + 0.45vw, 1.3rem)" }}
-          >
-            Le pouls des créateurs TENF
-          </h2>
-        </div>
-      </header>
+    <MembersHubPanel accentHex={copy.accent} tone="neutral" ariaLabelledBy="members-hub-health">
+      <MembersHubPanelHeader
+        kicker={copy.health.kicker}
+        title={copy.health.title}
+        intro={copy.health.intro}
+        icon={HeartPulse}
+        accentHex={copy.accent}
+        titleId="members-hub-health"
+      />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <HealthCard
-          label="Créateurs actifs"
+          label={copy.health.activeLabel}
           href="/admin/membres/gestion"
           value={`${totalMembers}`}
-          caption={
-            totalMembers > 0
-              ? `${validatedRate}% de fiches validées par l'équipe`
-              : "Aucun créateur détecté pour l'instant"
-          }
+          caption={copy.health.activeCaption(validatedRate, totalMembers)}
           icon={UserCheck2}
           tone="violet"
+          openLabel={copy.health.openAction}
         />
         <HealthCard
-          label="Qualité des fiches"
+          label={copy.health.qualityLabel}
           href="/admin/membres/qualite-data"
           value={`${qualityScore}/100`}
-          caption={`Score ${QUALITY_TIER_LABEL[qualityTier].toLowerCase()} — ${MEMBERS_QUALITY_SCORE_EXPLAINER.toLowerCase()}`}
+          caption={copy.health.qualityCaption(qualityScore, qualityTier)}
           icon={Database}
           tone={QUALITY_TIER_TONE[qualityTier]}
+          openLabel={copy.health.openAction}
         />
         <HealthCard
-          label="Suivi des créateurs"
+          label={copy.health.reviewLabel}
           href="/admin/membres/revues"
           value={`${reviewOverdue}`}
-          caption={
-            reviewOverdue === 0
-              ? `Toutes les revues sont à jour · ${reviewDue7d} prévue${reviewDue7d > 1 ? "s" : ""} cette semaine`
-              : `${reviewOverdue} revue${reviewOverdue > 1 ? "s" : ""} en retard · ${reviewDue7d} à venir`
-          }
+          caption={copy.health.reviewCaption(reviewOverdue, reviewDue7d)}
           icon={ShieldCheck}
           tone={reviewOverdue > 0 ? "amber" : "indigo"}
+          openLabel={copy.health.openAction}
         />
         <HealthCard
-          label="Accès en attente"
+          label={copy.health.accessLabel}
           href={profileValidationPending > 0 ? "/admin/membres/validation-profil" : "/admin/membres/incomplets"}
           value={`${accessPending}`}
-          caption={
-            profileValidationPending > 0
-              ? `${profileValidationPending} validation${profileValidationPending > 1 ? "s" : ""} + ${incomplete} profil${incomplete > 1 ? "s" : ""} à accompagner`
-              : incomplete > 0
-                ? `${incomplete} profil${incomplete > 1 ? "s" : ""} à accompagner — relance possible`
-                : "Aucun créateur en attente d'accès"
-          }
+          caption={copy.health.accessCaption(profileValidationPending, incomplete)}
           icon={Activity}
           tone={accessPending > 0 ? "rose" : "emerald"}
+          openLabel={copy.health.openAction}
         />
       </div>
-    </section>
+    </MembersHubPanel>
   );
 }

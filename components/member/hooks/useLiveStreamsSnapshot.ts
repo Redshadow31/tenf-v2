@@ -2,37 +2,41 @@
 
 import { useEffect, useState } from "react";
 
+export type LiveStreamPreview = {
+  login: string;
+  title?: string;
+  viewers?: number;
+};
+
 /**
  * Snapshot léger des lives Twitch en cours côté membres TENF.
- *
- * - Charge de manière différée pour ne pas pénaliser le rendu initial du dashboard.
- * - S'appuie sur deux endpoints existants (`/api/members/public` + `/api/twitch/streams`).
- * - Renvoie un état clair : `loading`, `unavailable` (Twitch non configuré / réseau KO),
- *   ou `ready` avec `liveCount` et `totalMembers`.
  */
 export type LiveStreamsSnapshot =
-  | { state: "loading"; liveCount: null; totalMembers: null }
-  | { state: "unavailable"; liveCount: null; totalMembers: null }
-  | { state: "ready"; liveCount: number; totalMembers: number };
+  | { state: "loading"; liveCount: null; totalMembers: null; streams: LiveStreamPreview[] }
+  | { state: "unavailable"; liveCount: null; totalMembers: null; streams: LiveStreamPreview[] }
+  | { state: "ready"; liveCount: number; totalMembers: number; streams: LiveStreamPreview[] };
 
 type PublicMembersResponse = {
   members?: Array<{ twitchLogin?: string | null }>;
 };
 
 type TwitchStreamsResponse = {
-  streams?: Array<{ userLogin?: string; type?: string }>;
+  streams?: Array<{
+    userLogin?: string;
+    userName?: string;
+    title?: string;
+    viewerCount?: number;
+    type?: string;
+  }>;
 };
 
 const INITIAL: LiveStreamsSnapshot = {
   state: "loading",
   liveCount: null,
   totalMembers: null,
+  streams: [],
 };
 
-/**
- * Hook autonome : on évite de coupler `useMemberOverview` à ce fetch lourd.
- * On retourne uniquement la donnée nécessaire au dashboard.
- */
 export function useLiveStreamsSnapshot(options: { skip?: boolean } = {}) {
   const [snapshot, setSnapshot] = useState<LiveStreamsSnapshot>(INITIAL);
 
@@ -40,25 +44,22 @@ export function useLiveStreamsSnapshot(options: { skip?: boolean } = {}) {
     if (options.skip) return;
 
     let cancelled = false;
-    // Petit délai pour laisser le dashboard se peindre d'abord.
     const timeout = window.setTimeout(async () => {
       try {
-        const membersResponse = await fetch("/api/members/public", {
-          cache: "no-store",
-        });
+        const membersResponse = await fetch("/api/members/public", { cache: "no-store" });
         if (!membersResponse.ok) throw new Error("members_unavailable");
         const membersBody = (await membersResponse.json()) as PublicMembersResponse;
         const logins = Array.from(
           new Set(
             (membersBody.members || [])
               .map((member) => String(member.twitchLogin || "").trim().toLowerCase())
-              .filter((login): login is string => Boolean(login))
-          )
+              .filter((login): login is string => Boolean(login)),
+          ),
         );
 
         if (logins.length === 0) {
           if (!cancelled) {
-            setSnapshot({ state: "ready", liveCount: 0, totalMembers: 0 });
+            setSnapshot({ state: "ready", liveCount: 0, totalMembers: 0, streams: [] });
           }
           return;
         }
@@ -71,23 +72,30 @@ export function useLiveStreamsSnapshot(options: { skip?: boolean } = {}) {
         if (!streamsResponse.ok) throw new Error("streams_unavailable");
         const streamsBody = (await streamsResponse.json()) as TwitchStreamsResponse;
 
-        const liveCount = (streamsBody.streams || []).filter(
-          (stream) => (stream.type || "").toLowerCase() === "live"
-        ).length;
+        const liveStreams = (streamsBody.streams || [])
+          .filter((stream) => (stream.type || "").toLowerCase() === "live")
+          .map((stream) => ({
+            login: String(stream.userLogin || "").toLowerCase(),
+            title: stream.title,
+            viewers: stream.viewerCount,
+          }))
+          .filter((s) => s.login)
+          .sort((a, b) => (b.viewers ?? 0) - (a.viewers ?? 0));
 
         if (!cancelled) {
           setSnapshot({
             state: "ready",
-            liveCount,
+            liveCount: liveStreams.length,
             totalMembers: logins.length,
+            streams: liveStreams,
           });
         }
       } catch {
         if (!cancelled) {
-          setSnapshot({ state: "unavailable", liveCount: null, totalMembers: null });
+          setSnapshot({ state: "unavailable", liveCount: null, totalMembers: null, streams: [] });
         }
       }
-    }, 1200);
+    }, 800);
 
     return () => {
       cancelled = true;

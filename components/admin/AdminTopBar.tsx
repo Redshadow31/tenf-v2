@@ -8,6 +8,10 @@ import { Menu, Search } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
 import { findActiveHub, getNavigationByMode, type AdminMode } from "@/lib/admin/navigation";
 import { useFilteredAdminNav, useAdminNavHrefAllowed } from "@/components/admin/AdminNavAccessContext";
+import AdminDevRolePreviewSelect from "@/components/admin/AdminDevRolePreviewSelect";
+import { useAdminDevRolePreviewOptional } from "@/contexts/AdminDevRolePreviewContext";
+import { getDevRolePreviewLabel } from "@/lib/admin/devRolePreviewLabels";
+import type { AdminRole } from "@/lib/adminRoles";
 
 const ADMIN_MODE_COOKIE = "admin_mode";
 
@@ -108,6 +112,11 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
   }, [orderedNavItems]);
 
   const canShowSearchShortcut = useAdminNavHrefAllowed("/admin/search");
+  const devPreview = useAdminDevRolePreviewOptional();
+  const previewActive = Boolean(devPreview?.enabled && devPreview.previewRole);
+  const previewLabel = devPreview?.previewRole
+    ? getDevRolePreviewLabel(devPreview.previewRole as AdminRole)
+    : null;
 
   return (
     <header
@@ -202,6 +211,8 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
                 </Link>
               ))}
 
+            <AdminDevRolePreviewSelect />
+
             <div className="hidden h-[clamp(1.75rem,4vw,2rem)] w-px shrink-0 bg-gradient-to-b from-transparent via-white/15 to-transparent sm:block" aria-hidden />
 
             <div className="min-w-0 max-w-[min(100%,11rem)] rounded-xl border border-white/[0.05] bg-white/[0.02] px-2.5 py-1.5 sm:max-w-[min(20rem,28vw)] sm:px-3.5">
@@ -242,6 +253,14 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
             })}
           </div>
         </nav>
+
+        {previewActive && previewLabel ? (
+          <p className="w-full border-t border-amber-400/25 bg-gradient-to-r from-amber-500/[0.12] via-amber-950/30 to-amber-500/[0.08] px-[clamp(0.75rem,2.5vw,1.5rem)] py-2 text-center text-[length:clamp(0.625rem,0.55rem+0.2vw,0.6875rem)] leading-relaxed text-amber-100/90">
+            Mode prévisualisation dev — tu navigues comme{" "}
+            <span className="font-semibold text-amber-50">{previewLabel}</span> (menus, dashboard et accès API
+            simulés). Choisis « Mon rôle réel » pour désactiver.
+          </p>
+        ) : null}
 
         {(pathname.startsWith("/admin/dashboard") || pathname.startsWith("/admin/pilotage")) && (
           <p className="hidden w-full border-t border-white/[0.04] bg-gradient-to-r from-amber-500/[0.04] via-zinc-950/40 to-violet-500/[0.04] px-[clamp(0.75rem,2.5vw,1.5rem)] py-2 text-center text-[length:clamp(0.625rem,0.55rem+0.2vw,0.6875rem)] leading-relaxed text-zinc-500 lg:block">

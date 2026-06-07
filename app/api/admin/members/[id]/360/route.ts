@@ -19,10 +19,28 @@ import {
 import { getMonthKey } from "@/lib/raidStorage";
 import { eventRepository, memberRepository } from "@/lib/repositories";
 import { fetchCanonicalTwitchAvatarForLogin, resolveMemberAvatar } from "@/lib/memberAvatar";
+import { mergeMatchedRaidTestEventsForMonth } from "@/lib/raidEventsubMerge";
 import { debugAgentLog } from "@/lib/debugAgentLog";
 
 const SUPABASE_PAGE_SIZE = 1000;
 const SUPABASE_MAX_PAGES = 20;
+
+type RaidSourceKind = "manual" | "eventsub" | "legacy";
+
+function normalizeRaidSourceKind(raid: { manual?: boolean; source?: string }): RaidSourceKind {
+  const source = String(raid?.source || (raid?.manual ? "admin" : "twitch-live")).toLowerCase();
+  if (source === "raids_sub" || source === "eventsub" || source.includes("eventsub")) return "eventsub";
+  if (raid?.manual || source === "manual" || source === "admin") return "manual";
+  return "legacy";
+}
+
+function periodCutoffDate(months: number): Date {
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(1);
+  cutoff.setMonth(cutoff.getMonth() - (months - 1));
+  return cutoff;
+}
 
 function buildMonthKeys(months: number): string[] {
   const now = new Date();
@@ -359,10 +377,14 @@ export async function GET(
         const raidsChunks = await Promise.all(
           monthKeys.map(async (monthKey) => {
             try {
-              const [raidsFaits, raidsRecus] = await Promise.all([
+              let [raidsFaits, raidsRecus] = await Promise.all([
                 loadRaidsFaits(monthKey),
                 loadRaidsRecus(monthKey),
               ]);
+
+              const merged = await mergeMatchedRaidTestEventsForMonth(monthKey, raidsFaits, raidsRecus);
+              raidsFaits = merged.raidsFaits;
+              raidsRecus = merged.raidsRecus;
 
               const memberRaidsFaits = raidsFaits.filter(
                 (raid: any) =>
@@ -381,10 +403,10 @@ export async function GET(
               );
 
               const monthSent = memberRaidsFaits.reduce(
-                (sum: number, r: any) => sum + (r.count || 1),
+                (sum: number, r: any) => sum + (r.countFrom === false ? 0 : r.count || 1),
                 0
               );
-              const monthReceived = memberRaidsRecus.length;
+              const monthReceived = memberRaidsRecus.filter((r: any) => r.countTo !== false).length;
 
               const details: any[] = [
                 ...memberRaidsFaits.map((r: any) => ({
@@ -395,14 +417,19 @@ export async function GET(
                   month: monthKey,
                   source: r.source,
                   manual: !!r.manual,
+                  sourceKind: normalizeRaidSourceKind(r),
+                  viewers: r.viewers,
                 })),
                 ...memberRaidsRecus.map((r: any) => ({
                   type: "received" as const,
                   date: r.date,
+                  count: 1,
                   raider: r.raider,
                   month: monthKey,
                   source: r.source,
                   manual: !!r.manual,
+                  sourceKind: normalizeRaidSourceKind(r),
+                  viewers: r.viewers,
                 })),
               ];
 
@@ -428,6 +455,14 @@ export async function GET(
           received: 0,
           details: [] as any[],
           byMonth: [] as Array<{ month: string; sent: number; received: number }>,
+          stats: {
+            sentManual: 0,
+            sentEventsub: 0,
+            sentLegacy: 0,
+            receivedManual: 0,
+            receivedEventsub: 0,
+            receivedLegacy: 0,
+          },
         };
         for (const chunk of raidsChunks) {
           raidsData.sent += chunk.monthSent;
@@ -437,8 +472,25 @@ export async function GET(
             sent: chunk.monthSent,
             received: chunk.monthReceived,
           });
+          for (const detail of chunk.details) {
+            const weight = detail.type === "sent" ? Number(detail.count || 1) : 1;
+            const kind = detail.sourceKind as RaidSourceKind;
+            if (detail.type === "sent") {
+              if (kind === "manual") raidsData.stats.sentManual += weight;
+              else if (kind === "eventsub") raidsData.stats.sentEventsub += weight;
+              else raidsData.stats.sentLegacy += weight;
+            } else {
+              if (kind === "manual") raidsData.stats.receivedManual += weight;
+              else if (kind === "eventsub") raidsData.stats.receivedEventsub += weight;
+              else raidsData.stats.receivedLegacy += weight;
+            }
+          }
           raidsData.details.push(...chunk.details);
         }
+        raidsData.details.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        raidsData.byMonth.sort((a, b) => b.month.localeCompare(a.month));
 
         result.engagement = {
           months,
@@ -517,6 +569,7 @@ export async function GET(
 
     if (section === "events") {
       try {
+        const cutoff = periodCutoffDate(months);
         const events = await eventRepository.findAll(1000, 0);
         const participations: Array<{
           eventId: string;
@@ -529,6 +582,10 @@ export async function GET(
         }> = [];
 
         for (const event of events) {
+          const eventDate =
+            event.date instanceof Date ? event.date : new Date(event.date);
+          if (Number.isNaN(eventDate.getTime()) || eventDate < cutoff) continue;
+
           const [presences, registrations] = await Promise.all([
             eventRepository.getPresences(event.id).catch(() => []),
             eventRepository.getRegistrations(event.id).catch(() => []),
@@ -568,16 +625,24 @@ export async function GET(
 
         participations.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const statsByCategory: Record<string, number> = {};
+        let presenceConfirmed = 0;
+        let registrationOnly = 0;
         for (const p of participations) {
           statsByCategory[p.category] = (statsByCategory[p.category] || 0) + 1;
+          if (p.mode === "presence") presenceConfirmed += 1;
+          else registrationOnly += 1;
         }
         const favoriteCategory = Object.entries(statsByCategory).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
         result.events = {
+          months,
+          periodFrom: cutoff.toISOString(),
           participations,
           statsByCategory,
           favoriteCategory,
           total: participations.length,
+          presenceConfirmed,
+          registrationOnly,
         };
       } catch (err) {
         console.error("Error loading events participation:", err);

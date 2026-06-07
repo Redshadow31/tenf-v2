@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
 import { eventRepository, evaluationRepository, memberRepository } from "@/lib/repositories";
 import { getCurrentMonthKey } from "@/lib/evaluationStorage";
+import { VIP_FINAL_SCORE_THRESHOLD } from "@/lib/evaluationSynthesisHelpers";
 import { getAllBonuses } from "@/lib/evaluationBonusStorage";
 import { calculateNoteEcrit, calculateNoteVocal } from "@/lib/discordEngagement";
 import { getDiscordEngagementData } from "@/lib/discordEngagementStorage";
@@ -830,7 +831,7 @@ export async function GET(request: NextRequest) {
         avgBloc2: avg(rows.map((r) => r.blocs.bloc2Discord)),
         avgBloc3: avg(rows.map((r) => r.blocs.bloc3Regularite)),
         avgBloc4: avg(rows.map((r) => r.blocs.bloc4ImplicationGlobale)),
-        topCount: rows.filter((r) => r.totals.totalWithBonus >= 16).length,
+        topCount: rows.filter((r) => r.totals.totalWithBonus >= VIP_FINAL_SCORE_THRESHOLD).length,
         watchCount: rows.filter((r) => r.totals.totalWithBonus < 6).length,
       },
       rows,

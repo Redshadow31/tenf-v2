@@ -18,6 +18,7 @@ import { loadSectionPermissionsCache, hasSectionAccess } from "./sectionPermissi
 import { hasAdvancedAdminAccess } from "./advancedAccess";
 import { adminModerationCharterAccessBlocked } from "./adminModerationCharterGate";
 import { isAdminPathAllowedDuringCharterBlock } from "./adminModerationCharterGatePaths";
+import { getDevAdminRolePreview, isDevAdminRolePreviewActive } from "./admin/devRolePreview";
 
 export interface AuthenticatedAdmin {
   id: string; // Alias de discordId pour compatibilité avec le code legacy
@@ -30,13 +31,27 @@ export interface AuthenticatedAdmin {
 export type RequireAdminOptions = {
   /** Réservé aux routes « charte » : laisser passer si la charte bloquerait sinon tout le dashboard */
   bypassModerationCharterGate?: boolean;
+  /** Ne pas appliquer la prévisualisation rôle dev (local). */
+  skipDevRolePreview?: boolean;
 };
+
+async function applyDevRolePreviewIfAny(
+  admin: AuthenticatedAdmin,
+  skipDevRolePreview?: boolean,
+): Promise<AuthenticatedAdmin> {
+  if (skipDevRolePreview) return admin;
+  const previewRole = await getDevAdminRolePreview();
+  if (!previewRole) return admin;
+  return { ...admin, role: previewRole };
+}
 
 /**
  * Récupère l'admin actuellement authentifié via NextAuth
  * Retourne null si non authentifié ou si pas de rôle admin
  */
-export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null> {
+export async function getAuthenticatedAdmin(options?: {
+  skipDevRolePreview?: boolean;
+}): Promise<AuthenticatedAdmin | null> {
   try {
     const devAuthBypassEnabled =
       process.env.NODE_ENV !== "production" &&
@@ -55,13 +70,16 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
         process.env.DEV_BYPASS_USERNAME ||
         "Dev Fondateur";
       const avatar = (session?.user?.avatar as string | null | undefined) || null;
-      return {
-        id: discordId,
-        discordId,
-        username,
-        avatar,
-        role: "FONDATEUR",
-      };
+      return applyDevRolePreviewIfAny(
+        {
+          id: discordId,
+          discordId,
+          username,
+          avatar,
+          role: "FONDATEUR",
+        },
+        options?.skipDevRolePreview,
+      );
     }
 
     if (!session?.user?.discordId) {
@@ -80,13 +98,16 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
     // En local/dev, un login via "dev-bypass" doit utiliser explicitement le rôle de session
     // pour éviter qu'un rôle hardcodé/cache du même discordId écrase le rôle demandé au test.
     if (devAuthBypassEnabled && sessionDevBypass && sessionRole) {
-      return {
-        id: discordId,
-        discordId,
-        username,
-        avatar,
-        role: sessionRole,
-      };
+      return applyDevRolePreviewIfAny(
+        {
+          id: discordId,
+          discordId,
+          username,
+          avatar,
+          role: sessionRole,
+        },
+        options?.skipDevRolePreview,
+      );
     }
 
     // Priorité au rôle "source de vérité" (hardcodé/cache), puis fallback session.
@@ -114,13 +135,16 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
       return null;
     }
 
-    return {
-      id: discordId, // Alias pour compatibilité avec le code legacy
-      discordId,
-      username,
-      avatar,
-      role,
-    };
+    return applyDevRolePreviewIfAny(
+      {
+        id: discordId, // Alias pour compatibilité avec le code legacy
+        discordId,
+        username,
+        avatar,
+        role,
+      },
+      options?.skipDevRolePreview,
+    );
   } catch (error) {
     console.error("[requireAdmin] Error getting authenticated admin:", error);
     return null;
@@ -195,7 +219,7 @@ export async function requirePermission(requiredPermission: Permission): Promise
   }
 
   // Bypass total: accès admin avancé = mêmes droits qu'Admin Coordinateur
-  if (await hasAdvancedAdminAccess(admin.discordId)) {
+  if (!(await isDevAdminRolePreviewActive()) && (await hasAdvancedAdminAccess(admin.discordId))) {
     return admin;
   }
 
@@ -225,7 +249,7 @@ export async function checkPermission(requiredPermission: Permission): Promise<b
   }
 
   // Bypass total: accès admin avancé = mêmes droits qu'Admin Coordinateur
-  if (await hasAdvancedAdminAccess(admin.discordId)) {
+  if (!(await isDevAdminRolePreviewActive()) && (await hasAdvancedAdminAccess(admin.discordId))) {
     return true;
   }
 
@@ -266,7 +290,7 @@ export async function hasAccessToSection(sectionHref: string): Promise<boolean> 
   }
 
   // Bypass total des permissions par section
-  if (await hasAdvancedAdminAccess(admin.discordId)) {
+  if (!(await isDevAdminRolePreviewActive()) && (await hasAdvancedAdminAccess(admin.discordId))) {
     return true;
   }
 
@@ -298,7 +322,7 @@ export async function requireSectionAccess(sectionHref: string): Promise<Authent
   }
 
   // Bypass total des permissions par section
-  if (await hasAdvancedAdminAccess(admin.discordId)) {
+  if (!(await isDevAdminRolePreviewActive()) && (await hasAdvancedAdminAccess(admin.discordId))) {
     return admin;
   }
 
@@ -346,7 +370,7 @@ export async function requireSectionAccessAny(
     return null;
   }
 
-  if (await hasAdvancedAdminAccess(admin.discordId)) {
+  if (!(await isDevAdminRolePreviewActive()) && (await hasAdvancedAdminAccess(admin.discordId))) {
     return admin;
   }
 

@@ -6,19 +6,69 @@ import {
   hexToRgba,
   type MemberDashboardModel,
 } from "@/components/member/dashboard/memberDashboardModel";
+import {
+  DashboardBadge,
+  DashboardPanel,
+  DashboardPanelHeader,
+} from "@/components/member/dashboard/dashboardUi";
 
 type RecognitionCardProps = {
   model: MemberDashboardModel;
+  variant?: "full" | "compact";
 };
 
-export default function RecognitionCard({ model }: RecognitionCardProps) {
+export default function RecognitionCard({ model, variant = "full" }: RecognitionCardProps) {
+  if (!model.showRecognitionStats) return null;
+
   const { accent, recognition } = model;
   const vipTone = recognition.vipActive ? "#facc15" : accent;
 
+  if (variant === "compact") {
+    const tone = recognition.vipActive ? "gold" : "accent";
+    return (
+      <DashboardPanel
+        tone={tone}
+        accentHex={vipTone}
+        intensity={recognition.vipActive ? "bold" : "medium"}
+        ariaLabelledBy="dashboard-recognition-title"
+      >
+        <DashboardPanelHeader
+          kicker="Reconnaissance"
+          title={recognition.vipActive ? recognition.vipLabel : "Ton engagement"}
+          icon={recognition.vipActive ? Crown : Sparkles}
+          tone={tone}
+          accentHex={vipTone}
+          titleId="dashboard-recognition-title"
+          badge={
+            recognition.vipActive ? (
+              <DashboardBadge tone="gold" accentHex={vipTone}>
+                <Crown className="h-3 w-3 text-yellow-200" aria-hidden />
+                VIP
+              </DashboardBadge>
+            ) : null
+          }
+        />
+
+        <div className="grid flex-1 grid-cols-2 gap-2">
+          <CompactStat label="Actions" value={recognition.participationThisMonth} tone={accent} />
+          <CompactStat label="Formations" value={recognition.formationsThisMonth} tone="#22c55e" />
+        </div>
+
+        <Link
+          href="/member/engagement/score"
+          className="mt-4 rounded-xl border border-white/10 bg-black/25 py-2.5 text-center text-[11px] font-bold transition hover:-translate-y-px hover:border-white/16 hover:bg-white/[0.03]"
+          style={{ color: hexToRgba(vipTone, 0.95) }}
+        >
+          Score & engagement →
+        </Link>
+      </DashboardPanel>
+    );
+  }
+
   return (
     <section
-      aria-labelledby="dashboard-recognition-title"
-      className="grid gap-3 rounded-3xl border p-5 sm:grid-cols-2 md:p-6 lg:grid-cols-[1.3fr_1fr]"
+      aria-labelledby="dashboard-recognition-title-full"
+      className="grid gap-3 rounded-2xl border p-5 sm:grid-cols-2 md:p-6 lg:grid-cols-[1.3fr_1fr]"
       style={{
         borderColor: hexToRgba(vipTone, 0.28),
         background: `linear-gradient(150deg, ${hexToRgba(vipTone, 0.1)}, rgba(15,17,22,0.92))`,
@@ -32,7 +82,7 @@ export default function RecognitionCard({ model }: RecognitionCardProps) {
           Points & reconnaissance
         </p>
         <h2
-          id="dashboard-recognition-title"
+          id="dashboard-recognition-title-full"
           className="text-xl font-bold md:text-2xl"
           style={{ color: "var(--color-text)" }}
         >
@@ -99,6 +149,20 @@ export default function RecognitionCard({ model }: RecognitionCardProps) {
         />
       </ul>
     </section>
+  );
+}
+
+function CompactStat({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div
+      className="rounded-xl border border-white/8 bg-black/30 px-3 py-3 text-center"
+      style={{ boxShadow: `inset 0 1px 0 ${hexToRgba(tone, 0.12)}` }}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-wide text-white/45">{label}</p>
+      <p className="mt-0.5 text-2xl font-black tabular-nums" style={{ color: hexToRgba(tone, 0.95) }}>
+        {value}
+      </p>
+    </div>
   );
 }
 

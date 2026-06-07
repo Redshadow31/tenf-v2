@@ -10,6 +10,7 @@ import {
 } from "react";
 import { filterNavTreeByAllowedHrefs } from "@/lib/admin/filterNavigationBySectionAccess";
 import type { NavItem } from "@/lib/admin/navigation";
+import { useAdminDevRolePreviewOptional } from "@/contexts/AdminDevRolePreviewContext";
 
 export type AdminNavAccessState =
   | { status: "loading" }
@@ -20,11 +21,14 @@ const AdminNavAccessContext = createContext<AdminNavAccessState>({ status: "load
 
 export function AdminNavAccessProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AdminNavAccessState>({ status: "loading" });
+  const previewCtx = useAdminDevRolePreviewOptional();
+  const navRefreshKey = previewCtx?.navRefreshKey ?? 0;
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        setState({ status: "loading" });
         const res = await fetch("/api/admin/nav-section-access", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
         if (cancelled) return;
@@ -45,7 +49,7 @@ export function AdminNavAccessProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [navRefreshKey]);
 
   return <AdminNavAccessContext.Provider value={state}>{children}</AdminNavAccessContext.Provider>;
 }

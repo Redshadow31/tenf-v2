@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import MemberFormationsValidees from "@/components/member/formations/MemberFormationsValidees";
+import FormationsValideesPage from "@/components/member/formations/validees/FormationsValideesPage";
 
 export const metadata: Metadata = {
   title: "Formations validées",
-  description: "Progression, objectifs du mois et historique des formations validées côté TENF.",
+  description:
+    "Progression, objectifs du mois, paliers et historique des formations validées — parcours TENF à ton rythme.",
 };
 
 export default function MemberValidatedFormationsPage() {
-  return <MemberFormationsValidees />;
+  return <FormationsValideesPage />;
 }

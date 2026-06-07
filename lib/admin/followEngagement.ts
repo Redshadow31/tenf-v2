@@ -540,7 +540,7 @@ async function computeSnapshotPayload(
   };
 }
 
-async function getLatestCalculatedRowsForLogins(
+export async function getLatestCalculatedRowsForLogins(
   logins: string[]
 ): Promise<Map<string, { row: any; snapshotId: string }>> {
   const latestByLogin = new Map<string, { row: any; snapshotId: string }>();

@@ -9,12 +9,14 @@ import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import MemberRoleHistoryPanel from "@/components/admin/members-gestion/MemberRoleHistoryPanel";
 
-type TabKey = "overview" | "journey" | "performance" | "community" | "admin";
+type TabKey = "overview" | "journey" | "performance" | "participation" | "raids" | "community" | "admin";
 
 const TAB_LABELS: Record<TabKey, string> = {
   overview: "Apercu",
   journey: "Parcours",
   performance: "Performance",
+  participation: "Participation",
+  raids: "Raids",
   community: "Communaute",
   admin: "Administratif",
 };
@@ -22,10 +24,24 @@ const TAB_LABELS: Record<TabKey, string> = {
 const TAB_SECTIONS: Record<TabKey, string[]> = {
   overview: [],
   journey: ["integration"],
-  performance: ["evaluations", "engagement"],
-  community: ["events", "engagement"],
+  performance: ["evaluations"],
+  participation: ["events"],
+  raids: ["engagement"],
+  community: ["engagement"],
   admin: ["notes", "sanctions", "logs"],
 };
+
+function raidSourceLabel(kind?: string): string {
+  if (kind === "manual") return "Manuel";
+  if (kind === "eventsub") return "EventSub";
+  return "Historique";
+}
+
+function raidSourceBadgeClass(kind?: string): string {
+  if (kind === "manual") return "bg-amber-500/15 text-amber-200 border border-amber-400/30";
+  if (kind === "eventsub") return "bg-violet-500/15 text-violet-200 border border-violet-400/30";
+  return "bg-slate-500/15 text-slate-300 border border-slate-400/25";
+}
 
 function formatDate(value?: string | null): string {
   if (!value) return "—";
@@ -57,6 +73,7 @@ export default function MemberFichePage() {
   const [error, setError] = useState<string | null>(null);
   const [months, setMonths] = useState(12);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [raidSourceFilter, setRaidSourceFilter] = useState<"all" | "manual" | "eventsub" | "legacy">("all");
   const [member, setMember] = useState<any>(null);
   const [sectionData, setSectionData] = useState<Record<string, any>>({});
   const [loadingSections, setLoadingSections] = useState<Set<string>>(new Set());
@@ -121,6 +138,8 @@ export default function MemberFichePage() {
       const data = await response.json();
       setMember(data.member || null);
       if (!data.member) setError("Membre non trouve");
+      void loadSection("engagement", true);
+      void loadSection("events", true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur de chargement");
     } finally {
@@ -202,10 +221,25 @@ export default function MemberFichePage() {
     return { rows: withDelta, avgScore, trend, trendPercent, trendLabel };
   }, [evaluations]);
 
-  const engagement = sectionData.engagement?.engagement || { follows: [], raids: { sent: 0, received: 0, details: [], byMonth: [] } };
-  const raids = engagement.raids || { sent: 0, received: 0, details: [], byMonth: [] };
+  const engagement = sectionData.engagement?.engagement || { follows: [], raids: { sent: 0, received: 0, details: [], byMonth: [], stats: {} } };
+  const raids = engagement.raids || { sent: 0, received: 0, details: [], byMonth: [], stats: {} };
+  const raidStats = raids.stats || {};
   const follows = engagement.follows || [];
-  const events = sectionData.events?.events || { participations: [], statsByCategory: {}, favoriteCategory: null, total: 0 };
+  const events = sectionData.events?.events || {
+    participations: [],
+    statsByCategory: {},
+    favoriteCategory: null,
+    total: 0,
+    presenceConfirmed: 0,
+    registrationOnly: 0,
+  };
+  const filteredRaidDetails = useMemo(() => {
+    const rows = [...(raids.details || [])].sort(
+      (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    if (raidSourceFilter === "all") return rows;
+    return rows.filter((row: any) => row.sourceKind === raidSourceFilter);
+  }, [raids.details, raidSourceFilter]);
   const integrationRows = sectionData.integration?.integration || [];
   const notes = sectionData.notes?.internalNotes || { current: "", history: [] };
   const sanctions = sectionData.sanctions?.sanctions || [];
@@ -336,6 +370,10 @@ export default function MemberFichePage() {
             <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
               <p className="text-[11px] uppercase tracking-wide text-gray-400">Note eval. recente</p>
               <p className="mt-1 text-sm font-semibold text-white">{lastEvaluation ? String(lastEvaluation.total) : "—"}</p>
+            </div>
+            <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
+              <p className="text-[11px] uppercase tracking-wide text-gray-400">Participations ({months} mois)</p>
+              <p className="mt-1 text-sm font-semibold text-white">{events.total || 0}</p>
             </div>
             <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
               <p className="text-[11px] uppercase tracking-wide text-gray-400">Raids (faits/recus)</p>
@@ -587,42 +625,210 @@ export default function MemberFichePage() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold">Raids (periode selectionnee)</h3>
-              {loadingSections.has("engagement") ? (
-                <p className="text-gray-400 mt-3">Chargement des raids...</p>
-              ) : sectionError("engagement") ? (
-                <p className="text-red-300 mt-3">{sectionError("engagement")}</p>
+          </section>
+        )}
+
+        {activeTab === "participation" && (
+          <section className="space-y-4">
+            <div className="rounded-2xl border border-emerald-500/25 bg-[#151922] p-5">
+              <h3 className="text-lg font-semibold text-emerald-100">Presence aux evenements & animations</h3>
+              <p className="mt-1 text-sm text-gray-400">
+                Historique sur les {months} derniers mois — presences confirmees et inscriptions sans feuille de presence.
+              </p>
+              {loadingSections.has("events") ? (
+                <p className="text-gray-400 mt-4">Chargement des participations...</p>
+              ) : sectionError("events") ? (
+                <p className="text-red-300 mt-4">{sectionError("events")}</p>
               ) : (
                 <>
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                      <p className="text-gray-400 text-xs uppercase tracking-wide">Total</p>
+                      <p className="text-2xl font-bold">{events.total || 0}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                      <p className="text-gray-400 text-xs uppercase tracking-wide">Presences confirmees</p>
+                      <p className="text-2xl font-bold text-emerald-300">{events.presenceConfirmed || 0}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                      <p className="text-gray-400 text-xs uppercase tracking-wide">Inscriptions seules</p>
+                      <p className="text-2xl font-bold">{events.registrationOnly || 0}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
+                      <p className="text-gray-400 text-xs uppercase tracking-wide">Categorie favorite</p>
+                      <p className="text-lg font-bold truncate">{events.favoriteCategory || "—"}</p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto mt-5">
+                    <table className="w-full text-sm min-w-[820px]">
+                      <thead>
+                        <tr className="text-left text-gray-400 border-b border-gray-700">
+                          <th className="py-2">Evenement</th>
+                          <th className="py-2">Date</th>
+                          <th className="py-2">Categorie</th>
+                          <th className="py-2">Mode</th>
+                          <th className="py-2">Note</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(events.participations || []).length === 0 ? (
+                          <tr>
+                            <td className="py-4 text-gray-500" colSpan={5}>
+                              Aucune participation sur la periode selectionnee.
+                            </td>
+                          </tr>
+                        ) : (
+                          (events.participations || []).map((row: any) => (
+                            <tr key={`${row.eventId}-${row.date}`} className="border-b border-gray-800">
+                              <td className="py-2 font-medium">{row.title}</td>
+                              <td className="py-2">{formatDate(row.date)}</td>
+                              <td className="py-2">{row.category}</td>
+                              <td className="py-2">
+                                <span
+                                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                    row.mode === "presence"
+                                      ? "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30"
+                                      : "bg-sky-500/15 text-sky-200 border border-sky-400/30"
+                                  }`}
+                                >
+                                  {row.mode === "presence" ? "Presence" : "Inscription"}
+                                </span>
+                              </td>
+                              <td className="py-2 text-gray-300">{row.note || "—"}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeTab === "raids" && (
+          <section className="space-y-4">
+            <div className="rounded-2xl border border-violet-500/25 bg-[#151922] p-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-violet-100">Raids faits & recus</h3>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Historique manuel + EventSub sur les {months} derniers mois (hub raids TENF).
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { key: "all", label: "Toutes sources" },
+                      { key: "manual", label: "Manuel" },
+                      { key: "eventsub", label: "EventSub" },
+                      { key: "legacy", label: "Historique" },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setRaidSourceFilter(opt.key)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors ${
+                        raidSourceFilter === opt.key
+                          ? "bg-violet-500/25 border-violet-400/40 text-violet-100"
+                          : "bg-[#0f1116] border-gray-700 text-gray-300 hover:text-white"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {loadingSections.has("engagement") ? (
+                <p className="text-gray-400 mt-4">Chargement des raids...</p>
+              ) : sectionError("engagement") ? (
+                <p className="text-red-300 mt-4">{sectionError("engagement")}</p>
+              ) : (
+                <>
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
                       <p className="text-gray-400 text-sm">Raids faits</p>
                       <p className="text-2xl font-bold">{Number(raids.sent || 0)}</p>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        M:{Number(raidStats.sentManual || 0)} · ES:{Number(raidStats.sentEventsub || 0)} · H:
+                        {Number(raidStats.sentLegacy || 0)}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
                       <p className="text-gray-400 text-sm">Raids recus</p>
                       <p className="text-2xl font-bold">{Number(raids.received || 0)}</p>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        M:{Number(raidStats.receivedManual || 0)} · ES:{Number(raidStats.receivedEventsub || 0)} · H:
+                        {Number(raidStats.receivedLegacy || 0)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 md:col-span-2">
+                      <p className="text-gray-400 text-sm mb-2">Repartition mensuelle</p>
+                      <div className="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
+                        {(raids.byMonth || []).length === 0 ? (
+                          <span className="text-xs text-gray-500">Aucune donnee.</span>
+                        ) : (
+                          (raids.byMonth || []).slice(0, 6).map((row: any) => (
+                            <span
+                              key={String(row.month)}
+                              className="rounded-full border border-gray-700 bg-black/30 px-2 py-1 text-[11px] text-gray-300"
+                            >
+                              {toMonthLabel(row.month)} · {row.sent}/{row.received}
+                            </span>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="overflow-x-auto mt-4">
-                    <table className="w-full text-sm min-w-[580px]">
+
+                  <div className="overflow-x-auto mt-5">
+                    <table className="w-full text-sm min-w-[900px]">
                       <thead>
                         <tr className="text-left text-gray-400 border-b border-gray-700">
-                          <th className="py-2">Mois</th>
-                          <th className="py-2">Faits</th>
-                          <th className="py-2">Recus</th>
+                          <th className="py-2">Date</th>
+                          <th className="py-2">Sens</th>
+                          <th className="py-2">Contrepartie</th>
+                          <th className="py-2">Qté</th>
+                          <th className="py-2">Source</th>
+                          <th className="py-2">Viewers</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {(raids.byMonth || []).length === 0 ? (
-                          <tr><td className="py-3 text-gray-500" colSpan={3}>Aucune donnee mensuelle.</td></tr>
+                        {filteredRaidDetails.length === 0 ? (
+                          <tr>
+                            <td className="py-4 text-gray-500" colSpan={6}>
+                              Aucun raid sur la periode ou pour ce filtre.
+                            </td>
+                          </tr>
                         ) : (
-                          (raids.byMonth || []).map((row: any) => (
-                            <tr key={String(row.month)} className="border-b border-gray-800">
-                              <td className="py-2">{toMonthLabel(row.month)}</td>
-                              <td className="py-2">{row.sent}</td>
-                              <td className="py-2">{row.received}</td>
+                          filteredRaidDetails.map((row: any, idx: number) => (
+                            <tr key={`${row.type}-${row.date}-${idx}`} className="border-b border-gray-800">
+                              <td className="py-2">{formatDateTime(row.date)}</td>
+                              <td className="py-2">
+                                <span
+                                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                    row.type === "sent"
+                                      ? "bg-sky-500/15 text-sky-200 border border-sky-400/30"
+                                      : "bg-amber-500/15 text-amber-200 border border-amber-400/30"
+                                  }`}
+                                >
+                                  {row.type === "sent" ? "Fait" : "Recu"}
+                                </span>
+                              </td>
+                              <td className="py-2 font-medium">{row.type === "sent" ? row.target : row.raider}</td>
+                              <td className="py-2">{row.count || 1}</td>
+                              <td className="py-2">
+                                <span
+                                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${raidSourceBadgeClass(row.sourceKind)}`}
+                                >
+                                  {raidSourceLabel(row.sourceKind)}
+                                </span>
+                              </td>
+                              <td className="py-2 text-gray-300">{row.viewers ?? "—"}</td>
                             </tr>
                           ))
                         )}
@@ -654,46 +860,6 @@ export default function MemberFichePage() {
                 </div>
               </div>
             </div>
-            <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold">Evenements communautaires</h3>
-              {loadingSections.has("events") ? (
-                <p className="text-gray-400 mt-3">Chargement des evenements...</p>
-              ) : sectionError("events") ? (
-                <p className="text-red-300 mt-3">{sectionError("events")}</p>
-              ) : (
-                <>
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-sm">Participations</p>
-                      <p className="text-2xl font-bold">{events.total || 0}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-sm">Categorie favorite</p>
-                      <p className="text-2xl font-bold">{events.favoriteCategory || "—"}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-sm">Categories distinctes</p>
-                      <p className="text-2xl font-bold">{Object.keys(events.statsByCategory || {}).length}</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {(events.participations || []).length === 0 ? (
-                      <p className="text-gray-500 text-sm">Aucune participation evenement.</p>
-                    ) : (
-                      (events.participations || []).map((row: any) => (
-                        <div key={`${row.eventId}-${row.date}`} className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 text-sm">
-                          <div className="font-semibold">{row.title}</div>
-                          <div className="text-gray-400">
-                            {formatDate(row.date)} • {row.category} • {row.mode === "presence" ? "Presence" : "Inscription"}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-
             <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5">
               <h3 className="text-lg font-semibold">Suivi follows (evaluation)</h3>
               {loadingSections.has("engagement") ? (

@@ -23,7 +23,7 @@ const ROLE_BULLET_PREFIX: Partial<Record<CharteAudience, string>> = {
   decouverte: "Modérateur en découverte —",
   accompagnement: "Modérateur en accompagnement —",
   pause: "Modérateur en pause —",
-  activite_reduite: "Modérateur en activité réduite —",
+  activite_reduite: "Activité réduite —",
   soutien: "Soutien TENF —",
   ancien_staff: "Ancien staff",
 };

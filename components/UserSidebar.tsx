@@ -7,6 +7,8 @@ import { getDiscordUser, logoutDiscord, loginWithDiscord, type DiscordUser } fro
 import { useMemberDesktopNavOptional } from "@/contexts/MemberDesktopNavContext";
 import UserSidebarNav from "@/components/member/navigation/UserSidebarNav";
 import UserSidebarMemberWelcome from "@/components/member/navigation/UserSidebarMemberWelcome";
+import UserSidebarCompact from "@/components/member/navigation/UserSidebarCompact";
+import { isMemberSidebarFullContext } from "@/lib/navigation/memberSidebar";
 
 type MemberOverviewPayload = {
   member?: { displayName?: string; role?: string; twitchLogin?: string | null };
@@ -175,13 +177,15 @@ export default function UserSidebar({
     window.location.href = "/";
   };
 
-  const asideClassName =
-    `h-full min-h-0 w-full min-w-0 shrink-0 border-r p-5 sm:p-6 xl:sticky xl:top-0 xl:max-h-[100dvh] xl:overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(148,163,184,0.35)_transparent] ${className ?? ""}`.trim();
+  const asideShellClassName = `h-full min-h-0 w-full min-w-0 shrink-0 border-r ${className ?? ""}`.trim();
+  const asideScrollableClassName = `${asideShellClassName} p-5 sm:p-6 xl:sticky xl:top-0 xl:max-h-[100dvh] xl:overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(148,163,184,0.35)_transparent]`;
+  const asideLoggedInClassName = `${asideShellClassName} p-5 sm:p-6 xl:sticky xl:top-0 xl:flex xl:max-h-[100dvh] xl:flex-col xl:overflow-hidden`;
+  const asideCompactClassName = `${asideShellClassName} p-4 sm:p-5 xl:sticky xl:top-0 xl:max-h-[100dvh] xl:overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(148,163,184,0.35)_transparent]`;
 
   if (loading) {
     return (
       <aside
-        className={asideClassName}
+        className={asideScrollableClassName}
         style={{ backgroundColor: "var(--color-sidebar-bg)", borderColor: "var(--color-sidebar-border)" }}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -213,7 +217,7 @@ export default function UserSidebar({
   if (!discordUser) {
     return (
       <aside
-        className={asideClassName}
+        className={asideScrollableClassName}
         style={{ backgroundColor: "var(--color-sidebar-bg)", borderColor: "var(--color-sidebar-border)" }}
       >
         <div className="space-y-4">
@@ -255,16 +259,19 @@ export default function UserSidebar({
     );
   }
 
-  const showDesktopCollapse = Boolean(desktopNav?.isMemberArea && !showMobileCloseButton);
+  const isFullSidebar = isMemberSidebarFullContext(pathname);
+  const showDesktopCollapse = Boolean(isFullSidebar && desktopNav?.isMemberArea && !showMobileCloseButton);
+  const displayName = memberOverview?.member?.displayName?.trim() || discordUser.username;
+  const loggedInAsideClassName = isFullSidebar ? asideLoggedInClassName : asideCompactClassName;
 
   return (
     <aside
-      className={asideClassName}
+      className={loggedInAsideClassName}
       style={{ backgroundColor: "var(--color-sidebar-bg)", borderColor: "var(--color-sidebar-border)" }}
     >
-      <div className="flex min-h-0 flex-col gap-5">
+      <div className={`flex min-h-0 flex-1 flex-col gap-3 ${isFullSidebar ? "xl:min-h-0" : ""}`}>
         {showMobileCloseButton ? (
-          <div className="flex justify-end">
+          <div className="shrink-0 flex justify-end">
             <button
               type="button"
               onClick={onRequestClose}
@@ -277,33 +284,49 @@ export default function UserSidebar({
           </div>
         ) : null}
 
-        <UserSidebarMemberWelcome
-          discordUser={discordUser}
-          overview={memberOverview}
-          twitchLinked={twitchLinked}
-          pathname={pathname}
-          unreadNotifications={unreadNotifications}
-          onNavigate={onNavigate}
-        />
+        {isFullSidebar ? (
+          <>
+            <div className="shrink-0">
+              <UserSidebarMemberWelcome
+                discordUser={discordUser}
+                overview={memberOverview}
+                twitchLinked={twitchLinked}
+                pathname={pathname}
+                unreadNotifications={unreadNotifications}
+                onNavigate={onNavigate}
+                showDesktopCollapse={showDesktopCollapse}
+                onRequestCollapseDesktop={() => desktopNav?.setDesktopCollapsed(true)}
+              />
+            </div>
 
-        <UserSidebarNav
-          pathname={pathname}
-          hasAdminAccess={hasAdminAccess}
-          twitchLinked={twitchLinked}
-          unreadNotifications={unreadNotifications}
-          onNavigate={onNavigate}
-          showDesktopCollapse={showDesktopCollapse}
-          onRequestCollapseDesktop={() => desktopNav?.setDesktopCollapsed(true)}
-        />
+            <UserSidebarNav
+              pathname={pathname}
+              hasAdminAccess={hasAdminAccess}
+              twitchLinked={twitchLinked}
+              unreadNotifications={unreadNotifications}
+              onNavigate={onNavigate}
+              showInlineSearch={showMobileCloseButton}
+            />
+          </>
+        ) : (
+          <UserSidebarCompact
+            discordUser={discordUser}
+            displayName={displayName}
+            unreadNotifications={unreadNotifications}
+            onNavigate={onNavigate}
+          />
+        )}
 
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="mt-auto flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:border-rose-500/30 hover:bg-rose-950/20 hover:text-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400/60"
-        >
-          <LogOut className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-          <span className="break-words text-center">Déconnexion</span>
-        </button>
+        <div className={`mt-auto shrink-0 ${isFullSidebar ? "border-t border-white/10 pt-2.5" : "pt-1"}`}>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full min-h-[38px] items-center justify-center gap-2 rounded-lg border border-white/10 bg-transparent px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-rose-500/30 hover:bg-rose-950/20 hover:text-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400/60"
+          >
+            <LogOut className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+            <span className="break-words text-center">Déconnexion</span>
+          </button>
+        </div>
       </div>
     </aside>
   );

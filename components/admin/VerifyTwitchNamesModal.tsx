@@ -161,9 +161,9 @@ export default function VerifyTwitchNamesModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700 flex-shrink-0">
           <div>
-            <h2 className="text-2xl font-bold text-white">Vérifier les noms de chaînes Twitch</h2>
+            <h2 className="text-2xl font-bold text-white">Vérifier les noms Twitch</h2>
             <p className="text-sm text-gray-400 mt-1">
-              Vérifie les noms de chaînes via leur ID Twitch pour détecter les changements de pseudo
+              Compare les logins en base avec l&apos;API Twitch — corrige les incohérences avant qu&apos;elles ne bloquent un sync.
             </p>
           </div>
           <button

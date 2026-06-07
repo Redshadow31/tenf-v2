@@ -5,14 +5,18 @@ type MemberSurfaceProps = {
   /**
    * `default` : colonne centrée max-w-6xl (comportement historique).
    * `fluid` : occupe la largeur du `<main>` avec marges latérales en `clamp()`
-   * et conteneur `min(120rem, 100%)` — lisible au zoom navigateur.
+   * — lisible au zoom navigateur.
    */
   layout?: "default" | "fluid";
   /**
-   * Avec `layout="fluid"` : marges et plafond de largeur un peu plus généreux
-   * (pages type inbox qui doivent respirer au zoom et sur grands écrans).
+   * Avec `layout="fluid"` : marges latérales plus serrées pour laisser la grille bento
+   * occuper les côtés (dashboard, profil, compléter…).
    */
   wide?: boolean;
+  /**
+   * Avec `layout="fluid"` : pas de plafond max-width interne — 100 % du `<main>`.
+   */
+  fill?: boolean;
 };
 
 const FLUID_OUTER_STYLE: CSSProperties = {
@@ -28,13 +32,14 @@ const FLUID_OUTER_STYLE: CSSProperties = {
 
 const FLUID_OUTER_WIDE_STYLE: CSSProperties = {
   // @ts-expect-error propriété CSS personnalisée
-  "--member-surface-px": "clamp(0.6rem, 0.35rem + 1.65vw, 3.25rem)",
+  "--member-surface-px": "clamp(0.4rem, 0.25rem + 0.85vw, 1.15rem)",
   paddingLeft: "var(--member-surface-px)",
   paddingRight: "var(--member-surface-px)",
-  paddingTop: "clamp(0.65rem, 0.5rem + 1.25vw, 1.75rem)",
-  paddingBottom: "clamp(0.65rem, 0.5rem + 1.25vw, 1.75rem)",
+  paddingTop: "clamp(0.55rem, 0.4rem + 0.9vw, 1.35rem)",
+  paddingBottom: "clamp(0.55rem, 0.4rem + 0.9vw, 1.35rem)",
   width: "100%",
   minWidth: 0,
+  boxSizing: "border-box",
 };
 
 const FLUID_INNER_STYLE: CSSProperties = {
@@ -42,20 +47,40 @@ const FLUID_INNER_STYLE: CSSProperties = {
   marginLeft: "auto",
   marginRight: "auto",
   width: "100%",
+  minWidth: 0,
 };
 
 const FLUID_INNER_WIDE_STYLE: CSSProperties = {
-  maxWidth: "min(100%, 140rem)",
-  marginLeft: "auto",
-  marginRight: "auto",
+  maxWidth: "100%",
   width: "100%",
+  minWidth: 0,
 };
 
-export default function MemberSurface({ children, layout = "default", wide = false }: MemberSurfaceProps) {
+const FLUID_INNER_FILL_STYLE: CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  maxWidth: "none",
+};
+
+export default function MemberSurface({
+  children,
+  layout = "default",
+  wide = false,
+  fill = false,
+}: MemberSurfaceProps) {
   if (layout === "fluid") {
+    const innerStyle = fill
+      ? FLUID_INNER_FILL_STYLE
+      : wide
+        ? FLUID_INNER_WIDE_STYLE
+        : FLUID_INNER_STYLE;
+
     return (
-      <div style={wide ? FLUID_OUTER_WIDE_STYLE : FLUID_OUTER_STYLE}>
-        <div style={wide ? FLUID_INNER_WIDE_STYLE : FLUID_INNER_STYLE} className="space-y-[clamp(0.65rem,1vw,1.5rem)] sm:space-y-[clamp(0.85rem,1.25vw,1.75rem)]">
+      <div style={wide || fill ? FLUID_OUTER_WIDE_STYLE : FLUID_OUTER_STYLE}>
+        <div
+          style={innerStyle}
+          className="w-full min-w-0 space-y-[clamp(0.65rem,1vw,1.5rem)] sm:space-y-[clamp(0.85rem,1.25vw,1.75rem)]"
+        >
           {children}
         </div>
       </div>

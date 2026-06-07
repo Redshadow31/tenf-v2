@@ -12,7 +12,7 @@ export const ADMIN_HUB_DESCRIPTIONS: Record<string, string> = {
   "/admin/pilotage":
     "Pilote le quotidien du serveur. Suis les incidents, le monitoring et la qualité des données pour garder TENF en bonne santé.",
   "/admin/mon-compte":
-    "Ton espace personnel d'administration : ajuste ton profil staff, tes préférences et retrouve les raccourcis utiles à ton activité.",
+    "Ton espace personnel staff : identité membre, charte, alertes e-mail et raccourcis adaptés à ton rôle.",
   "/admin/membres":
     "Gère la communauté : annuaire, validation des profils, badges et recrutement de nouveaux membres du staff.",
   "/admin/onboarding":

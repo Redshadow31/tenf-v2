@@ -129,4 +129,5 @@ export type PresetFilter =
   | "vip"
   | "inactifs"
   | "revue_due"
-  | "staff";
+  | "staff"
+  | "ancien_staff";

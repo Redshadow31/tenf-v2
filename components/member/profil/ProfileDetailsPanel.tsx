@@ -48,37 +48,37 @@ export default function ProfileDetailsPanel({ member }: ProfileDetailsPanelProps
       body: (
         <div className="grid gap-[clamp(0.6rem,0.8vw,0.85rem)] grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))]">
           <div className="rounded-xl border border-white/[0.06] bg-black/25 p-[clamp(0.75rem,1vw,1.15rem)]">
-            <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-zinc-500">Compte</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Compte</p>
             <ul
-              className="mt-2 space-y-1.5 text-zinc-200"
+              className="mt-2 space-y-1.5 text-white/85"
               style={{ fontSize: "clamp(0.8rem,0.9vw,0.9rem)" }}
             >
               <li>
-                <span className="text-zinc-500">Pseudo Twitch · </span>
+                <span className="text-white/45">Pseudo Twitch · </span>
                 {member.twitchLogin}
               </li>
               <li>
-                <span className="text-zinc-500">Nom affiché · </span>
+                <span className="text-white/45">Nom affiché · </span>
                 {member.displayName}
               </li>
               <li>
-                <span className="text-zinc-500">Rôle TENF · </span>
+                <span className="text-white/45">Rôle TENF · </span>
                 {member.role}
               </li>
             </ul>
           </div>
           <div className="rounded-xl border border-white/[0.06] bg-black/25 p-[clamp(0.75rem,1vw,1.15rem)]">
-            <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-zinc-500">Serveur</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Serveur</p>
             <ul
-              className="mt-2 space-y-1.5 text-zinc-200"
+              className="mt-2 space-y-1.5 text-white/85"
               style={{ fontSize: "clamp(0.8rem,0.9vw,0.9rem)" }}
             >
               <li>
-                <span className="text-zinc-500">Statut · </span>
+                <span className="text-white/45">Statut · </span>
                 {member.tenfSummary.status}
               </li>
               <li>
-                <span className="text-zinc-500">Fuseau · </span>
+                <span className="text-white/45">Fuseau · </span>
                 {member.timezone || "Non renseigné"}
               </li>
             </ul>
@@ -99,9 +99,9 @@ export default function ProfileDetailsPanel({ member }: ProfileDetailsPanelProps
                 key={label}
                 className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2.5"
               >
-                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">{label}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-white/45">{label}</span>
                 <span
-                  className={"truncate font-medium " + (value ? "text-white" : "text-zinc-600")}
+                  className={"truncate font-medium " + (value ? "text-white" : "text-white/35")}
                   style={{ fontSize: "clamp(0.78rem,0.88vw,0.88rem)" }}
                   title={value || undefined}
                 >
@@ -131,9 +131,11 @@ export default function ProfileDetailsPanel({ member }: ProfileDetailsPanelProps
   return (
     <ProfileSectionCard
       id="profile-details"
+      kicker="Identité"
       title="Infos & bio"
-      description="Trois volets repliables. Pour modifier ces informations, passe par « Compléter mon profil »."
+      description="Identité, réseaux et présentation — trois volets repliables. Modifie via « Compléter mon profil »."
       icon={Contact}
+      tone="neutral"
       rightSlot={
         <Link
           href="/member/profil/completer"
@@ -167,7 +169,7 @@ export default function ProfileDetailsPanel({ member }: ProfileDetailsPanelProps
                     {panel.title}
                   </p>
                   <p
-                    className="mt-0.5 text-pretty text-zinc-500"
+                    className="mt-0.5 text-pretty text-white/45"
                     style={{ fontSize: "clamp(0.72rem,0.78vw,0.78rem)" }}
                   >
                     {panel.subtitle}

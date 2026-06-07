@@ -34,6 +34,15 @@ import {
 import { getDiscordUser } from "@/lib/discord";
 import AdminToastStack, { type AdminToastItem, type AdminToastType } from "@/components/admin/ui/AdminToastStack";
 import AdminTableShell from "@/components/admin/ui/AdminTableShell";
+import AdminDashboardLoadingScreen from "@/components/admin/dashboard/AdminDashboardLoadingScreen";
+import MemberBentoShell, { MemberBentoCell, MemberBentoRow } from "@/components/member/layout/MemberBentoShell";
+import PilotageKpiStrip from "@/components/admin/pilotage/PilotageKpiStrip";
+import PilotagePageAside from "@/components/admin/pilotage/PilotagePageAside";
+import PilotagePageHeader from "@/components/admin/pilotage/PilotagePageHeader";
+import PilotagePillarCards from "@/components/admin/pilotage/PilotagePillarCards";
+import PilotageStaffGuide from "@/components/admin/pilotage/PilotageStaffGuide";
+import PilotageTabNav from "@/components/admin/pilotage/PilotageTabNav";
+import { buildPilotageCopyModel } from "@/lib/admin/pilotage/pilotageCopyModel";
 
 interface MemberEventLite {
   id: string;
@@ -343,7 +352,7 @@ const QUICK_ACTION_ORDER: Record<Exclude<StaffPersona, "general">, string[]> = {
 };
 
 export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
-  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; role: string | null } | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; role: string | null; rawRole: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingVisual, setLoadingVisual] = useState(true);
   const [loadingRecap, setLoadingRecap] = useState(true);
@@ -482,7 +491,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
           }
         }
 
-        setCurrentAdmin({ username: displayName, role });
+        setCurrentAdmin({ username: displayName, role, rawRole: typeof roleData?.rawRole === "string" ? roleData.rawRole : null });
       } catch (error) {
         console.warn("[dashboard2] Impossible de charger le header admin personalise:", error);
       }
@@ -1013,7 +1022,50 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  const pilotageCopy = useMemo(() => {
+    if (!isPilotage || !currentAdmin) return null;
+    return buildPilotageCopyModel({
+      displayName: adminDisplayName,
+      roleLabel: adminRoleLabel,
+      rawRole: currentAdmin.rawRole,
+      dateLabel: currentLongDate.charAt(0).toUpperCase() + currentLongDate.slice(1),
+      counts: {
+        totalMembers: kpis.total,
+        avgCompletion: kpis.avgCompletion,
+        raidsPending: kpis.raidsPendingCount,
+        tasksInView: filteredOpsQueue.length,
+        incomplete: kpis.incomplete,
+        profileValidationPending: kpis.profileValidationPendingCount,
+        staffApplicationsPending: kpis.staffApplicationsPendingCount,
+      },
+    });
+  }, [
+    isPilotage,
+    currentAdmin,
+    adminDisplayName,
+    adminRoleLabel,
+    currentLongDate,
+    kpis,
+    filteredOpsQueue.length,
+  ]);
+
+  const scrollToPilotageOps = useCallback(() => {
+    setPilotTab("cockpit");
+    setWorkflowExpandedId(null);
+    requestAnimationFrame(() => scrollToDashSection("admin-dash-ops"));
+  }, [scrollToDashSection]);
+
   if (loading) {
+    if (isPilotage) {
+      return (
+        <div className="-mx-4 md:-mx-6">
+          <AdminDashboardLoadingScreen
+            title="Chargement du cockpit pilotage"
+            subtitle="Signaux communauté, files modération et agenda staff…"
+          />
+        </div>
+      );
+    }
     return (
       <div className="space-y-4 text-white">
         <div
@@ -1041,11 +1093,73 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
   }
 
   return (
-    <div className="space-y-6 text-white">
+    <>
       <AdminToastStack
         toasts={toasts}
         onClose={(id) => setToasts((prev) => prev.filter((toast) => toast.id !== id))}
       />
+      {isPilotage && pilotageCopy ? (
+        <div className="-mx-4 md:-mx-6 text-white">
+          <MemberBentoShell accentHex={pilotageCopy.accent}>
+            <MemberBentoRow stretch>
+              <MemberBentoCell span={7} stretch>
+                <PilotagePageHeader copy={pilotageCopy} onRefresh={() => window.location.reload()} />
+              </MemberBentoCell>
+              <MemberBentoCell span={5} stretch>
+                <PilotagePageAside
+                  copy={pilotageCopy}
+                  meeting={{
+                    label: upcomingKpis.nextMeetingLabel || "Réunion staff",
+                    dateLabel: formatMeetingDateTime(upcomingKpis.nextMeetingDateIso),
+                    registrations: upcomingKpis.nextMeetingRegistrations,
+                  }}
+                />
+              </MemberBentoCell>
+            </MemberBentoRow>
+            <MemberBentoRow stretch>
+              <MemberBentoCell span={12} stretch>
+                <PilotageKpiStrip
+                  copy={pilotageCopy}
+                  counts={{
+                    totalMembers: kpis.total,
+                    avgCompletion: kpis.avgCompletion,
+                    raidsPending: kpis.raidsPendingCount,
+                    tasksInView: filteredOpsQueue.length,
+                    incomplete: kpis.incomplete,
+                    profileValidationPending: kpis.profileValidationPendingCount,
+                    staffApplicationsPending: kpis.staffApplicationsPendingCount,
+                  }}
+                  onScrollToOps={scrollToPilotageOps}
+                />
+              </MemberBentoCell>
+            </MemberBentoRow>
+            <MemberBentoRow stretch>
+              <MemberBentoCell span={12} stretch>
+                <PilotageStaffGuide copy={pilotageCopy} />
+              </MemberBentoCell>
+            </MemberBentoRow>
+            <MemberBentoRow stretch>
+              <MemberBentoCell span={12} stretch>
+                <PilotagePillarCards copy={pilotageCopy} />
+              </MemberBentoCell>
+            </MemberBentoRow>
+            <MemberBentoRow>
+              <MemberBentoCell span={12}>
+                <PilotageTabNav
+                  copy={pilotageCopy}
+                  activeTab={pilotTab}
+                  onTabChange={(tab) => {
+                    setPilotTab(tab);
+                    setWorkflowExpandedId(null);
+                  }}
+                />
+              </MemberBentoCell>
+            </MemberBentoRow>
+          </MemberBentoShell>
+        </div>
+      ) : null}
+      <div className={`space-y-6 text-white${isPilotage && pilotageCopy ? " -mx-4 md:-mx-6" : ""}`}>
+      {!isPilotage && (
       <section
         className="relative overflow-hidden rounded-3xl border p-6 md:p-8"
         style={{
@@ -1410,90 +1524,8 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
               </div>
             </>
           )}
-          {isPilotage && (
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              {[
-                {
-                  title: "Membres & utilisateurs",
-                  body: "Fiches, validations, formations : chaque correction améliore l’expérience visible côté espace membre.",
-                  icon: HeartHandshake,
-                  href: "/admin/membres/gestion",
-                  cta: "Gestion membres",
-                },
-                {
-                  title: "Modération & live",
-                  body: "Raids, points Discord, présences et propositions : le rythme du Discord et des événements.",
-                  icon: Scale,
-                  href: "/admin/engagement/raids-a-valider",
-                  cta: "Files modération",
-                },
-                {
-                  title: "Administration",
-                  body: "Pilotage staff, communauté au sens large, audits : cadre et cohérence pour toute l’équipe.",
-                  icon: Compass,
-                  href: "/admin/communaute",
-                  cta: "Hub communauté",
-                },
-              ].map((pillar) => {
-                const PIcon = pillar.icon;
-                return (
-                  <Link
-                    key={pillar.title}
-                    href={pillar.href}
-                    className={`group rounded-2xl border border-white/12 bg-black/20 p-4 transition hover:-translate-y-[2px] hover:border-violet-400/40 hover:bg-black/30 ${focusRingClass}`}
-                  >
-                    <PIcon className="h-8 w-8 text-violet-300/90 transition group-hover:text-amber-200/90" aria-hidden />
-                    <h2 className="mt-3 text-base font-semibold text-white">{pillar.title}</h2>
-                    <p className="mt-2 text-sm leading-snug text-slate-400 group-hover:text-slate-300">{pillar.body}</p>
-                    <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.06em] text-amber-200/90">
-                      {pillar.cta}
-                      <ArrowUpRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
         </div>
       </section>
-
-      {isPilotage && (
-        <nav
-          className="sticky top-2 z-10 flex flex-wrap gap-2 rounded-2xl border border-white/12 bg-[#0f1119]/90 p-2 shadow-lg shadow-black/30 backdrop-blur-md"
-          aria-label="Sections du pilotage"
-        >
-          {(
-            [
-              { id: "cockpit" as const, label: "Cockpit & actions", Icon: LayoutDashboard, desc: "Files, workflow, flux" },
-              { id: "vitals" as const, label: "Pouls communauté", Icon: Activity, desc: "Discord, raids, graphiques" },
-              { id: "evenements" as const, label: "Événements", Icon: CalendarRange, desc: "Recaps & anomalies" },
-            ] as const
-          ).map((tab) => {
-            const active = pilotTab === tab.id;
-            const TabIcon = tab.Icon;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setPilotTab(tab.id);
-                  setWorkflowExpandedId(null);
-                }}
-                className={`flex min-w-[140px] flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${focusRingClass} ${
-                  active
-                    ? "border-violet-400/50 bg-violet-600/20 text-white shadow-inner shadow-violet-900/40"
-                    : "border-transparent bg-white/[0.03] text-slate-300 hover:border-white/15 hover:bg-white/[0.06]"
-                }`}
-              >
-                <TabIcon className={`h-5 w-5 shrink-0 ${active ? "text-violet-200" : "text-slate-500"}`} aria-hidden />
-                <span>
-                  <span className="block text-sm font-semibold">{tab.label}</span>
-                  <span className="block text-[11px] font-normal text-slate-500">{tab.desc}</span>
-                </span>
-              </button>
-            );
-          })}
-        </nav>
       )}
 
       {(!isPilotage || pilotTab === "cockpit") &&
@@ -1511,7 +1543,13 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
             background: "linear-gradient(145deg, rgba(54,26,29,0.75), rgba(26,16,20,0.9))",
           }}
         >
-          <h2 className="mb-2 text-lg font-semibold text-red-200">Alertes critiques</h2>
+          <h2 className="mb-1 text-lg font-semibold text-red-200">
+            {pilotageCopy?.sections.alerts.title ?? "Alertes critiques"}
+          </h2>
+          <p className="mb-3 text-sm leading-relaxed text-red-100/80">
+            {pilotageCopy?.sections.alerts.intro ??
+              "Signaux qui impactent directement les créateurs ou la gouvernance staff."}
+          </p>
           <div className="flex flex-wrap gap-4 text-sm text-red-100/95">
             {kpis.reviewOverdue > 0 && <span>{kpis.reviewOverdue} revue(s) en retard</span>}
             {kpis.missingDiscord > 0 && <span>{kpis.missingDiscord} membre(s) sans ID Discord</span>}
@@ -1527,11 +1565,16 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
       <section id="admin-dash-ops" className="scroll-mt-24 rounded-2xl border p-5" style={premiumCardStyle}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold">À traiter maintenant</h2>
-            <p className="text-xs text-gray-300/80">
-              File partagée modérateurs / administrateurs — priorité, SLA et assignation ; filtre selon ton rôle avec la
-              vue enregistrée.
+            <h2 className="text-xl font-semibold">
+              {pilotageCopy?.sections.ops.title ?? "À traiter maintenant"}
+            </h2>
+            <p className="text-xs leading-relaxed text-gray-300/80">
+              {pilotageCopy?.sections.ops.intro ??
+                "File partagée modérateurs / administrateurs — priorité, SLA et assignation ; filtre selon ton rôle avec la vue enregistrée."}
             </p>
+            {pilotageCopy ? (
+              <p className="mt-2 text-xs italic text-violet-200/70">{pilotageCopy.sections.ops.assignHint}</p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -1566,7 +1609,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           {filteredOpsQueue.length === 0 ? (
             <div className="rounded-xl border border-white/10 p-4 text-sm text-gray-300">
-              Rien d'urgent selon cette vue.
+              {pilotageCopy?.sections.ops.empty ?? "Rien d'urgent selon cette vue."}
             </div>
           ) : (
             filteredOpsQueue.map((item) => (
@@ -1621,9 +1664,12 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
       <section id="admin-dash-vitals" className="scroll-mt-24 rounded-2xl border p-4 md:p-5" style={softCardStyle}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-200">Alertes immédiates</h3>
-            <p className="text-xs text-gray-400">
-              Impact direct sur les membres ; utile en priorité aux modérateurs et à l’administration des comptes
+            <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-200">
+              {pilotageCopy?.sections.vitals.alertsTitle ?? "Alertes immédiates"}
+            </h3>
+            <p className="text-xs leading-relaxed text-gray-400">
+              {pilotageCopy?.sections.vitals.alertsIntro ??
+                "Impact direct sur les membres ; utile en priorité aux modérateurs et à l'administration des comptes"}
             </p>
           </div>
           <span className="rounded-full border border-white/15 bg-black/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-300">
@@ -1653,8 +1699,13 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
       <section id="admin-dash-agenda" className="scroll-mt-24 rounded-2xl border p-4 md:p-5" style={softCardStyle}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-200">Prévisions & agenda</h3>
-            <p className="text-xs text-gray-400">Ce qui arrive pour les membres et la modération événementielle</p>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-200">
+              {pilotageCopy?.sections.vitals.agendaTitle ?? "Prévisions & agenda"}
+            </h3>
+            <p className="text-xs leading-relaxed text-gray-400">
+              {pilotageCopy?.sections.vitals.agendaIntro ??
+                "Ce qui arrive pour les membres et la modération événementielle"}
+            </p>
           </div>
           <span className="rounded-full border border-white/15 bg-black/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-300">
             Horizon court terme
@@ -1681,6 +1732,14 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
       </section>
 
       <div id="admin-dash-activite" className="scroll-mt-24 grid grid-cols-1 gap-6 md:grid-cols-3">
+        {pilotageCopy ? (
+          <div className="md:col-span-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-violet-200/80">
+              {pilotageCopy.sections.vitals.activityTitle}
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-300/90">{pilotageCopy.sections.vitals.activityIntro}</p>
+          </div>
+        ) : null}
         <div className="rounded-2xl border p-6" style={premiumCardStyle}>
           <h3 className="text-lg font-semibold mb-3 text-center">Raids envoyés</h3>
           <p className="text-4xl font-bold text-center text-white">{raidStats.totalRaidsSent}</p>
@@ -1818,10 +1877,12 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
       <Fragment>
       <div id="admin-dash-workflow" className="scroll-mt-24 grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="rounded-2xl border p-6 xl:col-span-2" style={premiumCardStyle}>
-          <h2 className="mb-2 text-xl font-semibold">Workflow mensuel</h2>
-          <p className="mb-4 text-xs text-slate-400">
-            Touche une carte pour le détail — la plupart des étapes concernent surtout les administrateurs (données,
-            évaluations) ; certaines tâches sont partagées avec la modération (profils, visibilité).
+          <h2 className="mb-2 text-xl font-semibold">
+            {pilotageCopy?.sections.workflow.title ?? "Workflow mensuel"}
+          </h2>
+          <p className="mb-4 text-xs leading-relaxed text-slate-400">
+            {pilotageCopy?.sections.workflow.intro ??
+              "Touche une carte pour le détail — la plupart des étapes concernent surtout les administrateurs (données, évaluations) ; certaines tâches sont partagées avec la modération (profils, visibilité)."}
           </p>
           <div className="flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-violet-600/40">
             {workflow.map((step) => {
@@ -1864,7 +1925,7 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
                       href={step.href}
                       className={`mt-4 inline-flex items-center gap-1.5 rounded-full border border-amber-400/35 px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-amber-100 transition hover:bg-amber-500/10 ${focusRingClass}`}
                     >
-                      Ouvrir la page dédiée
+                      {pilotageCopy?.sections.workflow.detailHint ?? "Ouvrir la page dédiée"}
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </Link>
                   </div>
@@ -1897,12 +1958,18 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
       </div>
 
       <div className="rounded-2xl border p-6" style={softCardStyle}>
-        <h2 className="mb-4 inline-flex items-center gap-2 text-xl font-semibold">
+        <h2 className="mb-1 inline-flex items-center gap-2 text-xl font-semibold">
           <Sparkles size={16} style={{ color: "rgba(230, 199, 115, 0.92)" }} />
-          Activité récente (24-48h)
+          {pilotageCopy?.sections.recentActivity.title ?? "Activité récente (24-48h)"}
         </h2>
+        <p className="mb-4 text-xs leading-relaxed text-slate-400">
+          {pilotageCopy?.sections.recentActivity.intro ??
+            "Mouvements récents sur le site — utile pour comprendre le contexte avant de répondre sur Discord."}
+        </p>
         {events.length === 0 ? (
-          <p className="text-sm" style={subtleMutedText}>Aucune activité récente.</p>
+          <p className="text-sm" style={subtleMutedText}>
+            {pilotageCopy?.sections.recentActivity.empty ?? "Aucune activité récente."}
+          </p>
         ) : (
           <div className="space-y-2">
             {events.slice(0, 10).map((event) => (
@@ -1931,8 +1998,16 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
 
       {(!isPilotage || pilotTab === "evenements") && (
       <div id="admin-dash-events" className="scroll-mt-24 rounded-2xl border p-6" style={softCardStyle}>
-        <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-          <h2 className="text-xl font-semibold">Suivi événements (tableaux)</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">
+              {pilotageCopy?.sections.events.title ?? "Suivi événements (tableaux)"}
+            </h2>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-400">
+              {pilotageCopy?.sections.events.intro ??
+                "Recaps, catégories et anomalies — vérifie que les promesses faites sur l'entraide tiennent la route."}
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <select
               value={recapMonthFilter}
@@ -1962,9 +2037,13 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
         </div>
 
         {loadingRecap ? (
-          <div className="py-10 text-center" style={subtleMutedText}>Chargement recap événements...</div>
+          <div className="py-10 text-center" style={subtleMutedText}>
+            {pilotageCopy?.sections.events.loading ?? "Chargement recap événements..."}
+          </div>
         ) : filteredRecapEvents.length === 0 ? (
-          <div className="py-10 text-center" style={subtleMutedText}>Aucune donnée événement disponible pour ce filtre.</div>
+          <div className="py-10 text-center" style={subtleMutedText}>
+            {pilotageCopy?.sections.events.empty ?? "Aucune donnée événement disponible pour ce filtre."}
+          </div>
         ) : (
           <div className="space-y-6">
             <AdminTableShell
@@ -2093,6 +2172,8 @@ export function Dashboard2View({ variant = "dashboard" }: Dashboard2ViewProps) {
         )}
       </div>
       )}
-    </div>
+
+      </div>
+    </>
   );
 }

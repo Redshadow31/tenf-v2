@@ -9,6 +9,7 @@ import {
   getCharteSectionAnchor,
   type CharteSection,
 } from "./charteModerationContent";
+import { CharteArticleText } from "./CharteArticleText";
 
 type CharteArticleCardProps = {
   section: CharteSection;
@@ -17,6 +18,7 @@ type CharteArticleCardProps = {
   isValidationCooldownActive: boolean;
   remainingCooldownSeconds: number;
   onToggle: (id: number) => void;
+  onNavigateToArticle?: (sectionId: number) => void;
   /** Surligne l'article si pertinent pour le profil connecté */
   profileRelevant?: boolean;
 };
@@ -28,6 +30,7 @@ export function CharteArticleCard({
   isValidationCooldownActive,
   remainingCooldownSeconds,
   onToggle,
+  onNavigateToArticle,
   profileRelevant = false,
 }: CharteArticleCardProps) {
   const anchorId = getCharteSectionAnchor(section.id);
@@ -100,7 +103,9 @@ export function CharteArticleCard({
           <Lightbulb className="h-3.5 w-3.5 shrink-0" aria-hidden />
           En bref
         </p>
-        <p className="mt-1 text-sm leading-relaxed text-cyan-50/95">{section.summary}</p>
+        <p className="mt-1 text-sm leading-relaxed text-cyan-50/95">
+          <CharteArticleText text={section.summary} onNavigateToArticle={onNavigateToArticle} />
+        </p>
       </div>
 
       <div className="mb-3 flex flex-wrap gap-1.5 pl-2">
@@ -118,18 +123,24 @@ export function CharteArticleCard({
       {section.callout ? (
         <div className="mb-4 rounded-xl border border-rose-400/25 bg-rose-950/30 p-4 pl-2">
           <p className="text-xs font-bold uppercase tracking-wide text-rose-200/95">{section.callout.title}</p>
-          <p className="mt-2 text-sm leading-relaxed text-rose-50/95">{section.callout.body}</p>
+          <p className="mt-2 text-sm leading-relaxed text-rose-50/95">
+            <CharteArticleText text={section.callout.body} onNavigateToArticle={onNavigateToArticle} />
+          </p>
         </div>
       ) : null}
 
       {section.intro ? (
-        <p className="pl-2 text-sm leading-relaxed text-zinc-300">{section.intro}</p>
+        <p className="pl-2 text-sm leading-relaxed text-zinc-300">
+          <CharteArticleText text={section.intro} onNavigateToArticle={onNavigateToArticle} />
+        </p>
       ) : null}
 
       {section.steps?.length ? (
         <ol className="mt-3 list-decimal space-y-1.5 pl-7 text-sm text-zinc-300">
           {section.steps.map((step) => (
-            <li key={step}>{step}</li>
+            <li key={step}>
+              <CharteArticleText text={step} onNavigateToArticle={onNavigateToArticle} />
+            </li>
           ))}
         </ol>
       ) : null}
@@ -137,7 +148,9 @@ export function CharteArticleCard({
       {section.bullets?.length ? (
         <ul className="mt-3 list-disc space-y-1 pl-7 text-sm text-zinc-300">
           {section.bullets.map((bullet) => (
-            <li key={bullet}>{bullet}</li>
+            <li key={bullet}>
+              <CharteArticleText text={bullet} onNavigateToArticle={onNavigateToArticle} />
+            </li>
           ))}
         </ul>
       ) : null}
@@ -150,7 +163,9 @@ export function CharteArticleCard({
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-rose-100/95">
             {section.warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
+              <li key={warning}>
+                <CharteArticleText text={warning} onNavigateToArticle={onNavigateToArticle} />
+              </li>
             ))}
           </ul>
         </div>
@@ -168,8 +183,12 @@ export function CharteArticleCard({
             <tbody>
               {section.comparison.map((row) => (
                 <tr key={row.bad} className="border-t border-white/[0.06] bg-zinc-900/70">
-                  <td className="px-3 py-2.5 text-rose-200/95">{row.bad}</td>
-                  <td className="px-3 py-2.5 text-emerald-200/95">{row.good}</td>
+                  <td className="px-3 py-2.5 text-rose-200/95">
+                    <CharteArticleText text={row.bad} onNavigateToArticle={onNavigateToArticle} />
+                  </td>
+                  <td className="px-3 py-2.5 text-emerald-200/95">
+                    <CharteArticleText text={row.good} onNavigateToArticle={onNavigateToArticle} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -185,19 +204,21 @@ export function CharteArticleCard({
               key={ex.situation}
               className="rounded-xl border border-white/[0.08] bg-zinc-900/50 p-3 text-sm"
             >
-              <p className="font-medium text-zinc-200">{ex.situation}</p>
+              <p className="font-medium text-zinc-200">
+                <CharteArticleText text={ex.situation} onNavigateToArticle={onNavigateToArticle} />
+              </p>
               <p className="mt-1.5 text-rose-200/90">
                 <span className="text-[10px] font-bold uppercase text-rose-300/80">Éviter · </span>
-                {ex.bad}
+                <CharteArticleText text={ex.bad} onNavigateToArticle={onNavigateToArticle} />
               </p>
               <p className="mt-1 text-emerald-200/90">
                 <span className="text-[10px] font-bold uppercase text-emerald-300/80">Mieux · </span>
-                {ex.good}
+                <CharteArticleText text={ex.good} onNavigateToArticle={onNavigateToArticle} />
               </p>
               {ex.remonter ? (
                 <p className="mt-1 text-amber-200/90">
                   <span className="text-[10px] font-bold uppercase text-amber-300/80">Remonter · </span>
-                  {ex.remonter}
+                  <CharteArticleText text={ex.remonter} onNavigateToArticle={onNavigateToArticle} />
                 </p>
               ) : null}
             </div>
@@ -208,13 +229,13 @@ export function CharteArticleCard({
       {section.retainBox ? (
         <p className="mt-4 rounded-xl border border-violet-400/25 bg-violet-950/30 px-3 py-2.5 pl-2 text-sm text-violet-100/95">
           <span className="font-semibold text-violet-200">À retenir — </span>
-          {section.retainBox}
+          <CharteArticleText text={section.retainBox} onNavigateToArticle={onNavigateToArticle} />
         </p>
       ) : null}
 
       {section.note ? (
         <p className="mt-4 rounded-xl border border-amber-400/25 bg-amber-950/30 px-3 py-2.5 pl-2 text-sm text-amber-100/95">
-          {section.note}
+          <CharteArticleText text={section.note} onNavigateToArticle={onNavigateToArticle} />
         </p>
       ) : null}
     </article>

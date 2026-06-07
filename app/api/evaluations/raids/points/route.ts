@@ -139,7 +139,9 @@ export async function GET(request: NextRequest) {
 
     // Calculer les points pour chaque membre (utiliser les points manuels s'ils existent, sinon calculer)
     const pointsMap: Record<string, number> = {};
+    const statsByLogin: Record<string, { done: number; received: number }> = {};
     memberStatsMap.forEach((stats, login) => {
+      statsByLogin[login] = { done: stats.done, received: stats.received };
       // Vérifier s'il y a des points manuels pour ce membre
       const manualPts = manualPointsMap.get(login);
       if (manualPts !== undefined) {
@@ -158,7 +160,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({ success: true, points: pointsMap, month: monthKey });
+    return NextResponse.json({ success: true, points: pointsMap, statsByLogin, month: monthKey });
   } catch (error) {
     console.error('[API Evaluations Raids Points GET] Erreur:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });

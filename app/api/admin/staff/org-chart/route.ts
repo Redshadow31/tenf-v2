@@ -3,6 +3,7 @@ import { requirePermission, requireSectionAccess } from "@/lib/requireAdmin";
 import { staffOrgChartRepository } from "@/lib/repositories";
 import type { OrgChartUpsertInput } from "@/lib/repositories/StaffOrgChartRepository";
 import { syncMembersTableRoleFromOrgChart } from "@/lib/staff/syncMembersTableRoleFromOrgChart";
+import { isOrgChartPoleOptional } from "@/lib/staff/orgChartRoleHelpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     if (!body.roleKey || !body.statusKey) {
       return NextResponse.json({ error: "roleKey et statusKey sont requis" }, { status: 400 });
     }
-    if (body.roleKey !== "SOUTIEN_TENF" && !body.poleKey) {
+    if (!isOrgChartPoleOptional(body.roleKey) && !body.poleKey) {
       return NextResponse.json({ error: "poleKey est requis pour ce role" }, { status: 400 });
     }
 

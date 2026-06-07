@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { Activity, BarChart3, ClipboardCheck, Sparkles, Users } from "lucide-react";
+import {
+  getAutoStatus,
+  SURVEILLER_FINAL_SCORE_THRESHOLD,
+  VIP_FINAL_SCORE_THRESHOLD,
+} from "@/lib/evaluationSynthesisHelpers";
 
 type ResultStats = {
   membersCount: number;
@@ -386,8 +391,8 @@ export default function EvaluationDashboardPage() {
       };
     }
 
-    const highCount = resultRows.filter((row) => Number(row.finalScore) >= 16).length;
-    const lowCount = resultRows.filter((row) => Number(row.finalScore) < 5).length;
+    const highCount = resultRows.filter((row) => getAutoStatus(Number(row.finalScore || 0)) === "vip").length;
+    const lowCount = resultRows.filter((row) => getAutoStatus(Number(row.finalScore || 0)) === "surveiller").length;
     const mediumCount = Math.max(0, total - highCount - lowCount);
 
     return {
@@ -405,7 +410,7 @@ export default function EvaluationDashboardPage() {
     const enriched = resultRows
       .map((row) => {
         const score = Number(row.finalScore || 0);
-        const gap = Math.max(0, 16 - score);
+        const gap = Math.max(0, VIP_FINAL_SCORE_THRESHOLD - score);
         const risk = score < 5 ? "critique" : score < 8 ? "elevé" : score < 12 ? "modéré" : "stable";
         return {
           twitchLogin: row.twitchLogin,
@@ -519,14 +524,14 @@ export default function EvaluationDashboardPage() {
           <div className={`${sectionCardClass} min-h-[138px]`} style={premiumCardStyle}>
             <p className="text-sm text-gray-400">VIP potentiels</p>
             <p className="mt-2 text-3xl font-bold text-emerald-300">{metrics.headline.vip}</p>
-            <p className="mt-2 text-xs text-gray-400">Membres &gt;= 16</p>
+            <p className="mt-2 text-xs text-gray-400">Membres &gt;= {VIP_FINAL_SCORE_THRESHOLD}</p>
           </div>
           <div className={`${sectionCardClass} min-h-[138px]`} style={premiumCardStyle}>
             <p className="text-sm text-gray-400">À surveiller</p>
             <p className={`mt-2 text-3xl font-bold ${metrics.headline.alerts > 0 ? "text-rose-300" : "text-emerald-300"}`}>
               {metrics.headline.alerts}
             </p>
-            <p className="mt-2 text-xs text-gray-400">Membres &lt; 5</p>
+            <p className="mt-2 text-xs text-gray-400">Membres &lt; {SURVEILLER_FINAL_SCORE_THRESHOLD}</p>
           </div>
         </div>
       </section>
@@ -581,7 +586,7 @@ export default function EvaluationDashboardPage() {
             <div className="mt-3 space-y-3 text-xs">
               <div>
                 <div className="mb-1 flex items-center justify-between text-emerald-200">
-                  <span>Performants (&gt;= 16)</span>
+                  <span>Performants (&gt;= {VIP_FINAL_SCORE_THRESHOLD})</span>
                   <span>{scoreInsights.highCount}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/10">
@@ -792,7 +797,7 @@ export default function EvaluationDashboardPage() {
                 <tr className="border-b border-white/10 text-left text-xs uppercase tracking-[0.12em] text-gray-400">
                   <th className="px-4 py-3">Membre</th>
                   <th className="px-4 py-3">Score final</th>
-                  <th className="px-4 py-3">Ecart VIP (16)</th>
+                  <th className="px-4 py-3">Ecart VIP ({VIP_FINAL_SCORE_THRESHOLD})</th>
                   <th className="px-4 py-3">Risque</th>
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>

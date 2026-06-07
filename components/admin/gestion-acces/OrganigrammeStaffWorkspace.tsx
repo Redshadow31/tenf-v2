@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 import { getAdminRoleToggleClass, type AdminRole } from "@/lib/adminRoles";
 import type { OrgChartEntry, OrgChartMemberRef, OrgChartPoleKey, OrgChartRoleKey } from "@/lib/staff/orgChartTypes";
+import { isOrgChartPoleOptional } from "@/lib/staff/orgChartRoleHelpers";
 import {
   ORG_CHART_POLE_OPTIONS,
   ORG_CHART_ROLE_OPTIONS,
@@ -55,7 +56,7 @@ const POLE_DOT: Record<string, string> = {
 export function orgChartEntryNeedsAttention(entry: OrgChartEntry): boolean {
   if (entry.id.startsWith("draft-")) return true;
   if (entry.isArchived && entry.isVisible) return true;
-  if (entry.roleKey !== "SOUTIEN_TENF" && !entry.poleKey) return true;
+  if (!isOrgChartPoleOptional(entry.roleKey) && !entry.poleKey) return true;
   return false;
 }
 
@@ -73,6 +74,8 @@ function getRoleBadgeClass(roleKey: OrgChartRoleKey): string {
       return "role-badge role-badge--staff-trainee role-badge--animated";
     case "MODERATEUR_EN_PAUSE":
       return "role-badge role-badge--staff-paused role-badge--animated";
+    case "ANCIEN_STAFF_TENF":
+      return "role-badge role-badge--staff-alumni";
     default:
       return "role-badge role-badge--active-support role-badge--animated";
   }

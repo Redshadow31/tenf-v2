@@ -24,13 +24,14 @@ export type OrgChartRoleKey =
   | "MODERATEUR_EN_FORMATION"
   | "MODERATEUR_EN_PAUSE"
   | "SOUTIEN_TENF"
+  | "ANCIEN_STAFF_TENF"
   // Nouveaux paliers introduits par la refonte de l'organisation
   | "MODERATEUR_AUTONOMIE"
   | "MODERATEUR_ACCOMPAGNEMENT"
   | "MODERATEUR_DECOUVERTE"
   | "CONTRIBUTEUR_INVITE";
 
-export type OrgChartStatusKey = "ACTIVE" | "TRAINING" | "PAUSED" | "SUPPORT";
+export type OrgChartStatusKey = "ACTIVE" | "TRAINING" | "PAUSED" | "SUPPORT" | "REMERCIE";
 
 export type OrgChartPoleKey =
   // Pôles historiques (préservés)
@@ -96,6 +97,7 @@ export const ORG_CHART_ROLE_OPTIONS: Array<{ key: OrgChartRoleKey; label: string
   { key: "MODERATEUR_EN_PAUSE", label: "Modérateur en pause" },
   { key: "SOUTIEN_TENF", label: "Soutien TENF" },
   { key: "CONTRIBUTEUR_INVITE", label: "Contributeur Invité TENF" },
+  { key: "ANCIEN_STAFF_TENF", label: "Ancien Staff TENF" },
 ];
 
 /**
@@ -112,6 +114,7 @@ export const ORG_CHART_STATUS_OPTIONS: Array<{ key: OrgChartStatusKey; label: st
   { key: "TRAINING", label: "En formation" },
   { key: "PAUSED", label: "En pause" },
   { key: "SUPPORT", label: "Soutien" },
+  { key: "REMERCIE", label: "Remercié" },
 ];
 
 /**

@@ -1,5 +1,5 @@
 import { calendarDayKey, type SessionDayIndex } from "@/lib/integrationSessionCalendar";
-import { toCanonicalMemberRole } from "@/lib/memberRoles";
+import { isHonoraryStaffRole, toCanonicalMemberRole } from "@/lib/memberRoles";
 import { ROLE_BADGE_PICKER_OPTIONS, sortMemberRolesForPicker } from "@/lib/roleBadgeSystem";
 import { type GestionStatusTab, partitionMembersByStatusTab } from "./memberPopulationFilters";
 import type { Member, MemberRole, MemberStatus, PresetFilter, SortableColumn } from "./types";
@@ -37,6 +37,8 @@ export function getPresetFilterDisplayLabel(preset: string): string {
       return "À revoir";
     case "staff":
       return "Staff";
+    case "ancien_staff":
+      return "Anciens staff (honorifique)";
     default:
       return preset;
   }
@@ -88,8 +90,13 @@ const STAFF_ROLES = new Set<MemberRole | string>([
 
 export function isStaffRole(role?: string): boolean {
   if (!role) return false;
+  if (isHonoraryStaffRole(role)) return false;
   const canonical = toCanonicalMemberRole(role);
   return STAFF_ROLES.has(canonical) || STAFF_ROLES.has(role);
+}
+
+export function isFormerStaffHonoraryRole(role?: string): boolean {
+  return isHonoraryStaffRole(role);
 }
 
 /** Tous les rôles assignables + rôles présents en base (canonisés), triés nomenclature TENF. */
@@ -228,6 +235,8 @@ export function computeMemberListPipeline(
           return new Date(member.nextReviewAt).getTime() <= now.getTime();
         case "staff":
           return isStaffRole(member.role);
+        case "ancien_staff":
+          return isHonoraryStaffRole(member.role);
         default:
           return true;
       }

@@ -27,6 +27,7 @@ import {
   GraduationCap,
   Heart,
   HeartHandshake,
+  History,
   Megaphone,
   Network,
   Palette,
@@ -54,7 +55,8 @@ export type StaffRoleKey =
   | "MODERATEUR_ACCOMPAGNEMENT"
   | "MODERATEUR_DECOUVERTE"
   | "SOUTIEN_TENF"
-  | "CONTRIBUTEUR_INVITE_TENF";
+  | "CONTRIBUTEUR_INVITE_TENF"
+  | "ANCIEN_STAFF_TENF";
 
 export type StaffRoleFamily =
   | "direction"
@@ -205,21 +207,34 @@ export const STAFF_ROLES: StaffRoleDefinition[] = [
   {
     key: "SOUTIEN_TENF",
     label: "Soutien TENF",
-    short: "Membre proche du staff sur une mission précise.",
+    short: "Aide active du staff sur une mission concrète en cours.",
     family: "appui",
     accent: "#22c55e",
     Icon: Heart,
     description:
-      "Membre proche du staff qui aide ponctuellement ou régulièrement sur une mission précise, sans être forcément modérateur actif.",
+      "Membre qui aide activement le staff sur une mission concrète et actuelle — ponctuelle ou régulière — sans exercer de modération active. Ce rôle reflète une contribution opérationnelle en cours, pas une reconnaissance passée.",
     missions: [
-      "Aider sur un besoin ciblé.",
-      "Contribuer à un pôle selon ses compétences.",
+      "Aider sur un besoin ciblé et actuel.",
+      "Contribuer à un pôle selon sa mission en cours.",
       "Respecter le cadre staff.",
       "Faire remonter les besoins ou limites.",
       "Renforcer l'équipe sans brouiller les responsabilités.",
     ],
     legacyKeys: ["SOUTIEN_TENF"],
     legacyLabels: ["Soutien TENF"],
+  },
+  {
+    key: "ANCIEN_STAFF_TENF",
+    label: "Ancien Staff TENF",
+    short: "Reconnaissance d'un investissement passé dans l'équipe.",
+    family: "appui",
+    accent: "#d4a853",
+    Icon: History,
+    description:
+      "Ancien membre du staff TENF ayant contribué à la construction, au développement ou à la vie de la communauté. Ce rôle est une reconnaissance de son investissement passé et ne correspond pas à une fonction active dans l'organisation actuelle.",
+    missions: [],
+    legacyKeys: ["ANCIEN_STAFF_TENF"],
+    legacyLabels: ["Ancien Staff TENF"],
   },
   {
     key: "CONTRIBUTEUR_INVITE_TENF",

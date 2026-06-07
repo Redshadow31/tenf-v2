@@ -17,7 +17,7 @@ import {
 import MemberModal from "@/components/MemberModal";
 import MembresDirectoryMemberCard from "@/components/members/MembresDirectoryMemberCard";
 import theme from "@/components/members/membres-theme.module.css";
-import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import { getRoleBadgeClassName, getRoleBadgeLabel, resolvePublicDiscoveryRoleBadge } from "@/lib/roleBadgeSystem";
 import { isExcludedFromMemberDiscover } from "@/lib/memberRoles";
 
 interface PublicMember {
@@ -176,6 +176,22 @@ function shuffleArray<T>(items: T[]): T[] {
     [next[i], next[j]] = [next[j], next[i]];
   }
   return next;
+}
+
+function publicRoleBadgeNode(role: string, options?: { grid?: boolean; affiliated?: boolean; development?: boolean }) {
+  if (options?.affiliated) {
+    return (
+      <span className={getRoleBadgeClassName("Affilié", { grid: options.grid })}>⭐ Affilié</span>
+    );
+  }
+  if (options?.development) {
+    return (
+      <span className={getRoleBadgeClassName("Développement", { grid: options.grid })}>🌱 Développement</span>
+    );
+  }
+  const badge = resolvePublicDiscoveryRoleBadge(role, { grid: options?.grid });
+  if (!badge) return null;
+  return <span className={badge.className}>{badge.label}</span>;
 }
 
 function normalizeMemberRole(role: string): StaffTier {
@@ -926,7 +942,7 @@ export default function Page() {
                         <span className="rounded-full border border-red-500/45 bg-red-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-100">
                           Live
                         </span>
-                        <span className={getRoleBadgeClassName(member.role, { grid: true })}>{getRoleBadgeLabel(member.role)}</span>
+                        {publicRoleBadgeNode(member.role, { grid: true })}
                       </>
                     }
                     onOpenProfile={() => handleMemberClick(member)}
@@ -987,9 +1003,11 @@ export default function Page() {
                         }
                         badgeRow={
                           <>
-                            <span className={getRoleBadgeClassName(member.role, { grid: true })}>
-                              {member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}
-                            </span>
+                            {publicRoleBadgeNode(member.role, {
+                              grid: true,
+                              affiliated: member.isAffiliated,
+                              development: member.isDevelopment,
+                            })}
                             {member.activity !== "normal" ? (
                               <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
                                 Semaine chargée
@@ -1079,13 +1097,11 @@ export default function Page() {
                 description={member.description?.trim()}
                 badgeRow={
                   <>
-                    <span
-                      className={getRoleBadgeClassName(member.isAffiliated ? "Affilié" : "Développement", {
-                        grid: true,
-                      })}
-                    >
-                      {member.isAffiliated ? "⭐ Affilié" : "🌱 Développement"}
-                    </span>
+                    {publicRoleBadgeNode(member.role, {
+                      grid: true,
+                      affiliated: member.isAffiliated,
+                      development: member.isDevelopment,
+                    })}
                     {member.activity !== "normal" ? (
                       <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
                         Actif·ve cette semaine
@@ -1133,9 +1149,11 @@ export default function Page() {
                   description={member.description?.trim()}
                   badgeRow={
                     <>
-                      <span className={getRoleBadgeClassName(member.role, { grid: true })}>
-                        {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
-                      </span>
+                      {publicRoleBadgeNode(member.role, {
+                        grid: true,
+                        affiliated: member.isAffiliated,
+                        development: member.isDevelopment,
+                      })}
                       {member.activity !== "normal" ? (
                         <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
                           Belle dynamique
@@ -1289,9 +1307,11 @@ export default function Page() {
                     }
                     badgeRow={
                       <>
-                        <span className={getRoleBadgeClassName(member.role, { grid: true })}>
-                          {member.isAffiliated ? "⭐ Affilié" : member.isDevelopment ? "🌱 Développement" : getRoleBadgeLabel(member.role)}
-                        </span>
+                        {publicRoleBadgeNode(member.role, {
+                          grid: true,
+                          affiliated: member.isAffiliated,
+                          development: member.isDevelopment,
+                        })}
                         {member.activity !== "normal" ? (
                           <span className="rounded-full border px-2 py-0.5" style={{ borderColor: "rgba(239,68,68,0.45)", color: "#fca5a5" }}>
                             Actif·ve en ce moment

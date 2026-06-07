@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { toCanonicalMemberRole } from "@/lib/memberRoles";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import { MemberRoleSelectOptions } from "@/components/admin/members-gestion/MemberRoleSelectOptions";
+import { MemberHonoraryRoleHint } from "@/components/admin/members-gestion/MemberHonoraryRoleHint";
 import MemberIdentityHistoryPanel from "@/components/admin/members-gestion/MemberIdentityHistoryPanel";
 import MemberRoleHistoryPanel from "@/components/admin/members-gestion/MemberRoleHistoryPanel";
 
@@ -41,6 +43,7 @@ type MemberRole =
   | "Modérateur en activité réduite"
   | "Modérateur en pause"
   | "Soutien TENF"
+  | "Ancien Staff TENF"
   | "Contributeur Invité TENF"
   | "Contributeur TENF du Mois"
   | "Créateur Junior"
@@ -532,8 +535,7 @@ export default function EditMemberModal({
                   ) : null}
                 </p>
                 <p className="max-w-2xl text-xs leading-relaxed text-slate-400">
-                  Les changements ici alimentent l&apos;espace membre et les pages publiques (selon les champs). Avance par onglet :
-                  identité d&apos;abord, puis rôle, parcours, badges et textes.
+                  {formData.nom} — identité, rôle, parcours et notes : chaque champ impacte ce que l&apos;équipe voit et ce que le créateur vit côté TENF.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {twitchChannelUrl ? (
@@ -861,27 +863,9 @@ export default function EditMemberModal({
                           isRoleInactiveLocked(formData.role) ? 'border-orange-500/50' : 'border-gray-700'
                         }`}
                       >
-                        <option value="Nouveau">{getRoleBadgeLabel("Nouveau")}</option>
-                        <option value="Affilié">{getRoleBadgeLabel("Affilié")}</option>
-                        <option value="Développement">{getRoleBadgeLabel("Développement")}</option>
-                        <option value="Modérateur en Découverte">{getRoleBadgeLabel("Modérateur en Découverte")}</option>
-                        <option value="Modérateur en Accompagnement">{getRoleBadgeLabel("Modérateur en Accompagnement")}</option>
-                        <option value="Modérateur en Autonomie">{getRoleBadgeLabel("Modérateur en Autonomie")}</option>
-                        <option value="Modérateur en formation">{getRoleBadgeLabel("Modérateur en formation")}</option>
-                        <option value="Modérateur">{getRoleBadgeLabel("Modérateur")}</option>
-                        <option value="Modérateur en activité réduite">{getRoleBadgeLabel("Modérateur en activité réduite")}</option>
-                        <option value="Modérateur en pause">{getRoleBadgeLabel("Modérateur en pause")}</option>
-                        <option value="Admin">{getRoleBadgeLabel("Admin")}</option>
-                        <option value="Admin Coordinateur">{getRoleBadgeLabel("Admin Coordinateur")}</option>
-                        <option value="Créateur Junior">{getRoleBadgeLabel("Créateur Junior")}</option>
-                        <option value="Les P'tits Jeunes">{getRoleBadgeLabel("Les P'tits Jeunes")}</option>
-                        <option value="Soutien TENF">{getRoleBadgeLabel("Soutien TENF")}</option>
-                        <option value="Contributeur Invité TENF">{getRoleBadgeLabel("Contributeur Invité TENF")}</option>
-                        <option value="Contributeur TENF du Mois">{getRoleBadgeLabel("Contributeur TENF du Mois")}</option>
-                        <option value="Communauté">Communauté (évaluation)</option>
-                        <option value="Départ">{getRoleBadgeLabel("Départ")}</option>
-                        <option value="Banni">{getRoleBadgeLabel("Banni")}</option>
+                        <MemberRoleSelectOptions />
                       </select>
+                      <MemberHonoraryRoleHint role={formData.role} />
                       {formData.role !== originalRole && (
                         <div className="mt-2">
                           <label className="block text-xs text-gray-400 mb-1">

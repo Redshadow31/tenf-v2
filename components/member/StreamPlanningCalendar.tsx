@@ -15,6 +15,8 @@ export interface StreamPlanningCalendarItem {
 type Props = {
   plannings: StreamPlanningCalendarItem[];
   emptyMessage?: string;
+  /** Sans carte externe — à placer dans un DashboardPanel parent. */
+  embedded?: boolean;
 };
 
 const WEEK_DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -125,6 +127,7 @@ function toDateKey(date: Date): string {
 export default function StreamPlanningCalendar({
   plannings,
   emptyMessage = "Aucun planning de stream pour le moment.",
+  embedded = false,
 }: Props) {
   const [monthCursor, setMonthCursor] = useState(() => {
     const now = new Date();
@@ -180,32 +183,36 @@ export default function StreamPlanningCalendar({
   }, [monthCursor]);
 
   if (plannings.length === 0) {
-    return <p className="text-center py-8" style={{ color: "var(--color-text-secondary)" }}>{emptyMessage}</p>;
+    return (
+      <div
+        className={`flex flex-col items-center justify-center rounded-xl border border-dashed border-white/12 bg-black/20 text-center text-sm text-white/55 ${embedded ? "py-10 px-4" : "py-8"}`}
+      >
+        <p>{emptyMessage}</p>
+      </div>
+    );
   }
 
   const todayKey = toDateKey(new Date());
 
-  return (
-    <div
-      className="space-y-4 rounded-2xl border p-4 md:p-5"
-      style={{
-        borderColor: "rgba(145, 70, 255, 0.28)",
-        background:
-          "radial-gradient(circle at 8% 0%, rgba(145, 70, 255, 0.12), transparent 38%), radial-gradient(circle at 95% 0%, rgba(14, 165, 233, 0.11), transparent 36%), linear-gradient(180deg, rgba(2, 6, 23, 0.35), rgba(2, 6, 23, 0.12))",
-      }}
-    >
+  const inner = (
+    <>
       <div
-        className="rounded-xl border px-3 py-3 md:px-4 md:py-3"
-        style={{
-          borderColor: "rgba(145, 70, 255, 0.26)",
-          background: "linear-gradient(125deg, rgba(145, 70, 255, 0.22), rgba(59, 130, 246, 0.08) 52%, rgba(14, 165, 233, 0.10))",
-        }}
+        className={`rounded-xl border px-3 py-2.5 ${embedded ? "border-white/10 bg-black/25" : ""}`}
+        style={
+          embedded
+            ? undefined
+            : {
+                borderColor: "rgba(145, 70, 255, 0.26)",
+                background:
+                  "linear-gradient(125deg, rgba(145, 70, 255, 0.22), rgba(59, 130, 246, 0.08) 52%, rgba(14, 165, 233, 0.10))",
+              }
+        }
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h4 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+          <h4 className={`text-sm font-semibold ${embedded ? "text-white" : ""}`} style={embedded ? undefined : { color: "var(--color-text)" }}>
             Aperçu du mois
           </h4>
-          <div className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+          <div className={`text-xs ${embedded ? "text-white/50" : ""}`} style={embedded ? undefined : { color: "var(--color-text-secondary)" }}>
             {plannings.length} live{plannings.length > 1 ? "s" : ""} planifié{plannings.length > 1 ? "s" : ""}
           </div>
         </div>
@@ -236,27 +243,42 @@ export default function StreamPlanningCalendar({
         <button
           type="button"
           onClick={() => setMonthCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-          className="px-3 py-1.5 rounded-lg border text-sm transition-colors"
-          style={{
-            borderColor: "rgba(148, 163, 184, 0.35)",
-            color: "var(--color-text-secondary)",
-            backgroundColor: "rgba(2, 6, 23, 0.32)",
-          }}
+          className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+            embedded ? "border-white/12 bg-black/30 text-white/65 hover:border-white/20 hover:text-white" : ""
+          }`}
+          style={
+            embedded
+              ? undefined
+              : {
+                  borderColor: "rgba(148, 163, 184, 0.35)",
+                  color: "var(--color-text-secondary)",
+                  backgroundColor: "rgba(2, 6, 23, 0.32)",
+                }
+          }
         >
           ← Mois précédent
         </button>
-        <h3 className="text-lg font-semibold capitalize" style={{ color: "var(--color-text)" }}>
+        <h3
+          className={`text-base font-semibold capitalize md:text-lg ${embedded ? "text-white" : ""}`}
+          style={embedded ? undefined : { color: "var(--color-text)" }}
+        >
           {monthCursor.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
         </h3>
         <button
           type="button"
           onClick={() => setMonthCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-          className="px-3 py-1.5 rounded-lg border text-sm transition-colors"
-          style={{
-            borderColor: "rgba(148, 163, 184, 0.35)",
-            color: "var(--color-text-secondary)",
-            backgroundColor: "rgba(2, 6, 23, 0.32)",
-          }}
+          className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+            embedded ? "border-white/12 bg-black/30 text-white/65 hover:border-white/20 hover:text-white" : ""
+          }`}
+          style={
+            embedded
+              ? undefined
+              : {
+                  borderColor: "rgba(148, 163, 184, 0.35)",
+                  color: "var(--color-text-secondary)",
+                  backgroundColor: "rgba(2, 6, 23, 0.32)",
+                }
+          }
         >
           Mois suivant →
         </button>
@@ -264,7 +286,11 @@ export default function StreamPlanningCalendar({
 
       <div className="grid grid-cols-7 gap-2">
         {WEEK_DAYS.map((day) => (
-          <div key={day} className="text-center text-xs font-semibold py-2" style={{ color: "var(--color-text-secondary)" }}>
+          <div
+            key={day}
+            className={`py-1.5 text-center text-xs font-semibold ${embedded ? "text-white/45" : ""}`}
+            style={embedded ? undefined : { color: "var(--color-text-secondary)" }}
+          >
             {day}
           </div>
         ))}
@@ -274,8 +300,8 @@ export default function StreamPlanningCalendar({
             return (
               <div
                 key={cell.key}
-                className="min-h-24 rounded-lg border"
-                style={{ borderColor: "var(--color-border)", opacity: 0.18 }}
+                className={`min-h-[5.5rem] rounded-lg border ${embedded ? "border-white/[0.04] opacity-30" : ""}`}
+                style={embedded ? undefined : { borderColor: "var(--color-border)", opacity: 0.18 }}
               />
             );
           }
@@ -287,12 +313,24 @@ export default function StreamPlanningCalendar({
           return (
             <div
               key={cell.key}
-              className="min-h-24 rounded-lg border p-1.5 transition-colors"
-              style={{
-                borderColor: isToday ? "rgba(147, 197, 253, 0.55)" : "var(--color-border)",
-                backgroundColor: isToday ? "rgba(59, 130, 246, 0.08)" : "var(--color-surface)",
-                boxShadow: isToday ? "inset 0 0 0 1px rgba(56, 189, 248, 0.35)" : "none",
-              }}
+              className={`min-h-[5.5rem] rounded-lg border p-1.5 transition-colors ${
+                embedded && !isToday ? "border-white/[0.08] bg-black/22" : ""
+              }`}
+              style={
+                embedded
+                  ? isToday
+                    ? {
+                        borderColor: "rgba(147, 197, 253, 0.55)",
+                        backgroundColor: "rgba(59, 130, 246, 0.1)",
+                        boxShadow: "inset 0 0 0 1px rgba(56, 189, 248, 0.35)",
+                      }
+                    : undefined
+                  : {
+                      borderColor: isToday ? "rgba(147, 197, 253, 0.55)" : "var(--color-border)",
+                      backgroundColor: isToday ? "rgba(59, 130, 246, 0.08)" : "var(--color-surface)",
+                      boxShadow: isToday ? "inset 0 0 0 1px rgba(56, 189, 248, 0.35)" : "none",
+                    }
+              }
             >
               <div
                 className="text-xs font-semibold mb-1"
@@ -331,6 +369,23 @@ export default function StreamPlanningCalendar({
           );
         })}
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-3">{inner}</div>;
+  }
+
+  return (
+    <div
+      className="space-y-4 rounded-2xl border p-4 md:p-5"
+      style={{
+        borderColor: "rgba(145, 70, 255, 0.28)",
+        background:
+          "radial-gradient(circle at 8% 0%, rgba(145, 70, 255, 0.12), transparent 38%), radial-gradient(circle at 95% 0%, rgba(14, 165, 233, 0.11), transparent 36%), linear-gradient(180deg, rgba(2, 6, 23, 0.35), rgba(2, 6, 23, 0.12))",
+      }}
+    >
+      {inner}
     </div>
   );
 }

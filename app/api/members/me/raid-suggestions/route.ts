@@ -11,6 +11,8 @@ type SuggestionRow = {
   role: "Moderateur" | "Staff" | "Membre";
 };
 
+import { isHonoraryStaffRole } from "@/lib/memberRoles";
+
 function normalize(value: string): string {
   return String(value || "").trim().toLowerCase();
 }
@@ -21,6 +23,7 @@ function isModeratorRole(role?: string): boolean {
 }
 
 function isStaffRole(role?: string): boolean {
+  if (isHonoraryStaffRole(role)) return false;
   const key = normalize(String(role || ""));
   return key.includes("staff") || key.includes("fondateur") || key.includes("admin");
 }

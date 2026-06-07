@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import { MemberRoleSelectOptions } from "@/components/admin/members-gestion/MemberRoleSelectOptions";
+import { MemberHonoraryRoleHint } from "@/components/admin/members-gestion/MemberHonoraryRoleHint";
 
 interface MemberData {
   twitchLogin: string;
@@ -233,6 +234,7 @@ export default function EditMemberCompletModal({
             >
               <MemberRoleSelectOptions />
             </select>
+            <MemberHonoraryRoleHint role={formData.role} />
           </div>
 
           <div className="flex items-center gap-4">

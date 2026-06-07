@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/requireAdmin";
 import { evaluationRepository, memberRepository } from "@/lib/repositories";
+import {
+  getAutoStatus,
+} from "@/lib/evaluationSynthesisHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -74,8 +77,8 @@ export async function GET(request: NextRequest) {
       avgFinalScore: rows.length
         ? Math.round((rows.reduce((sum, row) => sum + row.finalScore, 0) / rows.length) * 100) / 100
         : 0,
-      vipCount: rows.filter((row) => row.finalScore >= 16).length,
-      surveillerCount: rows.filter((row) => row.finalScore < 5).length,
+      vipCount: rows.filter((row) => getAutoStatus(row.finalScore) === "vip").length,
+      surveillerCount: rows.filter((row) => getAutoStatus(row.finalScore) === "surveiller").length,
       validatedCount: rows.filter((row) => row.calculatedAt || row.finalNoteSavedAt).length,
     };
 

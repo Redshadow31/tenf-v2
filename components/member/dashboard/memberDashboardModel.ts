@@ -60,6 +60,20 @@ export type DashboardEventItem = {
   bucket: "onboarding" | "community" | "other";
 };
 
+export type RecentRaidEntry = {
+  targetLogin: string;
+  targetDisplayName?: string;
+  date: string;
+  count: number;
+};
+
+export type WelcomeInsight = {
+  id: string;
+  label: string;
+  detail?: string;
+  tone: "accent" | "success" | "warning" | "info" | "muted";
+};
+
 export type MemberDashboardModel = {
   // Identité & statut
   firstName: string;
@@ -74,9 +88,10 @@ export type MemberDashboardModel = {
   profileStatusLabel: string;
 
   // Bienvenue
-  welcomeKicker: string; // courte phrase au-dessus du h1
-  welcomeTitle: string; // titre principal contextuel (h1)
-  welcomeMessage: string; // phrase rassurante TENF
+  welcomeKicker: string;
+  welcomeTitle: string;
+  welcomeMessage: string;
+  welcomeInsights: WelcomeInsight[];
   welcomeBanner: { title: string; description: string; cta: DashboardAction } | null;
 
   // Action(s) à faire
@@ -87,10 +102,10 @@ export type MemberDashboardModel = {
   showFloatingCta: boolean;
 
   // Mois en un coup d'œil
-  monthIndicators: MonthIndicator[]; // 3-4 items
-  globalProgress: number; // moyenne raids / presences / profil
-  progressBreakdown: string; // explication "Moyenne de X, Y, Z"
-  encouragement: string; // tonalité bienveillante selon progression
+  monthIndicators: MonthIndicator[];
+  globalProgress: number;
+  monthProgressLabel: string;
+  encouragement: string;
 
   // Lives & réseau
   network: {
@@ -119,10 +134,10 @@ export type MemberDashboardModel = {
     vipLabel: string;
   };
 
-  // Accès rapides (4-6 liens max)
-  quickAccess: Array<{ href: string; label: string; tone: "primary" | "soft" }>;
+  // Stats reconnaissance (affichage compact)
+  showRecognitionStats: boolean;
 
-  // Historique (pour onglet secondaire)
+  // Historique unifié (raids + formations + présences)
   recentTimeline: Array<{
     id: string;
     date: string;
@@ -256,6 +271,8 @@ function resolveMemberStatus(input: {
   vipActive: boolean;
   onboardingStatus: string | undefined;
   participationThisMonth: number;
+  raidsThisMonth: number;
+  eventPresencesThisMonth: number;
 }): MemberStatus {
   const role = normalizeText(input.role);
   const onboarding = normalizeText(input.onboardingStatus);
@@ -271,7 +288,13 @@ function resolveMemberStatus(input: {
   ) {
     return "newcomer";
   }
-  if (input.participationThisMonth === 0) return "paused";
+  if (
+    input.participationThisMonth === 0 &&
+    input.raidsThisMonth === 0 &&
+    input.eventPresencesThisMonth === 0
+  ) {
+    return "paused";
+  }
   return "active";
 }
 
@@ -386,15 +409,16 @@ function buildActionCandidates(input: {
     });
   }
 
-  // 5) Raids
-  if (input.raidsRemaining > 0 && input.status === "active") {
+  // 5) Entraide Twitch — raids détectés automatiquement (EventSub)
+  if (input.raidsRemaining > 0 && (input.status === "active" || input.status === "vip")) {
     out.push({
-      id: "raid-week",
-      label: "Lancer un raid cette semaine",
-      href: "/member/raids/declarer",
-      detail: `${input.raidsRemaining} raid(s) avant la fin du mois selon ton repère perso.`,
+      id: "raid-live-support",
+      label: "Soutenir un membre en live",
+      href: "/lives",
+      detail:
+        "Les raids sont comptés automatiquement via Twitch. Passe sur un live TENF pour l'entraide — pas besoin de déclarer.",
       tone: "support",
-      priority: 140,
+      priority: 145,
     });
   }
 
@@ -428,7 +452,7 @@ function buildActionCandidates(input: {
       id: "staff-shortcuts",
       label: "Ouvrir le centre staff",
       href: "/admin",
-      detail: "Raccourcis vers la gestion administrative et la modération.",
+      detail: "Un coup d'œil à la modération ou l'admin quand tu peux — la famille compte sur toi.",
       tone: "primary",
       priority: 195,
     });
@@ -464,6 +488,319 @@ function buildActionCandidates(input: {
 // ============================================================
 // Encouragement bienveillant
 // ============================================================
+function getTimeGreeting(): "Bonjour" | "Bonsoir" {
+  const hour = new Date().getHours();
+  return hour >= 18 ? "Bonsoir" : "Bonjour";
+}
+
+function staffHeartline(role: string): string {
+  const r = role.toLowerCase();
+  if (r.includes("fondateur")) {
+    return "Tu as fait naître cette famille — et tu continues d'y mettre ton énergie, en coulisses comme en live.";
+  }
+  if (r.includes("admin")) {
+    return "Tu fais tourner les coulisses pour que chaque membre puisse briller — merci pour ce que tu portes.";
+  }
+  if (r.includes("modera")) {
+    return "Tu veilles sur l'ambiance pour que tout le monde se sente en sécurité ici — un travail discret, essentiel.";
+  }
+  return "Tu fais partie de ceux qui font vivre TENF au quotidien — la communauté te doit beaucoup.";
+}
+
+function buildActivitySentence(input: {
+  participationThisMonth: number;
+  presencesThisMonth: number;
+  raidsLive: number;
+  formationsThisMonth: number;
+  latest: { title: string; type: string; date: string } | undefined;
+}): string | null {
+  const { participationThisMonth, presencesThisMonth, raidsLive, formationsThisMonth, latest } = input;
+
+  if (latest) {
+    const isPresence = latest.type.toLowerCase().includes("présence") || latest.type.toLowerCase().includes("presence");
+    const isRaid = latest.type.toLowerCase().includes("raid");
+    if (isPresence) {
+      return `Tu as déjà fait vivre le collectif — ${latest.title}, c'est le genre de moment qui reste.`;
+    }
+    if (isRaid) {
+      return "Ton dernier raid compte pour quelqu'un dans la famille — l'entraide, chez toi, ce n'est pas qu'un mot.";
+    }
+    return `Ta dernière trace ici, c'est ${latest.title} — et oui, ça compte vraiment.`;
+  }
+
+  if (participationThisMonth === 0) return null;
+
+  const bits: string[] = [];
+  if (presencesThisMonth > 0) {
+    bits.push(
+      presencesThisMonth === 1
+        ? "une présence qui a réchauffé la salle"
+        : `${presencesThisMonth} présences qui ont fait vibrer la communauté`,
+    );
+  }
+  if (raidsLive > 0) {
+    bits.push(raidsLive === 1 ? "un raid lancé" : `${raidsLive} raids pour soutenir les autres`);
+  }
+  if (formationsThisMonth > 0) {
+    bits.push(
+      formationsThisMonth === 1 ? "une formation validée" : `${formationsThisMonth} formations avancées`,
+    );
+  }
+
+  if (bits.length === 0) {
+    return "Tu as déjà commencé à bouger ce mois-ci — chaque petit geste fait vivre TENF.";
+  }
+  return `Ce mois, tu as déjà offert ${bits.join(", ")}. Merci pour ça.`;
+}
+
+function buildNextStepSentence(primaryAction: DashboardAction, status: MemberStatus): string | null {
+  if (primaryAction.id === "explore") return null;
+
+  if (status === "staff" && primaryAction.id === "staff-shortcuts") {
+    return "Quand tu auras un créneau, un passage dans le centre staff aide toute l'équipe — et n'oublie pas de prendre soin de toi en tant que membre aussi : un live, un event, un raid, ça te ressource autant que ça nourrit la famille.";
+  }
+  if (primaryAction.id === "raid-live-support") {
+    return "Un live membre t'attend peut-être en ce moment — un coucou suffit, le raid se compte tout seul.";
+  }
+  if (primaryAction.id === "profile-complete") {
+    return "Ton profil, c'est ta vitrine dans la famille : quelques minutes pour le peaufiner, et les autres te trouvent plus facilement.";
+  }
+  if (primaryAction.id.startsWith("event")) {
+    return `${primaryAction.label} — ${primaryAction.detail.charAt(0).toLowerCase()}${primaryAction.detail.slice(1)}`;
+  }
+
+  return `${primaryAction.label} : ${primaryAction.detail}`;
+}
+
+function buildPersonalizedWelcome(input: {
+  firstName: string;
+  memberRole: string;
+  status: MemberStatus;
+  monthLabel: string;
+  monthDeadlineLabel: string;
+  monthProgressLabel: string;
+  raidsLive: number;
+  raidsTarget: number;
+  raidsRemaining: number;
+  presencesThisMonth: number;
+  presencesTarget: number;
+  presencesRemaining: number;
+  profilePercent: number;
+  profileRemaining: number;
+  participationThisMonth: number;
+  formationsThisMonth: number;
+  primaryAction: DashboardAction;
+  nextCommunityEvent: DashboardEventItem | null;
+  recentTimeline: Array<{ title: string; type: string; date: string }>;
+  network: { state: "loading" | "twitch_unlinked" | "not_authenticated" | "ready"; followed: number; total: number };
+  globalProgress: number;
+  vipActive: boolean;
+  vipLabel: string;
+}): { title: string; message: string; insights: WelcomeInsight[] } {
+  const {
+    firstName,
+    memberRole,
+    status,
+    monthLabel,
+    monthDeadlineLabel,
+    monthProgressLabel,
+    raidsLive,
+    raidsTarget,
+    raidsRemaining,
+    presencesThisMonth,
+    presencesTarget,
+    presencesRemaining,
+    profilePercent,
+    profileRemaining,
+    participationThisMonth,
+    formationsThisMonth,
+    primaryAction,
+    nextCommunityEvent,
+    recentTimeline,
+    network,
+    globalProgress,
+    vipLabel,
+  } = input;
+
+  const greeting = getTimeGreeting();
+  const latest = recentTimeline[0];
+  const monthShort = monthLabel.split(" ")[0] ?? monthLabel;
+
+  let title: string;
+  if (status === "newcomer") {
+    title = `Bienvenue ${firstName} — la New Family t'attend`;
+  } else if (status === "paused") {
+    title = `${greeting} ${firstName}, ta place est toujours là`;
+  } else if (status === "vip") {
+    title = `${greeting} ${firstName} — tu fais briller ce mois`;
+  } else if (status === "staff") {
+    title = `${greeting} ${firstName}, cœur d'équipe et membre du mois`;
+  } else if (raidsLive >= raidsTarget && raidsTarget > 0) {
+    title = `${greeting} ${firstName} — belle énergie d'entraide`;
+  } else if (participationThisMonth > 0) {
+    title = `${greeting} ${firstName}, tu fais déjà la différence`;
+  } else {
+    title = `${greeting} ${firstName}, ce mois est à toi`;
+  }
+
+  const paragraphs: string[] = [];
+
+  if (status === "newcomer") {
+    paragraphs.push(
+      `Tu viens d'entrer dans une famille de streamers qui se soutiennent vraiment — pas une course au clic. Prends le temps de regarder, de poser des questions, de participer à ce qui te parle.`,
+    );
+  } else if (status === "paused") {
+    paragraphs.push(
+      `Pas de nouvelle trace ce mois-ci, et personne ne t'en voudra. La porte reste ouverte : reviens quand tu en as envie, avant le ${monthDeadlineLabel}.`,
+    );
+  } else if (status === "staff") {
+    paragraphs.push(staffHeartline(memberRole));
+    paragraphs.push(
+      `Ce tableau de bord, c'est ton espace membre pour ${monthLabel} — pas seulement tes missions d'équipe. Tes outils staff restent dans la sidebar ; ici, on parle de toi comme de quelqu'un de la famille.`,
+    );
+  } else if (status === "vip") {
+    paragraphs.push(
+      `Ce mois-ci, tu es ${vipLabel} — et ça se voit. Merci pour l'énergie que tu mets dans le collectif : ta présence donne le ton à toute la communauté.`,
+    );
+  } else {
+    paragraphs.push(
+      `On est en ${monthShort}, et chaque passage compte : un live soutenu, une soirée event, un module formation. Les repères à droite sont là pour t'orienter, pas pour te noter.`,
+    );
+  }
+
+  const activitySentence = buildActivitySentence({
+    participationThisMonth,
+    presencesThisMonth,
+    raidsLive,
+    formationsThisMonth,
+    latest,
+  });
+  if (activitySentence) {
+    paragraphs.push(activitySentence);
+  } else if (status !== "newcomer" && status !== "paused") {
+    paragraphs.push(
+      `Le mois est encore jeune — un live TENF, un event, ou un petit coucou sur Discord, et tu lances quelque chose de beau.`,
+    );
+  }
+
+  if (nextCommunityEvent) {
+    paragraphs.push(
+      `On se retrouve bientôt : ${nextCommunityEvent.title}, ${formatDateTime(nextCommunityEvent.date)}. Ce serait top de t'y voir.`,
+    );
+  }
+
+  const nextStep = buildNextStepSentence(primaryAction, status);
+  if (nextStep) {
+    paragraphs.push(nextStep);
+  }
+
+  const insights: WelcomeInsight[] = [];
+
+  const reachedMatch = monthProgressLabel.match(/^(\d+)\/(\d+)/);
+  const reached = reachedMatch ? Number(reachedMatch[1]) : 0;
+  const totalRepères = reachedMatch ? Number(reachedMatch[2]) : 3;
+
+  if (globalProgress >= 100 || reached >= totalRepères) {
+    insights.push({
+      id: "progress",
+      label: "Beau mois — tes repères sont là",
+      detail: `Échéance ${monthDeadlineLabel}`,
+      tone: "success",
+    });
+  } else if (reached === 0) {
+    insights.push({
+      id: "progress",
+      label: `Le mois démarre — ${totalRepères} repères t'attendent`,
+      detail: `Tu as jusqu'au ${monthDeadlineLabel}`,
+      tone: "accent",
+    });
+  } else {
+    insights.push({
+      id: "progress",
+      label: `${monthProgressLabel} — tu avances`,
+      detail: `Encore du temps avant le ${monthDeadlineLabel}`,
+      tone: "info",
+    });
+  }
+
+  if (raidsRemaining > 0) {
+    insights.push({
+      id: "raids",
+      label:
+        raidsLive === 0
+          ? "Pas encore de raid ? Un live membre suffit"
+          : `${raidsLive} raid${raidsLive > 1 ? "s" : ""} — encore ${raidsRemaining} si tu vises ton repère`,
+      detail: "Twitch compte tout seul",
+      tone: raidsLive === 0 ? "warning" : "info",
+    });
+  } else if (raidsTarget > 0 && raidsLive >= raidsTarget) {
+    insights.push({
+      id: "raids-done",
+      label: "Tu as tenu ton cap côté raids",
+      tone: "success",
+    });
+  }
+
+  if (presencesRemaining > 0) {
+    insights.push({
+      id: "presences",
+      label:
+        presencesThisMonth === 0
+          ? "Les events t'attendent — une soirée peut tout changer"
+          : presencesThisMonth === 1
+            ? "Tu as commencé — une présence, c'est déjà beaucoup"
+            : `${presencesThisMonth} présences — la famille te voit`,
+      detail:
+        presencesRemaining > 0
+          ? `${presencesRemaining} event${presencesRemaining > 1 ? "s" : ""} encore possibles`
+          : undefined,
+      tone: presencesThisMonth === 0 ? "muted" : "info",
+    });
+  }
+
+  if (profileRemaining > 0 && profilePercent < 100) {
+    insights.push({
+      id: "profile",
+      label:
+        profilePercent >= 80
+          ? `Ton profil raconte déjà ta chaîne — plus que ${profileRemaining} %`
+          : `Complète ton profil (${profilePercent} %) — les autres te trouveront mieux`,
+      tone: profilePercent >= 80 ? "info" : "warning",
+    });
+  }
+
+  if (network.state === "ready" && network.total > 0 && network.followed < network.total * 0.3) {
+    insights.push({
+      id: "network",
+      label: "Découvre d'autres chaînes membres à soutenir",
+      detail: `${network.followed}/${network.total} suivies pour l'instant`,
+      tone: "muted",
+    });
+  }
+
+  if (primaryAction.id === "staff-shortcuts") {
+    insights.push({
+      id: "next",
+      label: "→ Un passage au centre staff ?",
+      detail: "La modération et l'admin comptent sur toi — quand tu peux",
+      tone: "accent",
+    });
+  } else if (primaryAction.id !== "explore") {
+    insights.push({
+      id: "next",
+      label: `→ ${primaryAction.label}`,
+      detail: primaryAction.detail,
+      tone: "accent",
+    });
+  }
+
+  return {
+    title,
+    message: paragraphs.join(" "),
+    insights: insights.slice(0, 4),
+  };
+}
+
 function getEncouragement(progress: number, status: MemberStatus): string {
   if (status === "newcomer") {
     return "Bienvenue dans la New Family — tu avances à ton rythme, sans pression.";
@@ -488,8 +825,9 @@ export function buildMemberDashboardModel(input: {
   goals: MemberMonthlyGoals;
   followStats: FollowStats;
   dataV2RaidsThisMonth: number;
+  recentRaids?: RecentRaidEntry[];
 }): MemberDashboardModel {
-  const { data, goals, followStats, dataV2RaidsThisMonth } = input;
+  const { data, goals, followStats, dataV2RaidsThisMonth, recentRaids = [] } = input;
 
   const monthKey = data.monthKey;
   const monthLabel = formatMonthLong(monthKey);
@@ -500,11 +838,16 @@ export function buildMemberDashboardModel(input: {
   const firstName = displayName.split(" ")[0] || "membre";
 
   const vipActive = Boolean(data.vip?.activeThisMonth);
+  const raidsLivePreview = resolveMonthlyRaidCount(data.stats?.raidsThisMonth, dataV2RaidsThisMonth);
+  const presencesThisMonthPreview = data.stats?.eventPresencesThisMonth ?? 0;
+
   const status = resolveMemberStatus({
     role: data.member.role,
     vipActive,
     onboardingStatus: data.member.onboardingStatus,
     participationThisMonth: data.stats?.participationThisMonth ?? 0,
+    raidsThisMonth: raidsLivePreview,
+    eventPresencesThisMonth: presencesThisMonthPreview,
   });
   const segment = resolveSegment(data.member.role, vipActive);
   const accent = resolveAccentFromStatus(data.member.role, status);
@@ -528,18 +871,18 @@ export function buildMemberDashboardModel(input: {
     ? "twitch_unlinked"
     : "ready";
 
-  const monthIndicators: MonthIndicator[] = [
+  const allMonthIndicators: MonthIndicator[] = [
     {
       id: "raids",
       label: "Raids lancés",
-      hint: "Ton repère perso pour ce mois",
+      hint: "Comptés auto via Twitch",
       current: raidsLive,
       target: raidsTarget,
       microHint:
         raidsRemaining === 0
           ? "Repère atteint — bravo si tu le visais."
-          : `${raidsRemaining} pour atteindre ton repère.`,
-      href: "/member/raids/declarer",
+          : `${raidsRemaining} raid(s) avant ton repère — passe sur un live TENF.`,
+      href: "/member/raids/historique",
     },
     {
       id: "presences",
@@ -556,7 +899,7 @@ export function buildMemberDashboardModel(input: {
     {
       id: "profile",
       label: "Profil complété",
-      hint: "Une fois fini, plus jamais à y revenir",
+      hint: "Visible dans l'annuaire",
       current: profilePercent,
       target: 100,
       microHint:
@@ -565,31 +908,22 @@ export function buildMemberDashboardModel(input: {
           : `Encore ${profileRemaining}% à remplir, à ton rythme.`,
       href: "/member/profil/completer",
     },
-    {
-      id: "network",
-      label: "Follows réseau",
-      hint: "Soutien aux chaînes membres",
-      current: followStats.score,
-      target: 100,
-      microHint:
-        networkState === "loading"
-          ? "Calcul en cours…"
-          : networkState === "not_authenticated"
-          ? "Connecte-toi pour activer le suivi."
-          : networkState === "twitch_unlinked"
-          ? "Lie ta chaîne Twitch pour voir ton score."
-          : `${followStats.followed}/${followStats.total} membres suivis.`,
-      href: "/member/engagement/score",
-    },
   ];
+
+  const monthIndicators = allMonthIndicators.filter(
+    (indicator) => indicator.id !== "profile" || profilePercent < 100,
+  );
 
   const raidsProgress = getProgressPercent(raidsLive, raidsTarget);
   const presencesProgress = getProgressPercent(presencesThisMonth, presencesTarget);
   const profileProgress = Math.max(0, Math.min(100, profilePercent));
-  const globalProgress = Math.round((raidsProgress + presencesProgress + profileProgress) / 3);
-  const progressBreakdown =
-    `Moyenne de trois repères : raids (${raidsProgress}%), présences (${presencesProgress}%) ` +
-    `et profil (${profileProgress}%). Les follows réseau ne pèsent pas dans cette moyenne.`;
+  const progressParts = [raidsProgress, presencesProgress];
+  if (profilePercent < 100) progressParts.push(profileProgress);
+  const globalProgress = Math.round(
+    progressParts.reduce((sum, value) => sum + value, 0) / Math.max(progressParts.length, 1),
+  );
+  const reachedCount = progressParts.filter((value) => value >= 100).length;
+  const monthProgressLabel = `${reachedCount}/${progressParts.length} repère${progressParts.length > 1 ? "s" : ""} atteint${reachedCount > 1 ? "s" : ""}`;
 
   const encouragement = getEncouragement(globalProgress, status);
 
@@ -652,8 +986,15 @@ export function buildMemberDashboardModel(input: {
     };
   }
 
-  // Historique récent (max 8)
+  // Historique récent (raids auto + formations + présences)
   const recentTimeline = [
+    ...recentRaids.map((raid, index) => ({
+      id: `raid-${raid.targetLogin}-${raid.date}-${index}`,
+      date: raid.date,
+      title: `Raid vers ${raid.targetDisplayName || raid.targetLogin}`,
+      type: `Raid · ${raid.count} viewer${raid.count > 1 ? "s" : ""}`,
+      color: "rgba(167, 139, 250, 0.28)",
+    })),
     ...data.formationHistory.map((item) => ({
       id: `formation-${item.id}-${item.date}`,
       date: item.date,
@@ -672,49 +1013,49 @@ export function buildMemberDashboardModel(input: {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 8);
 
-  // Reconnaissance
   const formationsThisMonth =
     data.stats?.formationsValidatedThisMonth ??
     data.formationHistory.filter((item) => (item.date ?? "").slice(0, 7) === monthKey).length;
 
-  // Quick access (4-6 max, on évite la duplication brute de la sidebar)
-  const quickAccess: MemberDashboardModel["quickAccess"] = [
-    { href: "/member/profil/completer", label: "Mon profil", tone: "primary" },
-    { href: "/member/raids/historique", label: "Mes raids", tone: "soft" },
-    { href: "/member/evenements", label: "Événements", tone: "soft" },
-    { href: "/member/engagement/score", label: "Score & engagement", tone: "soft" },
-    { href: "/lives", label: "Lives TENF", tone: "soft" },
-    ...(vipActive
-      ? ([{ href: "/vip", label: "Espace VIP", tone: "primary" }] as const)
-      : ([{ href: "/academy", label: "Academy", tone: "soft" }] as const)),
-  ];
+  const participationThisMonth = data.stats?.participationThisMonth ?? 0;
+  const showRecognitionStats =
+    vipActive || formationsThisMonth > 0 || participationThisMonth > 0;
 
-  // Welcome message TENF
   const welcomeKicker = `Tableau de bord · ${monthShortLabel}`;
 
-  // Salutation contextuelle (h1) : on adapte au statut pour éviter le "content·e de te revoir"
-  // sur un tout nouveau membre par exemple.
-  const welcomeTitle =
-    status === "newcomer"
-      ? `Bienvenue ${firstName} dans la New Family`
-      : status === "paused"
-      ? `Content·es de te retrouver, ${firstName}`
-      : status === "vip"
-      ? `Bonjour ${firstName}, ton mois VIP est lancé`
-      : status === "staff"
-      ? `Bonjour ${firstName}, ravi·es de te voir ici`
-      : `Salut ${firstName}, content·es de te retrouver`;
+  const personalizedWelcome = buildPersonalizedWelcome({
+    firstName,
+    memberRole: String(data.member.role || "membre"),
+    status,
+    monthLabel,
+    monthDeadlineLabel,
+    monthProgressLabel,
+    raidsLive,
+    raidsTarget,
+    raidsRemaining,
+    presencesThisMonth,
+    presencesTarget,
+    presencesRemaining,
+    profilePercent,
+    profileRemaining,
+    participationThisMonth,
+    formationsThisMonth,
+    primaryAction,
+    nextCommunityEvent,
+    recentTimeline,
+    network: {
+      state: networkState,
+      followed: followStats.followed,
+      total: followStats.total,
+    },
+    globalProgress,
+    vipActive,
+    vipLabel: data.vip?.statusLabel || "Membre VIP",
+  });
 
-  const welcomeMessage =
-    status === "newcomer"
-      ? "TENF, c'est une entraide entre streamers Twitch — pas une compétition. Pose des questions, observe, participe à ce qui te parle."
-      : status === "paused"
-      ? "Pas de jugement sur les pauses : ce qui compte, c'est qu'on se retrouve quand tu reviens."
-      : status === "vip"
-      ? "Merci pour ton énergie ce mois-ci — tu portes une partie de la communauté."
-      : status === "staff"
-      ? "Bonjour collègue ! Voici ton aperçu personnel — tes accès staff restent dans la sidebar."
-      : "Ici on est en famille : raids, events, entraide… tu avances à ton rythme.";
+  const welcomeTitle = personalizedWelcome.title;
+  const welcomeMessage = personalizedWelcome.message;
+  const welcomeInsights = personalizedWelcome.insights;
 
   // CTA flottant : on l'active uniquement si l'action principale est "ciblée" (pas un fallback
   // type "explore"), et pas non plus pour staff qui n'en a pas besoin.
@@ -737,6 +1078,7 @@ export function buildMemberDashboardModel(input: {
     welcomeKicker,
     welcomeTitle,
     welcomeMessage,
+    welcomeInsights,
     welcomeBanner,
 
     primaryAction: { ...primaryAction },
@@ -745,7 +1087,7 @@ export function buildMemberDashboardModel(input: {
 
     monthIndicators,
     globalProgress,
-    progressBreakdown,
+    monthProgressLabel,
     encouragement,
 
     network: {
@@ -767,13 +1109,13 @@ export function buildMemberDashboardModel(input: {
     upcomingEvents,
 
     recognition: {
-      participationThisMonth: data.stats?.participationThisMonth ?? 0,
+      participationThisMonth,
       formationsThisMonth,
       vipActive,
       vipLabel: data.vip?.statusLabel || "Membre TENF",
     },
 
-    quickAccess,
+    showRecognitionStats,
     recentTimeline,
   };
 }

@@ -92,17 +92,13 @@ const PAGE_HELP: Record<string, { description: string; when?: string }> = {
   },
   "/member/raids/historique": {
     description:
-      "Historique de tes raids déclarés et reçus : preuve de ton entraide, utile pour comprendre ta régularité.",
-    when: "Tu veux vérifier qu’un raid a bien été enregistré ou préparer un bilan.",
-  },
-  "/member/raids/statistiques": {
-    description: "Statistiques agrégées sur tes raids : volumes, tendances, comparaison avec tes objectifs.",
-    when: "Tu suis ton engagement raid sur le mois ou la période en cours.",
+      "Historique de tes raids (détectés via Twitch), statuts de validation, pilotage mensuel, tendances sur 12 mois et suggestions de retours.",
+    when: "Tu veux vérifier qu’un raid a été compté, suivre ton rythme ou préparer un bilan.",
   },
   "/member/raids/declarer": {
     description:
-      "Formulaire pour signaler un raid que tu as effectué vers un autre membre TENF — alimente le suivi officiel.",
-    when: "Juste après un raid, pendant que les détails sont frais (viewers, date).",
+      "Formulaire de secours si un raid Twitch n'apparaît pas dans ton historique — copy personnalisée, repères entraide et suivi des dossiers.",
+    when: "Uniquement après avoir vérifié Mes raids et laissé quelques heures à la détection auto.",
   },
   "/member/engagement/a-decouvrir": {
     description: "Suggestions de chaînes membres à découvrir selon tes critères et l’activité du collectif.",
@@ -113,8 +109,9 @@ const PAGE_HELP: Record<string, { description: string; when?: string }> = {
     when: "Tu veux centraliser les créateurs avec qui tu interagis le plus.",
   },
   "/member/engagement/discord-activite": {
-    description: "Synthèse de ton activité sur le serveur Discord TENF (présence, salons, participation).",
-    when: "Tu veux corréler ton engagement Discord avec ton score ou tes objectifs.",
+    description:
+      "Ta présence sur le Discord TENF (messages et vocal) : repères personnalisés, graphiques mensuels et conseils pour nourrir l'entraide entre les streams.",
+    when: "Tu veux voir ta trace sur le serveur ou comprendre pourquoi le Discord compte pour la commu.",
   },
   "/member/evenements": {
     description: "Agenda des événements TENF : dates, descriptions, accès à l’inscription depuis ton espace.",
@@ -142,8 +139,9 @@ const PAGE_HELP: Record<string, { description: string; when?: string }> = {
     when: "Tu veux voir où tu en es dans l’évolution au sein du collectif.",
   },
   "/member/activite": {
-    description: "Résumé de ton activité sur le mois en cours : events, raids, points clés en un seul écran.",
-    when: "Bilan rapide « qu’est-ce que j’ai fait ce mois-ci ? »",
+    description:
+      "Ton radar mensuel TENF : intensité ludique, raids hub, présences événements, formations et tendance — avec un ton bienveillant, sans pression.",
+    when: "Bilan rapide « qu’est-ce que j’ai fait ce mois-ci ? » ou pour te situer avant de fixer des objectifs.",
   },
   "/member/activite/historique": {
     description: "Archives des mois passés : compare ton activité dans le temps.",
@@ -162,12 +160,14 @@ const PAGE_HELP: Record<string, { description: string; when?: string }> = {
     when: "Tu participes activement à une vague Academy.",
   },
   "/member/formations": {
-    description: "Catalogue des formations disponibles : modules, durées, conditions d’accès.",
-    when: "Tu veux te former en autonomie sur un sujet précis (OBS, communauté, technique…).",
+    description:
+      "Catalogue formations TENF : sessions à venir (inscription, calendrier), archive thématique et signalement d'intérêt — hero personnalisé et repères Academy sans pression.",
+    when: "Tu cherches une session live, un thème déjà animé à relancer, ou tu veux proposer un sujet à l'équipe.",
   },
   "/member/formations/validees": {
-    description: "Formations que tu as terminées et validées — preuve de tes acquis dans TENF.",
-    when: "Tu veux retrouver un module déjà suivi ou montrer ta progression.",
+    description:
+      "Historique des formations validées : objectif du mois, paliers ludiques, tendance sur 6 mois et liste des présences enregistrées — sans pression ni classement.",
+    when: "Tu veux voir ce que tu as déjà suivi, comparer avec ton objectif mensuel ou célébrer ta progression.",
   },
   "/member/evaluations": {
     description: "Ton évaluation en cours ou à venir : retour du staff sur ta participation et tes axes de progrès.",
@@ -578,7 +578,7 @@ export const memberChecklist = [
   { id: "notif", label: "Lire tes nouvelles", href: "/member/notifications" },
   { id: "profil", label: "Compléter / vérifier ton profil", href: "/member/profil/completer" },
   { id: "events", label: "Consulter l’agenda des événements", href: "/member/evenements" },
-  { id: "raids", label: "Voir ou déclarer un raid", href: "/member/raids/declarer" },
+  { id: "raids", label: "Soutenir un membre en live", href: "/lives" },
   { id: "objectifs", label: "Regarder tes objectifs du mois", href: "/member/objectifs" },
 ];
 

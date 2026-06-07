@@ -1,181 +1,50 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  ClipboardList,
-  GraduationCap,
-  LayoutList,
-  ListChecks,
-  ShieldCheck,
-  UserCheck,
-  Users,
-} from "lucide-react";
-import { cockpitBtnClass, cockpitPanelClass, hubFocusRingClass } from "./membersHubStyles";
-
-type ReminderItem = {
-  tone: string;
-  dot: string;
-  content: ReactNode;
-};
+import { LayoutList, Link2, ListChecks, UserCheck } from "lucide-react";
+import type { MembersHubCopyModel } from "@/lib/admin/members/membersHubCopyModel";
+import { MembersHubPanel, MembersHubPanelHeader } from "@/components/admin/members-hub/MembersHubPanel";
+import { cockpitBtnClass, hubFocusRingClass } from "./membersHubStyles";
 
 type Props = {
+  copy: MembersHubCopyModel;
   pendingTotal: number;
   profileValidationPending?: number;
-  incomplete?: number;
 };
 
-const STAFF_REMINDERS: ReminderItem[] = [
-  {
-    tone: "text-amber-200",
-    dot: "bg-amber-300",
-    content: (
-      <>
-        Commence toujours par <strong className="text-zinc-100">À traiter aujourd&apos;hui</strong> : chaque ligne est
-        un raccourci vers la page qui règle le problème.
-      </>
-    ),
-  },
-  {
-    tone: "text-rose-200",
-    dot: "bg-rose-300",
-    content: (
-      <>
-        <strong className="text-zinc-100">Urgent</strong> = un créateur est bloqué (validation, sync, erreur).{" "}
-        <strong className="text-zinc-100">Important</strong> = à traiter cette semaine sans blocage immédiat.
-      </>
-    ),
-  },
-  {
-    tone: "text-violet-200",
-    dot: "bg-violet-300",
-    content: (
-      <>
-        <strong className="text-zinc-100">Liste & gestion</strong> sert à chercher un pseudo, changer un rôle (ex. Nouveau
-        → Affilié) ou faire une action de masse — ce n&apos;est pas la file des tâches.
-      </>
-    ),
-  },
-  {
-    tone: "text-emerald-200",
-    dot: "bg-emerald-300",
-    content: (
-      <>
-        Après une <strong className="text-zinc-100">session d&apos;accueil</strong>, passe par{" "}
-        <Link href="/admin/onboarding" className="text-violet-200 underline-offset-2 hover:underline">
-          Intégration
-        </Link>{" "}
-        (présences, activation) avant d&apos;activer le profil ici.
-      </>
-    ),
-  },
-  {
-    tone: "text-sky-200",
-    dot: "bg-sky-300",
-    content: (
-      <>
-        <strong className="text-zinc-100">Validation profil</strong> = un créateur a soumis sa fiche pour contrôle staff.
-        Ce n&apos;est pas lié aux événements communauté ni aux inscriptions intégration.
-      </>
-    ),
-  },
-];
+const QUICK_LINKS = [
+  { href: "/admin/membres/incomplets", label: "Profils incomplets" },
+  { href: "/admin/membres/qualite-data", label: "Qualité data" },
+  { href: "/admin/onboarding", label: "Intégration" },
+  { href: "/admin/pilotage", label: "Pilotage", muted: true },
+] as const;
 
-const RECOMMENDED_PATH = [
-  "Lire la phrase du jour et la file « À traiter » sur cette page.",
-  "Cliquer chaque ligne urgente jusqu'à ce que la file se vide (ou basculer sur Actions pour tout voir).",
-  "Chercher ou mettre à jour un créateur dans Liste & gestion si on te donne un pseudo.",
-  "Si le membre vient d'une session d'accueil : hub Intégration d'abord, puis retour ici.",
-  "Signaux faibles en bas de page = à surveiller, pas forcément urgent.",
-];
-
-export default function MembersHubCockpitAside({
-  pendingTotal,
-  profileValidationPending = 0,
-  incomplete = 0,
-}: Props) {
-  const dynamicReminders: ReminderItem[] = [...STAFF_REMINDERS];
-  if (profileValidationPending > 0) {
-    dynamicReminders.unshift({
-      tone: "text-amber-200",
-      dot: "bg-amber-400",
-      content: (
-        <>
-          <strong className="text-zinc-100">{profileValidationPending}</strong> validation
-          {profileValidationPending > 1 ? "s" : ""} profil en attente — priorise{" "}
-          <Link
-            href="/admin/membres/validation-profil"
-            className="text-violet-200 underline-offset-2 hover:underline"
-          >
-            Validation profil
-          </Link>
-          .
-        </>
-      ),
-    });
-  }
-  if (incomplete > 0) {
-    dynamicReminders.push({
-      tone: "text-zinc-300",
-      dot: "bg-zinc-400",
-      content: (
-        <>
-          <strong className="text-zinc-100">{incomplete}</strong> fiche{incomplete > 1 ? "s" : ""} incomplète
-          {incomplete > 1 ? "s" : ""} (&lt; 80 %) : accompagnement via{" "}
-          <Link href="/admin/membres/incomplets" className="text-violet-200 underline-offset-2 hover:underline">
-            Profils incomplets
-          </Link>
-          .
-        </>
-      ),
-    });
-  }
-
+export default function MembersHubCockpitAside({ copy, pendingTotal, profileValidationPending = 0 }: Props) {
   return (
-    <>
-      <div className={`${cockpitPanelClass} p-4 sm:p-5`}>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Rappels staff</h2>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-          Règles simples pour l&apos;équipe — pas besoin de connaître tout le site par cœur.
-        </p>
-        <ul className="mt-3 space-y-3 text-sm leading-relaxed">
-          {dynamicReminders.map((item, i) => (
-            <li key={i} className={`flex gap-2.5 ${item.tone}`}>
-              <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.dot}`} aria-hidden />
-              <span>{item.content}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <MembersHubPanel accentHex={copy.accent} tone="accent" intensity="soft" className="h-full">
+      <div className="flex h-full min-h-0 flex-col">
+        <MembersHubPanelHeader
+          kicker="Raccourcis"
+          title={copy.aside.actionsTitle}
+          intro={copy.aside.remindersIntro}
+          icon={ListChecks}
+          accentHex={copy.accent}
+        />
 
-      <div className={`${cockpitPanelClass} p-4 sm:p-5`}>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Parcours conseillé</h2>
-        <ol className="mt-3 space-y-2.5 text-sm text-zinc-400">
-          {RECOMMENDED_PATH.map((step, i) => (
-            <li key={i} className="flex gap-2">
-              <span className="font-bold tabular-nums text-violet-300">{i + 1}.</span>
-              <span>{step}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <div className={`${cockpitPanelClass} p-4`}>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Agir maintenant</h2>
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1">
           <Link
             href="/admin/membres/actions"
             className={`${cockpitBtnClass} ${hubFocusRingClass} justify-center border-rose-400/30 bg-rose-950/25 text-rose-100`}
           >
             <ListChecks className="h-4 w-4 shrink-0" aria-hidden />
-            File complète
+            {copy.aside.fullQueue}
             {pendingTotal > 0 ? (
               <span className="rounded-md bg-black/25 px-1.5 py-0.5 text-xs font-bold tabular-nums">{pendingTotal}</span>
             ) : null}
           </Link>
           <Link href="/admin/membres/gestion" className={`${cockpitBtnClass} ${hubFocusRingClass} justify-center`}>
             <LayoutList className="h-4 w-4 shrink-0" aria-hidden />
-            Liste & gestion
+            {copy.aside.listManage}
           </Link>
           <Link
             href="/admin/membres/validation-profil"
@@ -186,7 +55,7 @@ export default function MembersHubCockpitAside({
             }`}
           >
             <UserCheck className="h-4 w-4 shrink-0" aria-hidden />
-            Validation profil
+            {copy.aside.validationProfile}
             {profileValidationPending > 0 ? (
               <span className="rounded-md bg-black/25 px-1.5 py-0.5 text-xs font-bold tabular-nums">
                 {profileValidationPending}
@@ -194,47 +63,26 @@ export default function MembersHubCockpitAside({
             ) : null}
           </Link>
         </div>
-      </div>
 
-      <div className={`${cockpitPanelClass} p-4`}>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Liens utiles</h2>
-        <ul className="mt-3 space-y-2 text-sm">
-          <li>
-            <Link
-              href="/admin/membres/incomplets"
-              className={`text-violet-200 hover:text-white ${hubFocusRingClass} rounded`}
-            >
-              Profils incomplets
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/admin/membres/qualite-data"
-              className={`text-violet-200 hover:text-white ${hubFocusRingClass} rounded`}
-            >
-              Qualité des données
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/admin/onboarding"
-              className={`text-violet-200 hover:text-white ${hubFocusRingClass} rounded`}
-            >
-              Hub intégration (sessions d&apos;accueil)
-            </Link>
-          </li>
-          <li>
-            <Link href="/integration" target="_blank" rel="noopener noreferrer" className={`text-violet-200 hover:text-white ${hubFocusRingClass} rounded`}>
-              Parcours public /integration
-            </Link>
-          </li>
-          <li>
-            <Link href="/admin/pilotage" className={`text-zinc-500 hover:text-zinc-300 ${hubFocusRingClass} rounded text-xs`}>
-              Pilotage TENF
-            </Link>
-          </li>
-        </ul>
+        <div className="mt-auto border-t border-white/[0.06] pt-3">
+          <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200/80">
+            <Link2 className="h-3 w-3" aria-hidden />
+            {copy.aside.linksTitle}
+          </p>
+          <ul className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs">
+            {QUICK_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className={`${hubFocusRingClass} rounded ${"muted" in link && link.muted ? "text-white/40 hover:text-white/70" : "text-violet-200 hover:text-white"}`}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-    </>
+    </MembersHubPanel>
   );
 }

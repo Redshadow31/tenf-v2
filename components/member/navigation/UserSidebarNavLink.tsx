@@ -13,6 +13,8 @@ type UserSidebarNavLinkProps = {
   external?: boolean;
   disabled?: boolean;
   disabledHint?: string;
+  /** Style plus discret (lien de pied de menu). */
+  compact?: boolean;
   onNavigate?: () => void;
 };
 
@@ -25,6 +27,7 @@ export default function UserSidebarNavLink({
   external,
   disabled = false,
   disabledHint,
+  compact = false,
   onNavigate,
 }: UserSidebarNavLinkProps) {
   const active = disabled ? false : rawActive;
@@ -35,11 +38,11 @@ export default function UserSidebarNavLink({
         aria-disabled="true"
         tabIndex={-1}
         title={disabledHint ? `${label} — ${disabledHint}` : `${label} — bientôt disponible`}
-        className="group/sidelink relative flex min-h-[44px] cursor-not-allowed items-start gap-2.5 rounded-xl border border-white/10 bg-white/[0.02] px-2.5 py-2 text-sm font-medium text-zinc-500 opacity-70 select-none"
+        className="group/sidelink relative flex min-h-[36px] cursor-not-allowed items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-2.5 py-1.5 text-sm font-medium text-zinc-500 opacity-70 select-none"
       >
         {Icon ? (
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-zinc-500">
-            <Icon size={17} strokeWidth={2} aria-hidden />
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-zinc-500">
+            <Icon size={16} strokeWidth={2} aria-hidden />
           </span>
         ) : null}
         <span className="min-w-0 flex-1">
@@ -58,25 +61,33 @@ export default function UserSidebarNavLink({
     );
   }
   const className =
-    "group/sidelink relative flex min-h-[44px] items-start gap-2.5 rounded-xl border px-2.5 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/55 focus-visible:ring-offset-2";
+    "group/sidelink relative flex min-h-[36px] items-center gap-2 rounded-xl border px-2.5 py-1.5 text-sm font-medium transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/55 focus-visible:ring-offset-2" +
+    (compact ? " border-white/10 bg-transparent text-zinc-400 hover:border-violet-400/25 hover:bg-violet-500/5 hover:text-zinc-200" : "");
 
-  const style: CSSProperties = {
-    borderColor: active ? "rgba(196, 181, 253, 0.45)" : "rgba(139, 92, 246, 0.22)",
-    background: active
-      ? "linear-gradient(135deg, rgba(139, 92, 246, 0.28) 0%, rgba(139, 92, 246, 0.08) 55%, rgba(15, 16, 22, 0.4) 100%)"
-      : "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.12) 100%)",
-    color: active ? "#ede9fe" : "var(--color-text)",
-    boxShadow: active ? "0 0 24px rgba(139, 92, 246, 0.12)" : undefined,
-    ["--tw-ring-offset-color" as string]: "var(--color-sidebar-bg)",
-  };
+  const style: CSSProperties = compact
+    ? {
+        borderColor: active ? "rgba(196, 181, 253, 0.35)" : "rgba(255,255,255,0.08)",
+        backgroundColor: active ? "rgba(139, 92, 246, 0.12)" : "transparent",
+        color: active ? "#ede9fe" : "var(--color-text-secondary)",
+        ["--tw-ring-offset-color" as string]: "var(--color-sidebar-bg)",
+      }
+    : {
+        borderColor: active ? "rgba(196, 181, 253, 0.45)" : "rgba(139, 92, 246, 0.22)",
+        background: active
+          ? "linear-gradient(135deg, rgba(139, 92, 246, 0.28) 0%, rgba(139, 92, 246, 0.08) 55%, rgba(15, 16, 22, 0.4) 100%)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.12) 100%)",
+        color: active ? "#ede9fe" : "var(--color-text)",
+        boxShadow: active ? "0 0 24px rgba(139, 92, 246, 0.12)" : undefined,
+        ["--tw-ring-offset-color" as string]: "var(--color-sidebar-bg)",
+      };
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
-    if (active) return;
+    if (active || compact) return;
     e.currentTarget.style.borderColor = "rgba(167, 139, 250, 0.38)";
     e.currentTarget.style.background = "rgba(139, 92, 246, 0.10)";
   };
   const handleMouseLeave = (e: React.MouseEvent<HTMLElement>) => {
-    if (active) return;
+    if (active || compact) return;
     e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.22)";
     e.currentTarget.style.background = "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.12) 100%)";
   };
@@ -85,14 +96,14 @@ export default function UserSidebarNavLink({
     <>
       {Icon ? (
         <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors"
+          className={`flex shrink-0 items-center justify-center rounded-lg border transition-colors ${compact ? "h-7 w-7" : "h-8 w-8"}`}
           style={{
             borderColor: active ? "rgba(196, 181, 253, 0.35)" : "rgba(139, 92, 246, 0.25)",
             backgroundColor: active ? "rgba(139, 92, 246, 0.28)" : "rgba(0, 0, 0, 0.2)",
             color: active ? "#ddd6fe" : "var(--color-text-secondary)",
           }}
         >
-          <Icon size={17} strokeWidth={2} aria-hidden />
+          <Icon size={compact ? 15 : 16} strokeWidth={2} aria-hidden />
         </span>
       ) : null}
       <span className="min-w-0 flex-1">
@@ -107,10 +118,10 @@ export default function UserSidebarNavLink({
         </span>
       </span>
       {external ? (
-        <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-violet-300/60 transition group-hover/sidelink:text-violet-200/90" aria-hidden />
-      ) : (
+        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-violet-300/60 transition group-hover/sidelink:text-violet-200/90" aria-hidden />
+      ) : compact ? null : (
         <ChevronRight
-          className="mt-1 h-4 w-4 shrink-0 text-violet-300/50 transition group-hover/sidelink:translate-x-0.5 group-hover/sidelink:text-violet-200/90"
+          className="h-3.5 w-3.5 shrink-0 text-violet-300/50 transition group-hover/sidelink:translate-x-0.5 group-hover/sidelink:text-violet-200/90"
           aria-hidden
         />
       )}

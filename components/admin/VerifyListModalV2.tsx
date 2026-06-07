@@ -212,9 +212,9 @@ export default function VerifyListModalV2({ isOpen, onClose }: VerifyListModalV2
       >
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl md:text-2xl font-bold text-white">Verif liste</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-white">Vérifier une liste d&apos;entrées</h2>
             <p className="text-xs md:text-sm text-gray-300 mt-1">
-              Analyse en lecture seule. Aucun membre n est ajoute ou modifie.
+              Parse et contrôle une liste @Discord : twitch.tv/… sans toucher à la base — idéal avant un import.
             </p>
           </div>
           <button onClick={onClose} className="rounded-lg border border-gray-700 px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-[#1c2130]">

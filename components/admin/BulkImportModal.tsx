@@ -2,11 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { GESTION_MODAL_COPY_DEFAULT } from "@/lib/admin/members-gestion/gestionCopyModel";
+import type { GestionModalCopy } from "@/lib/admin/members-gestion/gestionCopyModel";
+import GestionModalShell, {
+  gestionModalGhostBtnClass,
+  gestionModalPrimaryBtnClass,
+  gestionModalTextareaClass,
+} from "@/components/admin/members-gestion/GestionModalShell";
 
 interface BulkImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (members: Array<{ nom: string; discord: string; twitch: string; discordId?: string }>) => void;
+  modalCopy?: GestionModalCopy;
+  accentHex?: string;
 }
 
 interface ParsedMember {
@@ -24,6 +33,8 @@ export default function BulkImportModal({
   isOpen,
   onClose,
   onImport,
+  modalCopy = GESTION_MODAL_COPY_DEFAULT.bulkImport,
+  accentHex = "#8b5cf6",
 }: BulkImportModalProps) {
   const [importText, setImportText] = useState("");
   const [parsedMembers, setParsedMembers] = useState<ParsedMember[]>([]);
@@ -199,34 +210,44 @@ export default function BulkImportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div
-        className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white">Import en masse</h2>
+    <GestionModalShell
+      open={isOpen}
+      onClose={onClose}
+      title={modalCopy.title}
+      subtitle={modalCopy.subtitle}
+      size="md"
+      accentHex={accentHex}
+      footer={
+        <div className="flex gap-3">
           <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            type="submit"
+            form="bulk-import-form"
+            disabled={
+              parsedMembers.length === 0 ||
+              parsedMembers.filter((m) => !m.isDuplicateInList && !m.isExistingMember).length === 0
+            }
+            className={`flex-1 ${gestionModalPrimaryBtnClass}`}
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            {parsedMembers.length > 0 ? (
+              <>
+                Importer {parsedMembers.filter((m) => !m.isDuplicateInList && !m.isExistingMember).length} membre(s)
+                {parsedMembers.filter((m) => m.isDuplicateInList || m.isExistingMember).length > 0 ? (
+                  <span className="mt-0.5 block text-xs opacity-75">
+                    ({parsedMembers.filter((m) => m.isDuplicateInList || m.isExistingMember).length} ignoré(s))
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              "Aucun membre à importer"
+            )}
+          </button>
+          <button type="button" onClick={onClose} className={`flex-1 ${gestionModalGhostBtnClass}`}>
+            {modalCopy.cancel}
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+      }
+    >
+        <form id="bulk-import-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-2">
               Liste des membres (une ligne par membre)
@@ -242,7 +263,7 @@ export default function BulkImportModal({
                 parseImportText();
               }}
               onBlur={parseImportText}
-              className="w-full bg-[#0e0e10] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 min-h-[300px] font-mono text-sm"
+              className={`${gestionModalTextareaClass} min-h-[300px] font-mono`}
               placeholder="@Evan34740 : https://www.twitch.tv/evan34740&#10;@LudraTv : https://www.twitch.tv/ludra_tv&#10;..."
             />
           </div>
@@ -323,36 +344,8 @@ export default function BulkImportModal({
             </div>
           )}
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={parsedMembers.length === 0 || parsedMembers.filter(m => !m.isDuplicateInList && !m.isExistingMember).length === 0}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors"
-            >
-              {parsedMembers.length > 0 ? (
-                <>
-                  Importer {parsedMembers.filter(m => !m.isDuplicateInList && !m.isExistingMember).length} membre(s)
-                  {(parsedMembers.filter(m => m.isDuplicateInList || m.isExistingMember).length > 0) && (
-                    <span className="text-xs block mt-1 opacity-75">
-                      ({parsedMembers.filter(m => m.isDuplicateInList || m.isExistingMember).length} ignoré(s))
-                    </span>
-                  )}
-                </>
-              ) : (
-                "Aucun membre à importer"
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition-colors"
-            >
-              Annuler
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </GestionModalShell>
   );
 }
 

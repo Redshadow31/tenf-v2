@@ -15,6 +15,7 @@ export type BadgeVisualVariant =
   | "staff-trainee"
   | "staff-reduced"
   | "staff-paused"
+  | "staff-alumni"
   | "contributor"
   | "vip"
   | "default";
@@ -36,6 +37,7 @@ const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   "Affilié": { label: "Créateur Affilié", variant: "active-affilie", family: "membres" },
   "Développement": { label: "Créateur en Développement", variant: "active-dev", family: "membres" },
   "Soutien TENF": { label: "Soutien TENF", variant: "active-support", family: "membres" },
+  "Ancien Staff TENF": { label: "Ancien Staff TENF", variant: "staff-alumni", family: "communaute" },
   "Créateur Junior": { label: "Créateurs Juniors", variant: "minor-creator", family: "mineurs" },
   "Les P'tits Jeunes": { label: "Les P'tits Jeunes", variant: "minor-community", family: "mineurs" },
   "Communauté": { label: "Communauté", variant: "community", family: "communaute" },
@@ -92,7 +94,17 @@ export const STAFF_MEMBER_ROLE_KEYS = [
   "Modérateur en pause",
   "Soutien TENF",
   "Contributeur Invité TENF",
+  "Ancien Staff TENF",
 ] as const;
+
+export const HONORARY_MEMBER_ROLE_KEYS = ["Ancien Staff TENF"] as const;
+
+/**
+ * Sur annuaire / lives / fiches publiques : masquer le badge honorifique pour ne pas
+ * laisser croire à une fonction staff active. La reconnaissance reste sur /remerciements.
+ * Passer à `false` pour afficher le badge doré « Ancien Staff TENF » partout.
+ */
+export const HONORARY_ROLES_HIDDEN_ON_PUBLIC_DISCOVERY = true;
 
 export const COMMUNITY_MEMBER_ROLE_KEYS = [
   "Nouveau",
@@ -108,12 +120,14 @@ export const EXIT_MEMBER_ROLE_KEYS = ["Départ", "Banni"] as const;
 
 export const ROLE_BADGE_PICKER_OPTIONS = [
   ...STAFF_MEMBER_ROLE_KEYS,
+  ...HONORARY_MEMBER_ROLE_KEYS,
   ...COMMUNITY_MEMBER_ROLE_KEYS,
   ...EXIT_MEMBER_ROLE_KEYS,
 ] as const;
 
 export const MEMBER_ROLE_PICKER_GROUPS = [
   { label: "Staff TENF", keys: STAFF_MEMBER_ROLE_KEYS },
+  { label: "Reconnaissance", keys: HONORARY_MEMBER_ROLE_KEYS },
   { label: "Créateurs & communauté", keys: COMMUNITY_MEMBER_ROLE_KEYS },
   { label: "Sorties (inactif forcé)", keys: EXIT_MEMBER_ROLE_KEYS },
 ] as const;
@@ -200,4 +214,28 @@ export function getRoleBadgeClassName(value: string, options?: RoleBadgeClassOpt
 export function getRoleBadgeFamily(value: string): BadgeFamily {
   const normalized = normalizeRoleLabel(value);
   return ROLE_BADGE_CONFIG[normalized]?.family || "special";
+}
+
+export function isHonoraryMemberRole(value: string): boolean {
+  const normalized = normalizeRoleLabel(value);
+  return (HONORARY_MEMBER_ROLE_KEYS as readonly string[]).includes(normalized);
+}
+
+export type PublicDiscoveryRoleBadge = {
+  label: string;
+  className: string;
+};
+
+/** Badge rôle pour surfaces publiques (annuaire, lives). Retourne null si masqué (honorifique). */
+export function resolvePublicDiscoveryRoleBadge(
+  value: string,
+  options?: RoleBadgeClassOptions,
+): PublicDiscoveryRoleBadge | null {
+  if (HONORARY_ROLES_HIDDEN_ON_PUBLIC_DISCOVERY && isHonoraryMemberRole(value)) {
+    return null;
+  }
+  return {
+    label: getRoleBadgeLabel(value),
+    className: getRoleBadgeClassName(value, options),
+  };
 }

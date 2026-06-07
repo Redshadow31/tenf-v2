@@ -49,6 +49,7 @@ const routes: Array<{
   { path: "/decouvrir-createurs", changeFrequency: "weekly", priority: 0.6 },
   { path: "/organisation-staff", changeFrequency: "monthly", priority: 0.55 },
   { path: "/organisation-staff/organigramme", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/remerciements", changeFrequency: "monthly", priority: 0.45 },
   { path: "/integration", changeFrequency: "weekly", priority: 0.7 },
 ];
 

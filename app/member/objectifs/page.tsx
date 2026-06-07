@@ -203,15 +203,15 @@ export default function MemberGoalsPage() {
     {
       key: "raids" as const,
       label: "Raids TENF",
-      sub: "Compteur mois depuis Discord — à titre indicatif.",
+      sub: "Comptés auto via Twitch — à titre indicatif.",
       current: raidsForMonth,
       target: goals.raids,
       progress: raidsProgress,
       icon: Zap,
       accent: "from-amber-500/25 to-orange-900/15",
       border: "border-amber-400/35",
-      hintHref: "/member/raids/declarer",
-      hintLabel: "Déclarer un raid",
+      hintHref: "/lives",
+      hintLabel: "Voir les lives TENF",
     },
     {
       key: "formations" as const,

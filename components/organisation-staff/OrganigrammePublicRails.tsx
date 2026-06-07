@@ -44,7 +44,8 @@ const FAQ_SNIPPETS = [
 const TIER_VISUAL = [
   { label: "Fondateurs TENF", width: "42%", accent: "#3b82f6", countKey: "founders" as const },
   { label: "Coordinateurs TENF", width: "58%", accent: "#6366f1", countKey: "adminCoordinators" as const },
-  { label: "Modération", width: "88%", accent: "#a855f7", countKey: "moderators" as const },
+  { label: "Modération active", width: "84%", accent: "#a855f7", countKey: "moderators" as const },
+  { label: "Modération en pause", width: "68%", accent: "#94a3b8", countKey: "moderatorsPaused" as const },
   { label: "Soutien & invités", width: "70%", accent: "#22c55e", countKey: "support" as const },
 ];
 
@@ -52,6 +53,7 @@ export type OrganigrammeRailCounts = {
   founders: number;
   adminCoordinators: number;
   moderators: number;
+  moderatorsPaused: number;
   support: number;
   total: number;
 };
@@ -238,9 +240,9 @@ export function OrganigrammeRightRail({
         <div className="mt-4 grid grid-cols-2 gap-2 text-center">
           {[
             { label: "Direction", value: counts.founders + counts.adminCoordinators },
-            { label: "Modération", value: counts.moderators },
+            { label: "Modo. active", value: counts.moderators },
+            { label: "En pause", value: counts.moderatorsPaused },
             { label: "Soutien", value: counts.support },
-            { label: "Catalogue", value: counts.total },
           ].map((s) => (
             <div
               key={s.label}

@@ -47,6 +47,12 @@ const AUDIENCE_PROFILES = [
   },
   {
     icon: Shield,
+    color: "text-indigo-300",
+    title: "Admin coordinateur·rice",
+    text: "Tu coordonnes et recadres — cas lourd ou sensible, tu remontes aux fondateur·rices.",
+  },
+  {
+    icon: Shield,
     color: "text-violet-300",
     title: "Modérateur·rice confirmé(e)",
     text: "Charte obligatoire pour intervenir sur le serveur.",
@@ -59,9 +65,9 @@ const AUDIENCE_PROFILES = [
   },
   {
     icon: UserCog,
-    color: "text-indigo-300",
-    title: "Accompagnement ou admin coordinateur",
-    text: "Même cadre ; ton mandat et tes validations diffèrent.",
+    color: "text-teal-300",
+    title: "Modérateur·rice en accompagnement",
+    text: "Phase de progression avec un référent — pas une punition, les retours t'aident.",
   },
   {
     icon: PauseCircle,

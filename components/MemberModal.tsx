@@ -19,7 +19,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
+import { getRoleBadgeClassName, getRoleBadgeLabel, resolvePublicDiscoveryRoleBadge } from "@/lib/roleBadgeSystem";
 import StreamPlanningCalendar, { type StreamPlanningCalendarItem } from "@/components/member/StreamPlanningCalendar";
 import DiscordMarkdownPreview from "@/components/member/ui/DiscordMarkdownPreview";
 import theme from "@/components/members/membres-theme.module.css";
@@ -217,6 +217,10 @@ export default function MemberModal({
 
   if (!isOpen) return null;
 
+  const publicRoleBadge = isAdmin
+    ? { label: getRoleBadgeLabel(member.role), className: getRoleBadgeClassName(member.role) }
+    : resolvePublicDiscoveryRoleBadge(member.role);
+
   const planningSummary =
     member.planningStatus === "shared"
       ? "Planning visible — plusieurs créneaux à venir"
@@ -301,7 +305,9 @@ export default function MemberModal({
                 </div>
 
                 <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
-                  <span className={getRoleBadgeClassName(member.role)}>{getRoleBadgeLabel(member.role)}</span>
+                  {publicRoleBadge ? (
+                    <span className={publicRoleBadge.className}>{publicRoleBadge.label}</span>
+                  ) : null}
                   {member.badges?.map((badge) => (
                     <span key={badge} className={getRoleBadgeClassName(badge)}>
                       {getRoleBadgeLabel(badge)}

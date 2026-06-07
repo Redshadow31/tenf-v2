@@ -1,6 +1,6 @@
 import { MEMBER_ROLE_PICKER_GROUPS, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
-/** Options de rôle groupées (staff / communauté) pour les &lt;select&gt;. */
+/** Options de rôle groupées (staff / reconnaissance / communauté) pour les &lt;select&gt;. */
 export function MemberRoleSelectOptions() {
   return (
     <>

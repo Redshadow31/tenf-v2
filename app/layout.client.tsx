@@ -11,7 +11,9 @@ import MemberGlobalNotificationHint from "@/components/MemberGlobalNotificationH
 import ConnectionTracker from "@/components/ConnectionTracker";
 import PwaSplashScreen from "@/components/PwaSplashScreen";
 import { MemberDesktopNavProvider, useMemberDesktopNav } from "@/contexts/MemberDesktopNavContext";
+import { MemberSidebarSearchProvider } from "@/contexts/MemberSidebarSearchContext";
 import MemberSidebarExpandRail from "@/components/member/navigation/MemberSidebarExpandRail";
+import { isMemberSidebarFullContext } from "@/lib/navigation/memberSidebar";
 
 type ClientLayoutProps = {
   children: ReactNode;
@@ -32,6 +34,7 @@ function MemberSiteLayout({
 }: MemberSiteLayoutProps) {
   const pathname = usePathname();
   const isMemberArea = Boolean(pathname?.startsWith("/member") || pathname?.startsWith("/membres"));
+  const isFullMemberSidebar = isMemberSidebarFullContext(pathname);
   const shouldRenderDesktopSidebar = !isMobileViewport;
   const shouldRenderMobileSidebarTrigger = isMobileViewport && isMemberArea;
   const shouldRenderMobileSidebar = isMobileViewport && isMobileSidebarOpen;
@@ -47,6 +50,7 @@ function MemberSiteLayout({
     "/fonctionnement-tenf/comment-ca-marche",
     "/changelog",
     "/organisation-staff",
+    "/remerciements",
     "/contact",
   ] as const;
   const FULL_WIDTH_EXACT_PATHS = [
@@ -65,27 +69,40 @@ function MemberSiteLayout({
     "/confidentialite",
     "/propriete-intellectuelle",
   ] as const;
-  /** Pages membres « inbox » / « profil » : pleine largeur du `<main>` (pas de max-w-7xl) pour utiliser l’espace quand la sidebar est visible ou repliée. */
-  const isMemberNotificationsPage = Boolean(pathname?.startsWith("/member/notifications"));
-  const isMemberProfilePage = pathname === "/member/profil";
+  /** Pages membres bento / inbox : pleine largeur du `<main>` (pas de max-w-7xl). */
+  const isMemberBentoPage = Boolean(
+    pathname?.startsWith("/member/dashboard") ||
+      pathname?.startsWith("/member/profil") ||
+      pathname?.startsWith("/member/planning") ||
+      pathname?.startsWith("/membres/planning") ||
+      pathname?.startsWith("/member/raids") ||
+      pathname?.startsWith("/member/engagement") ||
+      pathname?.startsWith("/member/activite") ||
+      pathname?.startsWith("/member/formations") ||
+      pathname?.startsWith("/member/notifications"),
+  );
   const isFullWidthPage =
     pathname === "/" ||
     (!!pathname && FULL_WIDTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) ||
     (!!pathname && FULL_WIDTH_EXACT_PATHS.some((p) => pathname === p)) ||
-    isMemberNotificationsPage ||
-    isMemberProfilePage;
+    isMemberBentoPage;
   const mainClassName = isFullWidthPage
     ? "flex-1 min-w-0 w-full"
     : "flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8";
+
+  const sidebarWidthClass = isFullMemberSidebar
+    ? "w-[min(20rem,100%)] max-w-[22rem]"
+    : "w-[min(14rem,100%)] max-w-[16rem]";
 
   const sidebarWrapperClass =
     "relative z-20 min-w-0 shrink-0 overflow-hidden border-r " +
     (effectiveDesktopCollapsed
       ? "w-0 max-w-0 border-transparent opacity-0 xl:pointer-events-none"
-      : "w-[min(20rem,100%)] max-w-[22rem] opacity-100") +
+      : `${sidebarWidthClass} opacity-100`) +
     (prefersReducedMotion ? "" : " xl:transition-[width,opacity] xl:duration-200 xl:ease-out");
 
   return (
+    <MemberSidebarSearchProvider>
     <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
       <Header
         onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined}
@@ -100,7 +117,7 @@ function MemberSiteLayout({
               borderColor: effectiveDesktopCollapsed ? "transparent" : "var(--color-sidebar-border)",
             }}
           >
-            <div className="h-full min-h-0 w-[min(20rem,100%)] max-w-[22rem]">
+            <div className={`h-full min-h-0 ${sidebarWidthClass}`}>
               <UserSidebar />
             </div>
           </div>
@@ -128,6 +145,7 @@ function MemberSiteLayout({
       <MemberGlobalNotificationHint />
       <Footer />
     </div>
+    </MemberSidebarSearchProvider>
   );
 }
 

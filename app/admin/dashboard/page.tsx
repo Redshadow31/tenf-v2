@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Dashboard2View } from "@/components/admin/dashboard/Dashboard2View";
+import AdminDashboardView from "@/components/admin/dashboard/AdminDashboardView";
 
 export const metadata: Metadata = {
   title: "Tableau de bord — Administration",
   description:
-    "Vue TENF pour le staff : expérience membre, files modération (raids, Discord, événements) et pilotage administrateur.",
+    "Cockpit staff TENF : priorités modération, accompagnement par rôle et signaux communauté.",
 };
 
 export default function DashboardPage() {
-  return <Dashboard2View />;
+  return <AdminDashboardView />;
 }

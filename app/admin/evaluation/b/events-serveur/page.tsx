@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import {
+  buildCommunityEventPresenceIndex,
+  COMMUNITY_EVENT_MAX_POINTS,
+  getCommunityEventPointsForLogin,
+} from "@/lib/evaluationCommunityEvents";
 
 interface Member {
   twitchLogin: string;
@@ -92,29 +97,22 @@ export default function EvaluationBEventsServeurPage() {
     load();
   }, [hasAccess, selectedMonth]);
 
-  const { membersWithPoints, nonSpotlightEventsCount, withPresenceCount } = useMemo(() => {
-    const nonSpotlight = (events || []).filter((e: EventItem) => (e.category || "") !== "Spotlight");
-    const presentLogins = new Set<string>();
-    for (const event of nonSpotlight) {
-      for (const p of event.presences || []) {
-        if (p.present && p.twitchLogin) {
-          presentLogins.add(p.twitchLogin.toLowerCase());
-        }
-      }
-    }
+  const { membersWithPoints, eligibleEventsCount, withPresenceCount } = useMemo(() => {
+    const { totalEligibleEvents, presencesByLogin } = buildCommunityEventPresenceIndex(events || []);
     const membersWithPoints = (members || []).map((m) => {
-      const hasPresence = presentLogins.has(m.twitchLogin.toLowerCase());
+      const login = m.twitchLogin.toLowerCase();
+      const presences = presencesByLogin.get(login) || 0;
       return {
         ...m,
-        points: hasPresence ? 2 : 0,
-        hasPresence,
+        presences,
+        points: getCommunityEventPointsForLogin(login, presencesByLogin, totalEligibleEvents),
+        hasPresence: presences > 0,
       };
     });
-    const withPresenceCount = membersWithPoints.filter((m) => m.hasPresence).length;
     return {
       membersWithPoints,
-      nonSpotlightEventsCount: nonSpotlight.length,
-      withPresenceCount,
+      eligibleEventsCount: totalEligibleEvents,
+      withPresenceCount: membersWithPoints.filter((m) => m.hasPresence).length,
     };
   }, [members, events]);
 
@@ -169,7 +167,7 @@ export default function EvaluationBEventsServeurPage() {
         </Link>
         <h1 className="text-4xl font-bold text-white mb-2">Events serveur — Engagement Communautaire</h1>
         <p className="text-gray-400">
-          Tous profils (gestion). 2 points si au moins une présence validée à un event du mois (hors Spotlight).
+          Formation, Soirée Film, Apéro et Jeux communautaire uniquement. Barème : 1 event = 2 pts · 50 % = 4 pts · 80 % = 6 pts.
         </p>
       </div>
 
@@ -201,16 +199,16 @@ export default function EvaluationBEventsServeurPage() {
           <p className="text-3xl font-bold text-white">{membersWithPoints.length}</p>
         </div>
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-          <p className="text-sm text-gray-400 mb-2">Events du mois (hors Spotlight)</p>
-          <p className="text-3xl font-bold text-[#9146ff]">{nonSpotlightEventsCount}</p>
+          <p className="text-sm text-gray-400 mb-2">Events éligibles du mois</p>
+          <p className="text-3xl font-bold text-[#9146ff]">{eligibleEventsCount}</p>
         </div>
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
           <p className="text-sm text-gray-400 mb-2">Avec au moins 1 présence validée</p>
           <p className="text-3xl font-bold text-green-400">{withPresenceCount}</p>
         </div>
         <div className="bg-[#1a1a1d] border border-gray-700 rounded-lg p-6">
-          <p className="text-sm text-gray-400 mb-2">Points (2 pts si ≥1 présence)</p>
-          <p className="text-3xl font-bold text-white">0 ou 2</p>
+          <p className="text-sm text-gray-400 mb-2">Barème points</p>
+          <p className="text-3xl font-bold text-white">2 · 4 · 6</p>
         </div>
       </div>
 
@@ -239,8 +237,8 @@ export default function EvaluationBEventsServeurPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-300">{member.role || "—"}</td>
                   <td className="px-4 py-3">
-                    <span className={`font-semibold ${member.points === 2 ? "text-green-400" : "text-gray-500"}`}>
-                      {member.points}/2
+                    <span className={`font-semibold ${member.points >= 4 ? "text-green-400" : member.points > 0 ? "text-amber-300" : "text-gray-500"}`}>
+                      {member.points}/{COMMUNITY_EVENT_MAX_POINTS}
                     </span>
                   </td>
                   <td className="px-4 py-3">

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/db/supabase";
 import type { OrgChartEntry, OrgChartMemberRef, OrgChartPoleKey, OrgChartRoleKey, OrgChartStatusKey } from "@/lib/staff/orgChartTypes";
 import { poleLabelFromKey, roleLabelFromKey, statusLabelFromKey } from "@/lib/staff/orgChartTypes";
+import { isOrgChartPoleOptional } from "@/lib/staff/orgChartRoleHelpers";
 
 type OrgChartDbRow = {
   id: string;
@@ -159,6 +160,7 @@ export class StaffOrgChartRepository {
       .select(this.selectWithSecondary)
       .eq("is_visible", true)
       .eq("is_archived", false)
+      .neq("role_key", "ANCIEN_STAFF_TENF")
       .order("display_order", { ascending: true })
       .order("updated_at", { ascending: false });
 
@@ -175,6 +177,38 @@ export class StaffOrgChartRepository {
       .select(this.selectWithoutSecondary)
       .eq("is_visible", true)
       .eq("is_archived", false)
+      .neq("role_key", "ANCIEN_STAFF_TENF")
+      .order("display_order", { ascending: true })
+      .order("updated_at", { ascending: false });
+
+    if (fallback.error) throw fallback.error;
+    return (fallback.data || []).map((row) => mapEntry(row as unknown as OrgChartDbRow));
+  }
+
+  async listFormerStaff(): Promise<OrgChartEntry[]> {
+    const withSecondary = await supabaseAdmin
+      .from(this.table)
+      .select(this.selectWithSecondary)
+      .eq("is_visible", true)
+      .eq("is_archived", false)
+      .eq("role_key", "ANCIEN_STAFF_TENF")
+      .order("display_order", { ascending: true })
+      .order("updated_at", { ascending: false });
+
+    if (!withSecondary.error) {
+      return (withSecondary.data || []).map((row) => mapEntry(row as unknown as OrgChartDbRow));
+    }
+
+    if (!this.isSecondaryPolesMissing(withSecondary.error)) {
+      throw withSecondary.error;
+    }
+
+    const fallback = await supabaseAdmin
+      .from(this.table)
+      .select(this.selectWithoutSecondary)
+      .eq("is_visible", true)
+      .eq("is_archived", false)
+      .eq("role_key", "ANCIEN_STAFF_TENF")
       .order("display_order", { ascending: true })
       .order("updated_at", { ascending: false });
 
@@ -183,8 +217,8 @@ export class StaffOrgChartRepository {
   }
 
   async upsert(input: OrgChartUpsertInput): Promise<OrgChartEntry> {
-    const isSupport = input.roleKey === "SOUTIEN_TENF";
-    const normalizedPoleKey = !isSupport && input.poleKey ? input.poleKey : null;
+    const poleOptional = isOrgChartPoleOptional(input.roleKey);
+    const normalizedPoleKey = !poleOptional && input.poleKey ? input.poleKey : null;
     const normalizedPoleLabel = normalizedPoleKey
       ? (input.poleLabel || poleLabelFromKey(normalizedPoleKey)).trim()
       : null;

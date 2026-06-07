@@ -35,6 +35,8 @@ export interface LiveMember {
   isSolidarityRaider?: boolean;
   isCommunityBooster?: boolean;
   isDiscoverer?: boolean;
+  isTenfExplorer?: boolean;
+  tenfFollowRate?: number;
   isWarmlySupported?: boolean;
   isBalancedSupport?: boolean;
   followState?: "followed" | "not_followed" | "unknown";

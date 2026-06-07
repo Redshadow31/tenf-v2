@@ -7,6 +7,7 @@ import {
   CHARTE_AUDIENCE_LABELS,
   type CharteAudience,
 } from "./charteModerationContent";
+import { CharteArticleText } from "./CharteArticleText";
 
 type CharteViewerProfileBannerProps = {
   roleLabel: string;
@@ -17,6 +18,7 @@ type CharteViewerProfileBannerProps = {
   onProfileFilterChange: (value: boolean) => void;
   relevantCount: number;
   totalCount: number;
+  onNavigateToArticle?: (sectionId: number) => void;
 };
 
 export function CharteViewerProfileBanner({
@@ -28,6 +30,7 @@ export function CharteViewerProfileBanner({
   onProfileFilterChange,
   relevantCount,
   totalCount,
+  onNavigateToArticle,
 }: CharteViewerProfileBannerProps) {
   if (!charteAudience) {
     return (
@@ -36,8 +39,9 @@ export function CharteViewerProfileBanner({
         aria-label="Profil staff"
       >
         <p>
-          Ton rôle staff n&apos;a pas été reconnu automatiquement. Lis la charte complète — en cas de doute, vois
-          l&apos;article 4 ou demande à un coordinateur.
+          Ton rôle staff n&apos;a pas été reconnu automatiquement. Lis la charte complète — en cas de doute, vois{" "}
+          <CharteArticleText text="l'article 4" onNavigateToArticle={onNavigateToArticle} /> ou demande à un
+          coordinateur.
         </p>
       </aside>
     );
@@ -84,7 +88,7 @@ export function CharteViewerProfileBanner({
       {roleBrief ? (
         <p className="mt-4 rounded-xl border border-violet-400/20 bg-violet-950/25 px-3 py-2.5 text-sm leading-relaxed text-violet-50/95">
           <span className="font-semibold text-violet-200">Pour toi — </span>
-          {roleBrief}
+          <CharteArticleText text={roleBrief} onNavigateToArticle={onNavigateToArticle} />
         </p>
       ) : null}
     </aside>

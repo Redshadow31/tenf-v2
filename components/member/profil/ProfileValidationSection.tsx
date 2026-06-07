@@ -16,10 +16,12 @@ export default function ProfileValidationSection({ status, label, tone }: Profil
   return (
     <ProfileSectionCard
       id="validation"
+      kicker="Staff"
       title="Validation TENF"
-      description="État technique de ta fiche côté staff."
+      description="État de ta fiche côté équipe — pas de jugement, juste une relecture humaine."
       icon={ShieldCheck}
-      accentClassName="border-emerald-400/35 bg-emerald-500/10 text-emerald-200"
+      tone="emerald"
+      accentHex="#22c55e"
       rightSlot={<StatusBadge label={label} tone={tone} />}
     >
       <div className="space-y-[clamp(0.55rem,0.8vw,0.85rem)]">

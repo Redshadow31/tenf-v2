@@ -12,6 +12,7 @@ import {
   ExternalLink,
   MessageCircle,
   HeartHandshake,
+  History,
   LayoutDashboard,
   LayoutGrid,
   LayoutList,
@@ -34,6 +35,8 @@ import type { OrgChartEntry, OrgChartPoleKey, OrgChartStatusKey } from "@/lib/st
 import { ORG_CHART_POLE_OPTIONS, poleLabelFromKey, poleTagFromKey, roleLabelFromKey } from "@/lib/staff/orgChartTypes";
 import {
   countOrgChartByFilter,
+  isOrgChartActiveModerator,
+  isOrgChartModeratorOnPause,
   matchesOrgChartFilter,
   ORG_CHART_FILTERS,
   ORG_CHART_QUICK_TILES,
@@ -54,11 +57,15 @@ const SECTION_META: Record<string, { subtitle: string; accent: string }> = {
     accent: "rgba(99,102,241,0.35)",
   },
   moderators: {
-    subtitle: "Encadrement, sécurité et accompagnement",
+    subtitle: "Modérateurs actifs — encadrement, sécurité et accompagnement",
     accent: "rgba(168,85,247,0.35)",
   },
+  moderatorsPaused: {
+    subtitle: "Hiatus temporaire — pas d'intervention officielle pendant la pause",
+    accent: "rgba(148,163,184,0.35)",
+  },
   support: {
-    subtitle: "Soutien transversal et dynamique communautaire",
+    subtitle: "Aide active sur une mission concrète en cours — soutien transversal et contributions invitées",
     accent: "rgba(34,197,94,0.35)",
   },
 };
@@ -117,6 +124,7 @@ const STATUS_VISUAL: Record<
   TRAINING: { label: "En formation", accent: "#f59e0b", bg: "rgba(245,158,11,0.14)" },
   PAUSED: { label: "En pause", accent: "#94a3b8", bg: "rgba(148,163,184,0.14)" },
   SUPPORT: { label: "Soutien", accent: "#38bdf8", bg: "rgba(56,189,248,0.14)" },
+  REMERCIE: { label: "Remercié", accent: "#d4a853", bg: "rgba(212,168,83,0.14)" },
 };
 
 /** Pôles uniques (évite les doublons legacy ex. Parcours Membres ×2). */
@@ -465,14 +473,6 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
       })
     );
 
-  const isModeratorRole = (entry: OrgChartEntry) =>
-    entry.roleKey === "MODERATEUR" ||
-    entry.roleKey === "MODERATEUR_AUTONOMIE" ||
-    entry.roleKey === "MODERATEUR_ACCOMPAGNEMENT" ||
-    entry.roleKey === "MODERATEUR_DECOUVERTE" ||
-    entry.roleKey === "MODERATEUR_EN_FORMATION" ||
-    entry.roleKey === "MODERATEUR_EN_PAUSE";
-
   const isSupportRole = (entry: OrgChartEntry) =>
     entry.roleKey === "SOUTIEN_TENF" ||
     entry.roleKey === "CONTRIBUTEUR_INVITE" ||
@@ -482,7 +482,8 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
     () => ({
       founders: sortByMemberName(baseEntries.filter((entry) => entry.roleKey === "FONDATEUR")),
       adminCoordinators: sortByMemberName(baseEntries.filter((entry) => entry.roleKey === "ADMIN_COORDINATEUR")),
-      moderators: sortByMemberName(baseEntries.filter(isModeratorRole)),
+      moderators: sortByMemberName(baseEntries.filter(isOrgChartActiveModerator)),
+      moderatorsPaused: sortByMemberName(baseEntries.filter(isOrgChartModeratorOnPause)),
       support: sortByMemberName(baseEntries.filter(isSupportRole)),
     }),
     [baseEntries]
@@ -492,7 +493,8 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
     () => ({
       founders: sortByMemberName(visibleEntries.filter((entry) => entry.roleKey === "FONDATEUR")),
       adminCoordinators: sortByMemberName(visibleEntries.filter((entry) => entry.roleKey === "ADMIN_COORDINATEUR")),
-      moderators: sortByMemberName(visibleEntries.filter(isModeratorRole)),
+      moderators: sortByMemberName(visibleEntries.filter(isOrgChartActiveModerator)),
+      moderatorsPaused: sortByMemberName(visibleEntries.filter(isOrgChartModeratorOnPause)),
       support: sortByMemberName(visibleEntries.filter(isSupportRole)),
     }),
     [visibleEntries]
@@ -502,6 +504,7 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
     { key: "founders", title: "Fondateurs TENF", items: grouped.founders },
     { key: "adminCoordinators", title: "Coordinateurs TENF", items: grouped.adminCoordinators },
     { key: "moderators", title: "Modération", items: grouped.moderators },
+    { key: "moderatorsPaused", title: "Modération en pause", items: grouped.moderatorsPaused },
     { key: "support", title: "Soutien & invités", items: grouped.support },
   ].filter((section) => section.items.length > 0);
 
@@ -563,6 +566,7 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
       founders: groupedAll.founders.length,
       adminCoordinators: groupedAll.adminCoordinators.length,
       moderators: groupedAll.moderators.length,
+      moderatorsPaused: groupedAll.moderatorsPaused.length,
       support: groupedAll.support.length,
       total: baseEntries.length,
     }),
@@ -704,6 +708,14 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                     Espace membre
                   </Link>
                 ) : null}
+                <Link
+                  href="/remerciements"
+                  className="inline-flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-amber-500/10"
+                  style={{ borderColor: "rgba(212,168,83,0.42)", color: "#fef3c7" }}
+                >
+                  <History size={16} aria-hidden />
+                  Anciens staff remerciés
+                </Link>
               </div>
             </div>
 
@@ -717,8 +729,12 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                 <strong className="org-stat-value">{groupedAll.founders.length + groupedAll.adminCoordinators.length}</strong>
               </div>
               <div className="org-stat-card">
-                <span className="org-stat-label">Modération</span>
+                <span className="org-stat-label">Modération active</span>
                 <strong className="org-stat-value">{groupedAll.moderators.length}</strong>
+              </div>
+              <div className="org-stat-card">
+                <span className="org-stat-label">En pause</span>
+                <strong className="org-stat-value">{groupedAll.moderatorsPaused.length}</strong>
               </div>
               <div className="org-stat-card">
                 <span className="org-stat-label">Soutien TENF</span>
@@ -1117,11 +1133,17 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
                       className="org-staff-card group relative w-full min-w-0 overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 org-card"
                       style={{
                         borderColor:
-                          section.key === "support" ? "rgba(34,197,94,0.35)" : "var(--color-border)",
+                          section.key === "support"
+                            ? "rgba(34,197,94,0.35)"
+                            : section.key === "moderatorsPaused"
+                              ? "rgba(148,163,184,0.35)"
+                              : "var(--color-border)",
                         background:
                           section.key === "support"
                             ? "linear-gradient(135deg, rgba(22,163,74,0.14), rgba(15,23,42,0.85) 35%, rgba(2,6,23,0.95) 100%)"
-                            : "linear-gradient(180deg, color-mix(in srgb, var(--color-card) 100%, transparent) 0%, rgba(2,6,23,0.92) 100%)",
+                            : section.key === "moderatorsPaused"
+                              ? "linear-gradient(135deg, rgba(100,116,139,0.12), rgba(15,23,42,0.85) 35%, rgba(2,6,23,0.95) 100%)"
+                              : "linear-gradient(180deg, color-mix(in srgb, var(--color-card) 100%, transparent) 0%, rgba(2,6,23,0.92) 100%)",
                         animationDelay: `${Math.min(index * 45, 300)}ms`,
                         boxShadow: `inset 0 3px 0 0 ${SECTION_META[section.key]?.accent || "var(--color-primary)"}`,
                       }}
@@ -1244,6 +1266,39 @@ export default function OrganigrammeClient({ entries }: { entries: OrgChartEntry
             </section>
           ))
         )}
+
+        <section
+          className="org-fade-up rounded-2xl border p-6 sm:p-8"
+          style={{
+            borderColor: "rgba(212,168,83,0.35)",
+            background:
+              "linear-gradient(135deg, rgba(180,134,11,0.1), rgba(15,23,42,0.85) 45%, rgba(2,6,23,0.95) 100%)",
+          }}
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "#d4a853" }}>
+                Reconnaissance
+              </p>
+              <h2 className="mt-2 text-xl font-bold sm:text-2xl" style={{ color: "var(--color-text)" }}>
+                Anciens membres du staff
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: "var(--color-text-secondary)" }}>
+                Les personnes ayant contribué par le passé à TENF sont valorisées sur une page dédiée. Elles n&apos;apparaissent
+                pas ici car elles n&apos;exercent plus de fonction active dans l&apos;organisation actuelle.
+              </p>
+            </div>
+            <Link
+              href="/remerciements"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-amber-500/10"
+              style={{ borderColor: "rgba(212,168,83,0.42)", color: "#fef3c7" }}
+            >
+              <History size={16} aria-hidden />
+              Voir les remerciements
+              <ArrowRight size={16} aria-hidden />
+            </Link>
+          </div>
+        </section>
 
             <details
               className="org-fade-up rounded-2xl border p-4 lg:hidden"

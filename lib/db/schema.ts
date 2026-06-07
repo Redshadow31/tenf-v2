@@ -25,6 +25,7 @@ export const memberRoleEnum = pgEnum('member_role', [
   'Admin Coordinateur',
   'Admin Adjoint',
   'Soutien TENF',
+  'Ancien Staff TENF',
   'Contributeur Invité TENF',
   'Contributeur TENF du Mois',
   'Créateur Junior',

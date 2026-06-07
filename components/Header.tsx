@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ChevronDown, ExternalLink, LogIn, Menu, PanelLeftOpen, Search, UserCircle2, X } from "lucide-react";
 import HeaderPrimaryCta from "@/components/header/HeaderPrimaryCta";
-import { memberSidebarNavItemsForMobile } from "@/lib/navigation/memberSidebar";
+import { isMemberSidebarFullContext, memberSidebarNavItemsForMobile } from "@/lib/navigation/memberSidebar";
+import MemberHeaderSearch from "@/components/member/navigation/MemberHeaderSearch";
 import { DISCORD_INVITE_URL, socialLinks, type SocialLink } from "@/lib/socialLinks";
 import { useMemberDesktopNavOptional } from "@/contexts/MemberDesktopNavContext";
 import { NavDropdownPanel, NavMenuItemLink, type NavDropdownGroup } from "@/components/header/NavDropdownMenu";
@@ -79,7 +80,6 @@ const NAV_GROUPS: NavDropdownGroup[] = [
     label: "TENF+",
     description: "L'écosystème et les services",
     items: [
-      { href: "/academy", label: "Academy", description: "Programme d'accompagnement" },
       { href: "/organisation-staff", label: "Staff & organisation", description: "Qui fait quoi" },
       { href: "/organisation-staff/organigramme", label: "Organigramme interactif", description: "Vue d'ensemble" },
       { href: "/partenariats", label: "Partenariats", description: "Nos collaborations" },
@@ -502,6 +502,7 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
   const [memberUnreadNotifications, setMemberUnreadNotifications] = useState(0);
 
   const showStickyDiscord = isPublicContext(pathname);
+  const useMemberHeaderSearch = isMemberSidebarFullContext(pathname);
   // CTA header (Rejoindre ou Lives) masqué sur /rejoindre et zones admin/member dédiées.
   const showJoinCta = showStickyDiscord && !pathname?.startsWith("/rejoindre");
 
@@ -648,7 +649,7 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
 
           {/* Recherche desktop */}
           <div className="relative z-20 hidden xl:block">
-            <HeaderSearch variant="desktop" />
+            {useMemberHeaderSearch ? <MemberHeaderSearch variant="desktop" /> : <HeaderSearch variant="desktop" />}
           </div>
 
           <div className="relative z-20 hidden xl:flex">
@@ -736,7 +737,11 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
               ) : null}
 
               {/* Recherche mobile */}
-              <HeaderSearch variant="mobile" onItemSelect={() => setMobileMenuOpen(false)} />
+              {useMemberHeaderSearch ? (
+                <MemberHeaderSearch variant="mobile" onItemSelect={() => setMobileMenuOpen(false)} />
+              ) : (
+                <HeaderSearch variant="mobile" onItemSelect={() => setMobileMenuOpen(false)} />
+              )}
 
               {/* Sections principales */}
               {NAV_GROUPS.map((group) => {

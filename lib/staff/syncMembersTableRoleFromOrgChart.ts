@@ -30,6 +30,8 @@ export function memberRoleFromOrgChartRoleKey(roleKey: OrgChartRoleKey): MemberR
       return "Soutien TENF";
     case "CONTRIBUTEUR_INVITE":
       return "Contributeur Invité TENF";
+    case "ANCIEN_STAFF_TENF":
+      return "Ancien Staff TENF";
     default: {
       const _n: never = roleKey;
       return _n;

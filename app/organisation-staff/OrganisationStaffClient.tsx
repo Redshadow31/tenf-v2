@@ -67,10 +67,17 @@ const FAQ_ITEMS: Array<{
   },
   {
     q: "Quelle différence entre Modérateur TENF et Soutien TENF ?",
-    a: "Le Modérateur TENF est un membre confirmé du staff qui fait respecter le cadre et accompagne au quotidien. Le Soutien TENF aide ponctuellement ou régulièrement sur une mission précise, sans exercer de modération active.",
+    a: "Le Modérateur TENF est un membre confirmé du staff qui fait respecter le cadre et accompagne au quotidien. Le Soutien TENF aide activement sur une mission concrète et actuelle, sans exercer de modération active.",
     tag: "Rôles",
     accent: "#a855f7",
     Icon: Shield,
+  },
+  {
+    q: "Qu'est-ce que le rôle « Ancien Staff TENF » ?",
+    a: "C'est une reconnaissance honorifique pour les personnes qui ont contribué au staff par le passé. Elles sont valorisées sur la page Remerciements et n'apparaissent pas dans l'organigramme actif, car elles n'exercent plus de fonction opérationnelle.",
+    tag: "Reconnaissance",
+    accent: "#d4a853",
+    Icon: HeartHandshake,
   },
   {
     q: "Quelle différence entre un rôle staff et un pôle de mission ?",
@@ -387,7 +394,7 @@ export default function OrganisationStaffClient() {
             Rôles principaux du staff
           </p>
           <h2 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--color-text)" }}>
-            Huit rôles pour bien se situer dans l&apos;équipe
+            Les rôles du staff pour bien se situer dans l&apos;équipe
           </h2>
           <p className="max-w-3xl leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
             Chaque rôle indique la <strong style={{ color: "var(--color-text)" }}>place</strong> d&apos;une personne dans l&apos;équipe
@@ -445,25 +452,44 @@ export default function OrganisationStaffClient() {
                       <p className="pt-4 leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
                         {role.description}
                       </p>
-                      <p className="mt-4 text-xs font-semibold uppercase tracking-wide" style={{ color: role.accent }}>
-                        Missions clés
-                      </p>
-                      <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                        {role.missions.map((mission) => (
-                          <li
-                            key={mission}
-                            className="flex items-start gap-2 rounded-lg border px-3 py-2 text-sm"
-                            style={{
-                              borderColor: `${role.accent}33`,
-                              backgroundColor: "rgba(2,6,23,0.45)",
-                              color: "var(--color-text-secondary)",
-                            }}
+                      {role.missions.length > 0 ? (
+                        <>
+                          <p className="mt-4 text-xs font-semibold uppercase tracking-wide" style={{ color: role.accent }}>
+                            Missions clés
+                          </p>
+                          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                            {role.missions.map((mission) => (
+                              <li
+                                key={mission}
+                                className="flex items-start gap-2 rounded-lg border px-3 py-2 text-sm"
+                                style={{
+                                  borderColor: `${role.accent}33`,
+                                  backgroundColor: "rgba(2,6,23,0.45)",
+                                  color: "var(--color-text-secondary)",
+                                }}
+                              >
+                                <CircleDot size={14} className="mt-0.5 shrink-0" style={{ color: role.accent }} aria-hidden />
+                                <span>{mission}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : role.key === "ANCIEN_STAFF_TENF" ? (
+                        <div className="mt-4 rounded-xl border px-4 py-3" style={{ borderColor: `${role.accent}44`, backgroundColor: "rgba(2,6,23,0.45)" }}>
+                          <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                            Ce rôle honorifique n&apos;apparaît pas dans l&apos;organigramme actif. Les profils concernés sont
+                            présentés sur la page de remerciements.
+                          </p>
+                          <Link
+                            href="/remerciements"
+                            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold transition hover:opacity-90"
+                            style={{ color: role.accent }}
                           >
-                            <CircleDot size={14} className="mt-0.5 shrink-0" style={{ color: role.accent }} aria-hidden />
-                            <span>{mission}</span>
-                          </li>
-                        ))}
-                      </ul>
+                            Voir les anciens membres remerciés
+                            <ArrowRight size={15} aria-hidden />
+                          </Link>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -653,6 +679,13 @@ export default function OrganisationStaffClient() {
             >
               Voir l&apos;organigramme staff
               <ArrowRight size={15} aria-hidden />
+            </Link>
+            <Link
+              href="/remerciements"
+              className="inline-flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-amber-500/10"
+              style={{ borderColor: "rgba(212,168,83,0.42)", color: "#fef3c7" }}
+            >
+              Anciens staff remerciés
             </Link>
             <Link
               href="/a-propos"

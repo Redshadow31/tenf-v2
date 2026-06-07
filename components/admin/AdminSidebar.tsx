@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, PanelLeftClose, X } from "lucide-react";
+import { useAdminDesktopNav } from "@/contexts/AdminDesktopNavContext";
 import {
   findActiveHub,
   getNavigationByMode,
@@ -63,6 +64,7 @@ export default function AdminSidebar({
   onCloseMobile,
 }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { effectiveDesktopCollapsed, prefersReducedMotion, setDesktopCollapsed } = useAdminDesktopNav();
   const [openMenus, setOpenMenus] = useState<Set<string>>(new Set());
   const [canAccessAdvanced, setCanAccessAdvanced] = useState(false);
   const [adminMode, setAdminMode] = useState<AdminMode>("simple");
@@ -287,15 +289,28 @@ export default function AdminSidebar({
 
   const sectionsHaveContent = quickAccess.length > 0 || categories.length > 0;
 
-  const sidebarContent = (
+  const renderSidebarContent = (showDesktopCollapse: boolean) => (
     <>
-      <AdminHubContextCard
-        hubLabel={activeHub?.label ?? null}
-        hubIcon={activeHub?.icon ?? null}
-        description={hubDescription}
-        mode={adminMode}
-        itemsCount={totalPages}
-      />
+      <div className="relative">
+        {showDesktopCollapse ? (
+          <button
+            type="button"
+            onClick={() => setDesktopCollapsed(true)}
+            className="absolute right-0 top-0 z-10 hidden h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/25 text-zinc-400 transition hover:border-violet-400/35 hover:text-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 lg:inline-flex"
+            aria-label="Masquer le menu admin"
+            title="Masquer le menu"
+          >
+            <PanelLeftClose className="h-4 w-4" aria-hidden />
+          </button>
+        ) : null}
+        <AdminHubContextCard
+          hubLabel={activeHub?.label ?? null}
+          hubIcon={activeHub?.icon ?? null}
+          description={hubDescription}
+          mode={adminMode}
+          itemsCount={totalPages}
+        />
+      </div>
 
       {sectionsHaveContent ? (
         <nav
@@ -375,13 +390,17 @@ export default function AdminSidebar({
     scrollbarColor: "#3b3650 transparent",
   };
 
+  const desktopAsideClass =
+    "hidden lg:block admin-sidebar-scroll border-r h-[calc(100vh-5rem)] sticky top-20 overflow-y-auto px-4 py-4 " +
+    (effectiveDesktopCollapsed
+      ? "w-0 min-w-0 max-w-0 border-transparent px-0 opacity-0 pointer-events-none overflow-hidden"
+      : "w-80 min-w-[17.5rem] max-w-[min(22rem,92vw)] opacity-100") +
+    (prefersReducedMotion ? "" : " transition-[width,opacity,padding] duration-200 ease-out");
+
   return (
     <>
-      <aside
-        className="hidden lg:block admin-sidebar-scroll w-80 min-w-[17.5rem] max-w-[min(22rem,92vw)] border-r h-[calc(100vh-5rem)] sticky top-20 overflow-y-auto px-4 py-4"
-        style={desktopBackground}
-      >
-        {sidebarContent}
+      <aside className={desktopAsideClass} style={desktopBackground}>
+        {renderSidebarContent(true)}
       </aside>
 
       {isMobileOpen && (
@@ -407,7 +426,7 @@ export default function AdminSidebar({
                 <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
-            {sidebarContent}
+            {renderSidebarContent(false)}
           </aside>
         </div>
       )}

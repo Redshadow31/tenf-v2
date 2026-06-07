@@ -34,6 +34,10 @@ export const hubSectionLabelClass =
 export const hubMembersLogoClass =
   "h-[clamp(7rem,20vw,12rem)] w-auto max-w-[min(100%,32rem)] object-contain object-center drop-shadow-[0_12px_40px_rgba(0,0,0,0.55)] sm:max-w-[38rem] lg:h-[clamp(9rem,24vw,15rem)] lg:max-w-[min(50vw,28rem)] xl:h-[clamp(10rem,26vw,17rem)] lg:object-left";
 
+/** Logo compact pour le hero bento hub membres */
+export const hubMembersLogoCompactClass =
+  "h-[clamp(4.5rem,10vw,6.5rem)] w-auto max-w-[7.5rem] object-contain object-center drop-shadow-[0_8px_28px_rgba(0,0,0,0.45)] lg:h-[clamp(5rem,11vw,7rem)] lg:max-w-[8.5rem]";
+
 /** Pastille filtre cockpit (hub membres, actions, postulations) */
 export function cockpitFilterChipClass(active: boolean): string {
   return `rounded-lg border px-3 py-2 text-xs font-semibold transition ${hubFocusRingClass} ${
