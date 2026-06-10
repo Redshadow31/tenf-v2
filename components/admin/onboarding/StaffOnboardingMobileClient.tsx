@@ -24,6 +24,13 @@ function formatSessionDate(iso: string): string {
   });
 }
 
+type SessionTab = "upcoming" | "past";
+
+function isUpcomingSession(dateIso: string, now = Date.now()): boolean {
+  const ts = new Date(dateIso).getTime();
+  return Number.isFinite(ts) && ts >= now;
+}
+
 function staffTone(stats?: StaffOnboardingModeratorStats): { label: string; className: string } {
   if (!stats) return { label: "—", className: "bg-zinc-700/40 text-zinc-300 ring-1 ring-zinc-600/40" };
   if (stats.isFullyStaffed) {
@@ -41,6 +48,7 @@ export default function StaffOnboardingMobileClient() {
   const [registrationStats, setRegistrationStats] = useState<Record<string, StaffOnboardingRegistrationStats>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<SessionTab>("upcoming");
   const [onlyAtRisk, setOnlyAtRisk] = useState(false);
   const [selected, setSelected] = useState<StaffOnboardingIntegration | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -66,25 +74,38 @@ export default function StaffOnboardingMobileClient() {
     void refresh();
   }, [refresh]);
 
-  const sorted = useMemo(
-    () => [...integrations].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
-    [integrations]
+  const upcomingSessions = useMemo(
+    () =>
+      [...integrations]
+        .filter((i) => isUpcomingSession(i.date))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [integrations],
   );
 
+  const pastSessions = useMemo(
+    () =>
+      [...integrations]
+        .filter((i) => !isUpcomingSession(i.date))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [integrations],
+  );
+
+  const tabSessions = activeTab === "upcoming" ? upcomingSessions : pastSessions;
+
   const filtered = useMemo(() => {
-    if (!onlyAtRisk) return sorted;
-    return sorted.filter((i) => !moderatorStats[i.id]?.isFullyStaffed);
-  }, [sorted, onlyAtRisk, moderatorStats]);
+    if (!onlyAtRisk) return tabSessions;
+    return tabSessions.filter((i) => !moderatorStats[i.id]?.isFullyStaffed);
+  }, [tabSessions, onlyAtRisk, moderatorStats]);
 
   const kpis = useMemo(() => {
     let covered = 0;
     let atRisk = 0;
-    sorted.forEach((i) => {
+    tabSessions.forEach((i) => {
       if (moderatorStats[i.id]?.isFullyStaffed) covered += 1;
       else atRisk += 1;
     });
-    return { total: sorted.length, covered, atRisk };
-  }, [sorted, moderatorStats]);
+    return { total: tabSessions.length, covered, atRisk };
+  }, [tabSessions, moderatorStats]);
 
   const openSession = (i: StaffOnboardingIntegration) => {
     setSelected(i);
@@ -188,9 +209,50 @@ export default function StaffOnboardingMobileClient() {
           </div>
         ) : null}
 
+        <div
+          role="tablist"
+          aria-label="Réunions"
+          className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-zinc-900/60 p-1"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "upcoming"}
+            onClick={() => setActiveTab("upcoming")}
+            className={`min-h-[2.75rem] rounded-lg px-3 py-2 text-sm font-semibold transition active:scale-[0.99] ${
+              activeTab === "upcoming"
+                ? "bg-indigo-500/25 text-indigo-50 ring-1 ring-indigo-400/35"
+                : "text-zinc-400"
+            }`}
+          >
+            À venir
+            {upcomingSessions.length > 0 ? (
+              <span className="ml-1.5 tabular-nums text-xs opacity-80">({upcomingSessions.length})</span>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "past"}
+            onClick={() => setActiveTab("past")}
+            className={`min-h-[2.75rem] rounded-lg px-3 py-2 text-sm font-semibold transition active:scale-[0.99] ${
+              activeTab === "past"
+                ? "bg-indigo-500/25 text-indigo-50 ring-1 ring-indigo-400/35"
+                : "text-zinc-400"
+            }`}
+          >
+            Passées
+            {pastSessions.length > 0 ? (
+              <span className="ml-1.5 tabular-nums text-xs opacity-80">({pastSessions.length})</span>
+            ) : null}
+          </button>
+        </div>
+
         <div className="mb-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="min-w-[28%] snap-start rounded-xl border border-white/10 bg-zinc-900/80 px-3 py-2.5">
-            <p className="text-[10px] uppercase text-zinc-500">Sessions</p>
+            <p className="text-[10px] uppercase text-zinc-500">
+              {activeTab === "upcoming" ? "À venir" : "Passées"}
+            </p>
             <p className="text-xl font-black tabular-nums">{kpis.total}</p>
           </div>
           <div className="min-w-[28%] snap-start rounded-xl border border-emerald-500/25 bg-emerald-950/30 px-3 py-2.5">
@@ -223,7 +285,13 @@ export default function StaffOnboardingMobileClient() {
           </div>
         ) : filtered.length === 0 ? (
           <p className="py-12 text-center text-sm text-zinc-500">
-            {integrations.length === 0 ? "Aucune session pour l’instant." : "Aucune session ne correspond à ce filtre."}
+            {integrations.length === 0
+              ? "Aucune session pour l’instant."
+              : tabSessions.length === 0
+                ? activeTab === "upcoming"
+                  ? "Aucune réunion à venir planifiée."
+                  : "Aucune réunion passée enregistrée."
+                : "Aucune session ne correspond à ce filtre."}
           </p>
         ) : (
           <ul className="space-y-2 pb-24">

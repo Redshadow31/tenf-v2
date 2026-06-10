@@ -8,26 +8,49 @@ import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
 import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import MemberRoleHistoryPanel from "@/components/admin/members-gestion/MemberRoleHistoryPanel";
+import MemberEvaluationRecapPanel from "@/components/admin/members-gestion/MemberEvaluationRecapPanel";
+import MemberFicheLogsPanel from "@/components/admin/members-gestion/MemberFicheLogsPanel";
+import {
+  MemberFicheContentGrid,
+  MemberFicheField,
+  MemberFicheFieldGrid,
+  MemberFicheHero,
+  MemberFicheHeroStat,
+  MemberFichePageBackdrop,
+  MemberFichePanel,
+  MemberFicheSkeleton,
+  MemberFicheStatCard,
+  MemberFicheTableHead,
+  MemberFicheTableShell,
+} from "@/components/admin/members-gestion/MemberFicheLayout";
+import MemberFicheTabNav, {
+  MemberFichePeriodChips,
+  MemberFicheTabContent,
+  type FicheTabKey,
+} from "@/components/admin/members-gestion/MemberFicheTabNav";
+import { buildEvalRecapMetrics } from "@/lib/admin/members-fiche/memberEvaluationRecap";
+import {
+  ficheContainerClass,
+  ficheFieldAccentClass,
+  ficheFocusRing,
+  fichePageClass,
+  ficheStatLabelClass,
+  ficheTabClass,
+} from "@/lib/admin/members-fiche/memberFicheStyles";
 
-type TabKey = "overview" | "journey" | "performance" | "participation" | "raids" | "community" | "admin";
+type TabKey = FicheTabKey;
 
-const TAB_LABELS: Record<TabKey, string> = {
-  overview: "Apercu",
-  journey: "Parcours",
-  performance: "Performance",
-  participation: "Participation",
-  raids: "Raids",
-  community: "Communaute",
-  admin: "Administratif",
-};
+const RECAP_HISTORY_MONTHS = 24;
 
 const TAB_SECTIONS: Record<TabKey, string[]> = {
   overview: [],
   journey: ["integration"],
+  recap: [],
   performance: ["evaluations"],
   participation: ["events"],
   raids: ["engagement"],
   community: ["engagement"],
+  logs: [],
   admin: ["notes", "sanctions", "logs"],
 };
 
@@ -77,6 +100,9 @@ export default function MemberFichePage() {
   const [member, setMember] = useState<any>(null);
   const [sectionData, setSectionData] = useState<Record<string, any>>({});
   const [loadingSections, setLoadingSections] = useState<Set<string>>(new Set());
+  const [recapEvaluations, setRecapEvaluations] = useState<any[]>([]);
+  const [loadingRecap, setLoadingRecap] = useState(false);
+  const [recapError, setRecapError] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkAccess() {
@@ -119,7 +145,9 @@ export default function MemberFichePage() {
       delete next.events;
       return next;
     });
+    setRecapEvaluations([]);
     void loadTab(activeTab, true);
+    if (activeTab === "recap") void loadRecapEvaluations(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [months]);
 
@@ -176,7 +204,35 @@ export default function MemberFichePage() {
     }
   }
 
+  async function loadRecapEvaluations(force = false) {
+    if (!memberId) return;
+    if (!force && recapEvaluations.length > 0) return;
+    setLoadingRecap(true);
+    setRecapError(null);
+    try {
+      const response = await fetch(
+        `/api/admin/members/${encodeURIComponent(memberId)}/evaluation-recap?months=${RECAP_HISTORY_MONTHS}`,
+        { cache: "no-store", headers: { "Cache-Control": "no-cache" } }
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || "Erreur chargement recap evaluations");
+      }
+      const data = await response.json();
+      setRecapEvaluations(data.evaluations || []);
+    } catch (e) {
+      setRecapError(e instanceof Error ? e.message : "Erreur chargement recap");
+      setRecapEvaluations([]);
+    } finally {
+      setLoadingRecap(false);
+    }
+  }
+
   async function loadTab(tab: TabKey, force = false) {
+    if (tab === "recap") {
+      await loadRecapEvaluations(force);
+      return;
+    }
     const sections = TAB_SECTIONS[tab] || [];
     if (sections.length === 0) return;
     await Promise.all(sections.map((section) => loadSection(section, force)));
@@ -188,38 +244,15 @@ export default function MemberFichePage() {
   }
 
   const evaluations = sectionData.evaluations?.evaluations || [];
-  const evalMetrics = useMemo(() => {
-    const rows = [...evaluations]
-      .map((e: any) => ({
-        month: e.month,
-        total: Number(e?.score?.total ?? 0),
-        sectionA: Number(e?.score?.sectionA ?? 0),
-        sectionB: Number(e?.score?.sectionB ?? 0),
-        sectionC: Number(e?.score?.sectionC ?? 0),
-        sectionD: Number(e?.score?.sectionDBonuses ?? 0),
-      }))
-      .sort((a: any, b: any) => a.month.localeCompare(b.month));
+  const evalMetrics = useMemo(() => buildEvalRecapMetrics(evaluations), [evaluations]);
+  const recapMetrics = useMemo(() => buildEvalRecapMetrics(recapEvaluations), [recapEvaluations]);
 
-    const known = rows.filter((r: any) => Number.isFinite(r.total));
-    const avgScore = known.length > 0 ? known.reduce((sum: number, row: any) => sum + row.total, 0) / known.length : 0;
-
-    let trend = 0;
-    let trendPercent: number | null = null;
-    if (known.length >= 2) {
-      const last = known[known.length - 1].total;
-      const prev = known[known.length - 2].total;
-      trend = last - prev;
-      if (prev !== 0) trendPercent = (trend / Math.abs(prev)) * 100;
-    }
-
-    const trendLabel = trend > 0 ? "Progression" : trend < 0 ? "Regression" : "Stable";
-    const withDelta = rows.map((row: any, idx: number) => {
-      if (idx === 0) return { ...row, delta: null };
-      return { ...row, delta: row.total - rows[idx - 1].total };
-    });
-
-    return { rows: withDelta, avgScore, trend, trendPercent, trendLabel };
-  }, [evaluations]);
+  const loadingTab = useMemo((): TabKey | null => {
+    if (loadingRecap && activeTab === "recap") return "recap";
+    const sections = TAB_SECTIONS[activeTab] || [];
+    if (sections.some((section) => loadingSections.has(section))) return activeTab;
+    return null;
+  }, [activeTab, loadingRecap, loadingSections]);
 
   const engagement = sectionData.engagement?.engagement || { follows: [], raids: { sent: 0, received: 0, details: [], byMonth: [], stats: {} } };
   const raids = engagement.raids || { sent: 0, received: 0, details: [], byMonth: [], stats: {} };
@@ -253,11 +286,13 @@ export default function MemberFichePage() {
 
   if (!ready || loadingSummary) {
     return (
-      <div className="min-h-screen bg-[#0e0e10] text-white p-8">
-        <div className="animate-pulse space-y-4 max-w-7xl mx-auto">
-          <div className="h-10 w-72 bg-gray-800 rounded" />
-          <div className="h-28 bg-gray-800 rounded-2xl" />
-          <div className="h-96 bg-gray-800 rounded-2xl" />
+      <div className={fichePageClass}>
+        <MemberFichePageBackdrop />
+        <div className={`animate-pulse space-y-5 ${ficheContainerClass}`}>
+          <div className="h-5 w-48 rounded-lg bg-white/[0.04]" />
+          <div className="h-44 rounded-2xl border border-white/[0.04] bg-gradient-to-br from-zinc-900/80 to-zinc-950/90" />
+          <div className="h-16 rounded-2xl border border-white/[0.04] bg-zinc-900/50" />
+          <div className="h-96 rounded-2xl border border-white/[0.04] bg-zinc-900/40" />
         </div>
       </div>
     );
@@ -265,10 +300,11 @@ export default function MemberFichePage() {
 
   if (error || !member) {
     return (
-      <div className="min-h-screen bg-[#0e0e10] text-white p-8">
+      <div className={fichePageClass}>
+        <MemberFichePageBackdrop />
         <div className="max-w-4xl mx-auto">
           <p className="text-red-400 text-lg">{error || "Membre non trouve"}</p>
-          <Link href="/admin/membres/gestion" className="text-purple-400 hover:text-purple-300 underline mt-4 inline-block">
+          <Link href="/admin/membres/gestion" className="text-violet-400 hover:text-violet-300 underline mt-4 inline-block">
             Retour gestion membres
           </Link>
         </div>
@@ -286,19 +322,51 @@ export default function MemberFichePage() {
   const validationLabel = member.profileValidationStatus === "valide" ? "Valide" : "A revoir";
 
   return (
-    <div className="min-h-screen bg-[#0e0e10] text-white p-4 md:p-6 xl:p-8">
-      <div className="max-w-[1600px] mx-auto space-y-5">
-        <section className="rounded-2xl border border-gray-700 bg-gradient-to-br from-[#151720] to-[#111319] p-5 md:p-6">
+    <div className={fichePageClass}>
+      <MemberFichePageBackdrop />
+      <div className={ficheContainerClass}>
+        <nav className="flex flex-wrap items-center gap-2 text-xs text-zinc-500" aria-label="Fil d'Ariane">
+          <Link href="/admin/membres" className="font-medium transition hover:text-violet-300">
+            Hub membres
+          </Link>
+          <span className="text-zinc-700" aria-hidden>
+            /
+          </span>
+          <Link href="/admin/membres/gestion" className="font-medium transition hover:text-violet-300">
+            Gestion
+          </Link>
+          <span className="text-zinc-700" aria-hidden>
+            /
+          </span>
+          <span className="font-semibold text-zinc-300">Fiche 360°</span>
+        </nav>
+
+        <MemberFicheHero>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex items-start gap-4">
-              <img
-                src={member.avatar || "/default-avatar.png"}
-                alt={headerName}
-                className="w-16 h-16 md:w-20 md:h-20 rounded-full border border-gray-700 object-cover"
-              />
+              <div className="relative shrink-0">
+                <div
+                  className="absolute -inset-1 rounded-[1.15rem] bg-gradient-to-br from-violet-500/35 via-cyan-500/15 to-emerald-500/20 opacity-80 blur-sm"
+                  aria-hidden
+                />
+                <img
+                  src={member.avatar || "/default-avatar.png"}
+                  alt={headerName}
+                  className="relative w-16 h-16 md:w-20 md:h-20 rounded-2xl border border-white/15 object-cover shadow-lg shadow-black/40 ring-1 ring-white/10 transition duration-300 hover:scale-[1.02] hover:ring-violet-400/40"
+                />
+                <span
+                  className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-zinc-950 ${
+                    member.isActive !== false ? "bg-emerald-400" : "bg-zinc-500"
+                  }`}
+                  title={statusLabel}
+                />
+              </div>
               <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300/70">Fiche membre 360°</p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl md:text-3xl font-bold">{headerName}</h1>
+                  <h1 className="bg-gradient-to-r from-white via-zinc-100 to-zinc-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent md:text-3xl">
+                    {headerName}
+                  </h1>
                   {member.role && (
                     <span className={getRoleBadgeClasses(member.role)}>
                       {getRoleBadgeLabel(member.role)}
@@ -311,13 +379,13 @@ export default function MemberFichePage() {
                     </span>
                   )}
                 </div>
-                <div className="text-sm text-gray-300 flex flex-wrap gap-x-4 gap-y-1">
+                <div className="text-sm text-zinc-400 flex flex-wrap gap-x-4 gap-y-1">
                   {member.twitchLogin && (
                     <a
                       href={`https://www.twitch.tv/${member.twitchLogin}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-purple-300 hover:text-purple-200 underline"
+                      className="text-violet-300 hover:text-violet-200 underline"
                     >
                       Twitch: {member.twitchLogin}
                     </a>
@@ -329,648 +397,604 @@ export default function MemberFichePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-400">Historique:</label>
-              <select
-                value={months}
-                onChange={(e) => setMonths(Number(e.target.value))}
-                className="bg-[#0f1116] border border-gray-700 rounded-lg px-3 py-2 text-sm"
-              >
-                <option value={3}>3 mois</option>
-                <option value={6}>6 mois</option>
-                <option value={12}>12 mois</option>
-                <option value={24}>24 mois</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-3">
+              <MemberFichePeriodChips value={months} onChange={setMonths} />
               <Link
                 href={`/admin/membres/gestion?search=${encodeURIComponent(member.twitchLogin || member.displayName || "")}`}
-                className="px-3 py-2 rounded-lg border border-gray-700 bg-[#1a1d26] hover:bg-[#212635] text-sm font-semibold"
+                className={`inline-flex items-center gap-2 rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] px-3 py-2 text-sm font-semibold text-zinc-200 shadow-sm transition hover:border-violet-400/35 hover:text-white ${ficheFocusRing}`}
               >
                 Retour gestion
               </Link>
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
-            <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
-              <p className="text-[11px] uppercase tracking-wide text-gray-400">Membre depuis</p>
-              <p className="mt-1 text-sm font-semibold text-white">{formatDate(member.createdAt)}</p>
-            </div>
-            <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
-              <p className="text-[11px] uppercase tracking-wide text-gray-400">Integration</p>
-              <p className="mt-1 text-sm font-semibold text-white">{formatDate(member.integrationDate)}</p>
-            </div>
-            <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
-              <p className="text-[11px] uppercase tracking-wide text-gray-400">Parrain</p>
-              <p className="mt-1 text-sm font-semibold text-white">{member.parrain || "—"}</p>
-            </div>
-            <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
-              <p className="text-[11px] uppercase tracking-wide text-gray-400">Validation profil</p>
-              <p className="mt-1 text-sm font-semibold text-white">{validationLabel}</p>
-            </div>
-            <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
-              <p className="text-[11px] uppercase tracking-wide text-gray-400">Note eval. recente</p>
-              <p className="mt-1 text-sm font-semibold text-white">{lastEvaluation ? String(lastEvaluation.total) : "—"}</p>
-            </div>
-            <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
-              <p className="text-[11px] uppercase tracking-wide text-gray-400">Participations ({months} mois)</p>
-              <p className="mt-1 text-sm font-semibold text-white">{events.total || 0}</p>
-            </div>
-            <div className="rounded-xl border border-gray-700 bg-[#0f1116] p-3">
-              <p className="text-[11px] uppercase tracking-wide text-gray-400">Raids (faits/recus)</p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                {Number(raids.sent || 0)} / {Number(raids.received || 0)}
-              </p>
-            </div>
+          <div className="relative mt-5 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+            <MemberFicheHeroStat label="Membre depuis" value={formatDate(member.createdAt)} tone="slate" />
+            <MemberFicheHeroStat label="Integration" value={formatDate(member.integrationDate)} tone="indigo" />
+            <MemberFicheHeroStat label="Parrain" value={member.parrain || "—"} tone="cyan" />
+            <MemberFicheHeroStat
+              label="Validation profil"
+              value={validationLabel}
+              tone={member.profileValidationStatus === "valide" ? "emerald" : "amber"}
+            />
+            <MemberFicheHeroStat
+              label="Note eval. recente"
+              value={lastEvaluation ? `${lastEvaluation.total} /30` : "—"}
+              onClick={() => switchTab("recap")}
+              active={activeTab === "recap"}
+              tone="violet"
+            />
+            <MemberFicheHeroStat
+              label={`Participations (${months}m)`}
+              value={events.total || 0}
+              onClick={() => switchTab("participation")}
+              active={activeTab === "participation"}
+              tone="amber"
+            />
+            <MemberFicheHeroStat
+              label="Raids faits / recus"
+              value={`${Number(raids.sent || 0)} / ${Number(raids.received || 0)}`}
+              onClick={() => switchTab("raids")}
+              active={activeTab === "raids"}
+              tone="rose"
+            />
           </div>
-        </section>
+        </MemberFicheHero>
 
-        <section className="rounded-2xl border border-gray-700 bg-[#12141b] p-3">
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(TAB_LABELS) as TabKey[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => switchTab(tab)}
-                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  activeTab === tab
-                    ? "bg-violet-500/25 border border-violet-400/40 text-violet-100"
-                    : "bg-[#1a1d26] border border-gray-700 text-gray-300 hover:text-white"
-                }`}
-              >
-                {TAB_LABELS[tab]}
-              </button>
-            ))}
-          </div>
-        </section>
+        <MemberFicheTabNav activeTab={activeTab} onTabChange={switchTab} loadingTab={loadingTab} />
 
+        <MemberFicheTabContent tabKey={activeTab}>
         {activeTab === "overview" && (
-          <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            <div className="xl:col-span-2 rounded-2xl border border-gray-700 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold">Profil et reperes</h3>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Role</p>
-                  <p className="font-semibold">{member.role || "—"}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Onboarding</p>
-                  <p className="font-semibold">{member.onboardingStatus || "—"}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Mentor</p>
-                  <p className="font-semibold">{member.mentorTwitchLogin ? `@${member.mentorTwitchLogin}` : "—"}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Fuseau / Langue</p>
-                  <p className="font-semibold">{member.timezone || "—"} / {member.primaryLanguage || "—"}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 md:col-span-2">
-                  <p className="text-gray-400">Description publique</p>
-                  <p className="font-medium text-gray-200 whitespace-pre-wrap">{member.description || "Aucune description renseignee."}</p>
-                </div>
-              </div>
-            </div>
+          <MemberFicheContentGrid columns={3}>
+            <MemberFichePanel
+              kicker="Identite"
+              title="Profil et reperes"
+              tone="violet"
+              className="xl:col-span-2"
+            >
+              <MemberFicheFieldGrid cols={2}>
+                <MemberFicheField label="Role" value={member.role || "—"} tone="violet" />
+                <MemberFicheField label="Onboarding" value={member.onboardingStatus || "—"} tone="indigo" />
+                <MemberFicheField label="Mentor" value={member.mentorTwitchLogin ? `@${member.mentorTwitchLogin}` : "—"} tone="cyan" />
+                <MemberFicheField label="Fuseau / Langue" value={`${member.timezone || "—"} / ${member.primaryLanguage || "—"}`} tone="sky" />
+                <MemberFicheField
+                  label="Description publique"
+                  value={member.description || "Aucune description renseignee."}
+                  span={2}
+                  tone="neutral"
+                />
+              </MemberFicheFieldGrid>
+            </MemberFichePanel>
 
-            <div className="xl:col-span-3 rounded-2xl border border-sky-500/25 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold text-sky-100">Infos communauté</h3>
-              <p className="mt-1 text-sm text-gray-400">
-                Repères pour le suivi communauté (onglets Communauté / Suivi pause sur la gestion membres).
-              </p>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Parrain</p>
-                  <p className="font-semibold">{member.parrain || "—"}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Date intégration TENF</p>
-                  <p className="font-semibold">{formatDate(member.integrationDate)}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Statut site</p>
-                  <p className="font-semibold">{member.isActive === false ? "Inactif" : "Actif"}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Validation profil</p>
-                  <p className="font-semibold">{member.profileValidationStatus || "—"}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Dernière revue staff</p>
-                  <p className="font-semibold">{formatDate(member.lastReviewAt)}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Prochaine revue</p>
-                  <p className="font-semibold">{formatDate(member.nextReviewAt)}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 md:col-span-2">
-                  <p className="text-gray-400">Bio personnalisée</p>
-                  <p className="font-medium text-gray-200 whitespace-pre-wrap">{member.customBio || "—"}</p>
-                </div>
+            <MemberFichePanel kicker="Synthese" title="Indicateurs rapides" tone="emerald">
+              <div className="space-y-2 text-sm">
+                {[
+                  { label: "Pays", value: member.countryCode || "—", tone: "sky" as const },
+                  { label: "Derniere revue", value: formatDate(member.lastReviewAt), tone: "amber" as const },
+                  { label: "Prochaine revue", value: formatDate(member.nextReviewAt), tone: "rose" as const },
+                  { label: "Badges", value: Array.isArray(member.badges) ? member.badges.length : 0, tone: "violet" as const },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2 pl-3.5 ${ficheFieldAccentClass(item.tone)}`}
+                  >
+                    <span className="text-zinc-500">{item.label}: </span>
+                    <strong className="text-zinc-100">{item.value}</strong>
+                  </div>
+                ))}
               </div>
-            </div>
+            </MemberFichePanel>
 
-            <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold">Synthese rapide</h3>
-              <ul className="mt-4 space-y-2 text-sm text-gray-300">
-                <li className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">Pays: <strong>{member.countryCode || "—"}</strong></li>
-                <li className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">Derniere revue: <strong>{formatDate(member.lastReviewAt)}</strong></li>
-                <li className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">Prochaine revue: <strong>{formatDate(member.nextReviewAt)}</strong></li>
-                <li className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">Badges: <strong>{Array.isArray(member.badges) ? member.badges.length : 0}</strong></li>
-              </ul>
-            </div>
-          </section>
+            <MemberFichePanel
+              kicker="Communaute"
+              title="Infos communaute"
+              intro="Reperes pour le suivi communaute (gestion membres / suivi pause)."
+              tone="sky"
+              className="xl:col-span-3"
+            >
+              <MemberFicheFieldGrid cols={4}>
+                <MemberFicheField label="Parrain" value={member.parrain || "—"} />
+                <MemberFicheField label="Date integration TENF" value={formatDate(member.integrationDate)} />
+                <MemberFicheField label="Statut site" value={member.isActive === false ? "Inactif" : "Actif"} />
+                <MemberFicheField label="Validation profil" value={member.profileValidationStatus || "—"} />
+                <MemberFicheField label="Derniere revue staff" value={formatDate(member.lastReviewAt)} />
+                <MemberFicheField label="Prochaine revue" value={formatDate(member.nextReviewAt)} />
+                <MemberFicheField label="Bio personnalisee" value={member.customBio || "—"} span={2} />
+              </MemberFicheFieldGrid>
+            </MemberFichePanel>
+          </MemberFicheContentGrid>
         )}
 
         {activeTab === "journey" && (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-indigo-500/20 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold text-white">Historique des rôles & pilotage staff</h3>
-              <p className="mt-1 text-sm text-gray-400">
-                Périodes actives, durées en staff et journal des changements.
-              </p>
-              <div className="mt-4">
-                <MemberRoleHistoryPanel
-                  variant="full"
-                  roleHistory={member.roleHistory}
-                  staffPeriods={member.staffPeriods}
-                  currentRole={member.role || "Communauté"}
-                  currentStatut={member.isActive !== false ? "Actif" : "Inactif"}
-                  createdAt={member.createdAt}
-                  integrationDate={member.integrationDate}
-                  updatedAt={member.updatedAt}
-                  memberIdentifier={
-                    member.twitchLogin || member.discordId || memberId
-                  }
-                  showJourneyLinks
-                />
-              </div>
-            </div>
+          <div className="space-y-4">
+            <MemberFichePanel
+              kicker="Staff"
+              title="Historique des roles & pilotage staff"
+              intro="Periodes actives, durees en staff et journal des changements."
+              tone="indigo"
+            >
+              <MemberRoleHistoryPanel
+                variant="full"
+                roleHistory={member.roleHistory}
+                staffPeriods={member.staffPeriods}
+                currentRole={member.role || "Communaute"}
+                currentStatut={member.isActive !== false ? "Actif" : "Inactif"}
+                createdAt={member.createdAt}
+                integrationDate={member.integrationDate}
+                updatedAt={member.updatedAt}
+                memberIdentifier={member.twitchLogin || member.discordId || memberId}
+                showJourneyLinks
+              />
+            </MemberFichePanel>
 
-            <section className="rounded-2xl border border-gray-700 bg-[#151922] p-5 space-y-4">
-            <h3 className="text-lg font-semibold">Parcours et integrations</h3>
-            {loadingSections.has("integration") ? (
-              <p className="text-gray-400">Chargement des integrations...</p>
-            ) : sectionError("integration") ? (
-              <p className="text-red-300">{sectionError("integration")}</p>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                    <p className="text-gray-400 text-xs uppercase tracking-wide">Total integrations suivies</p>
-                    <p className="text-xl font-bold">{integrationRows.length}</p>
-                  </div>
-                  <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                    <p className="text-gray-400 text-xs uppercase tracking-wide">Date entree TENF</p>
-                    <p className="text-xl font-bold">{formatDate(member.createdAt)}</p>
-                  </div>
-                  <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                    <p className="text-gray-400 text-xs uppercase tracking-wide">Date integration validee</p>
-                    <p className="text-xl font-bold">{formatDate(member.integrationDate)}</p>
-                  </div>
-                </div>
+            <MemberFichePanel kicker="Integration" title="Parcours et integrations" tone="neutral">
+              {loadingSections.has("integration") ? (
+                <MemberFicheSkeleton rows={5} />
+              ) : sectionError("integration") ? (
+                <p className="text-red-300">{sectionError("integration")}</p>
+              ) : (
+                <>
+                  <MemberFicheFieldGrid cols={3}>
+                    <MemberFicheStatCard label="Integrations suivies" value={integrationRows.length} />
+                    <MemberFicheStatCard label="Date entree TENF" value={formatDate(member.createdAt)} />
+                    <MemberFicheStatCard label="Integration validee" value={formatDate(member.integrationDate)} />
+                  </MemberFicheFieldGrid>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[760px]">
-                    <thead>
-                      <tr className="text-left text-gray-400 border-b border-gray-700">
-                        <th className="py-2">Session</th>
-                        <th className="py-2">Date</th>
-                        <th className="py-2">Categorie</th>
-                        <th className="py-2">Presence</th>
-                        <th className="py-2">Parrain</th>
-                        <th className="py-2">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {integrationRows.length === 0 ? (
-                        <tr><td className="py-3 text-gray-500" colSpan={6}>Aucune integration trouvee pour ce membre.</td></tr>
-                      ) : (
-                        integrationRows.map((row: any) => (
-                          <tr key={String(row.integration?.id || Math.random())} className="border-b border-gray-800">
-                            <td className="py-2 font-medium">{row.integration?.title || "—"}</td>
-                            <td className="py-2">{formatDate(row.integration?.date)}</td>
-                            <td className="py-2">{row.integration?.category || "—"}</td>
-                            <td className="py-2">{row.registration?.present === true ? "Oui" : "Non / non confirme"}</td>
-                            <td className="py-2">{row.registration?.parrain || "—"}</td>
-                            <td className="py-2 text-gray-300">{row.registration?.notes || "—"}</td>
+                  <div className="mt-4">
+                    <MemberFicheTableShell minWidth="760px">
+                      <MemberFicheTableHead>
+                        <tr>
+                          <th className="px-3 py-2 text-left">Session</th>
+                          <th className="px-3 py-2 text-left">Date</th>
+                          <th className="px-3 py-2 text-left">Categorie</th>
+                          <th className="px-3 py-2 text-left">Presence</th>
+                          <th className="px-3 py-2 text-left">Parrain</th>
+                          <th className="px-3 py-2 text-left">Notes</th>
+                        </tr>
+                      </MemberFicheTableHead>
+                      <tbody>
+                        {integrationRows.length === 0 ? (
+                          <tr>
+                            <td className="px-3 py-3 text-zinc-500" colSpan={6}>
+                              Aucune integration trouvee pour ce membre.
+                            </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-            </section>
-          </section>
+                        ) : (
+                          integrationRows.map((row: any, idx: number) => (
+                            <tr key={String(row.integration?.id || idx)} className="border-b border-white/[0.05]">
+                              <td className="px-3 py-2 font-medium">{row.integration?.title || "—"}</td>
+                              <td className="px-3 py-2">{formatDate(row.integration?.date)}</td>
+                              <td className="px-3 py-2">{row.integration?.category || "—"}</td>
+                              <td className="px-3 py-2">
+                                {row.registration?.present === true ? "Oui" : "Non / non confirme"}
+                              </td>
+                              <td className="px-3 py-2">{row.registration?.parrain || "—"}</td>
+                              <td className="px-3 py-2 text-zinc-400">{row.registration?.notes || "—"}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </MemberFicheTableShell>
+                  </div>
+                </>
+              )}
+            </MemberFichePanel>
+          </div>
+        )}
+
+        {activeTab === "recap" && (
+          <MemberEvaluationRecapPanel
+            metrics={recapMetrics}
+            loading={loadingRecap}
+            error={recapError}
+            twitchLogin={member.twitchLogin}
+            toMonthLabel={toMonthLabel}
+          />
         )}
 
         {activeTab === "performance" && (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold">Evaluations mensuelles</h3>
-              {loadingSections.has("evaluations") ? (
-                <p className="text-gray-400 mt-3">Chargement des evaluations...</p>
-              ) : sectionError("evaluations") ? (
-                <p className="text-red-300 mt-3">{sectionError("evaluations")}</p>
-              ) : (
-                <>
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-sm">Moyenne</p>
-                      <p className="text-2xl font-bold">{evalMetrics.avgScore.toFixed(1)}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-sm">Tendance</p>
-                      <p className="text-2xl font-bold">{evalMetrics.trendLabel}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-sm">Delta dernier mois</p>
-                      <p className="text-2xl font-bold">
-                        {evalMetrics.trend > 0 ? "+" : ""}
-                        {evalMetrics.trend.toFixed(1)}
-                        {evalMetrics.trendPercent !== null
-                          ? ` (${evalMetrics.trendPercent > 0 ? "+" : ""}${evalMetrics.trendPercent.toFixed(1)}%)`
-                          : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto mt-4">
-                    <table className="w-full text-sm min-w-[780px]">
-                      <thead>
-                        <tr className="text-left text-gray-400 border-b border-gray-700">
-                          <th className="py-2">Mois</th>
-                          <th className="py-2">Total</th>
-                          <th className="py-2">Section A/B/C/D</th>
-                          <th className="py-2">Delta</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {evalMetrics.rows.length === 0 ? (
-                          <tr><td className="py-3 text-gray-500" colSpan={4}>Aucune evaluation disponible.</td></tr>
-                        ) : (
-                          evalMetrics.rows.map((row: any) => (
-                            <tr key={row.month} className="border-b border-gray-800">
-                              <td className="py-2">{toMonthLabel(row.month)}</td>
-                              <td className="py-2 font-semibold">{row.total}</td>
-                              <td className="py-2 text-gray-300">A:{row.sectionA} / B:{row.sectionB} / C:{row.sectionC} / D:{row.sectionD}</td>
-                              <td className="py-2">
-                                {row.delta === null ? "—" : `${row.delta > 0 ? "+" : ""}${row.delta.toFixed(1)}`}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </div>
+          <MemberFichePanel
+            kicker="Evaluation D"
+            title="Evaluations mensuelles"
+            intro={`Periode selectionnee : ${months} mois. Voir l'onglet Recap pour l'historique complet et les moyennes glissantes.`}
+            tone="violet"
+          >
+            {loadingSections.has("evaluations") ? (
+              <MemberFicheSkeleton rows={5} />
+            ) : sectionError("evaluations") ? (
+              <p className="text-red-300">{sectionError("evaluations")}</p>
+            ) : (
+              <>
+                <MemberFicheFieldGrid cols={4}>
+                  <MemberFicheStatCard
+                    label="Moyenne periode"
+                    value={evalMetrics.avgTotal !== null ? evalMetrics.avgTotal.toFixed(1) : "—"}
+                    numericValue={evalMetrics.avgTotal ?? undefined}
+                    scoreMax={30}
+                    onClick={() => switchTab("recap")}
+                  />
+                  <MemberFicheStatCard label="Tendance" value={evalMetrics.trendLabel} />
+                  <MemberFicheStatCard
+                    label="Delta dernier mois"
+                    value={
+                      evalMetrics.deltaLastMonth !== null
+                        ? `${evalMetrics.deltaLastMonth > 0 ? "+" : ""}${evalMetrics.deltaLastMonth.toFixed(1)}`
+                        : "—"
+                    }
+                    hint={
+                      evalMetrics.trendPercent !== null
+                        ? `${evalMetrics.trendPercent > 0 ? "+" : ""}${evalMetrics.trendPercent.toFixed(1)}%`
+                        : undefined
+                    }
+                  />
+                  <MemberFicheStatCard label="Mois avec donnees" value={evalMetrics.monthsWithData} />
+                </MemberFicheFieldGrid>
 
-          </section>
-        )}
-
-        {activeTab === "participation" && (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-emerald-500/25 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold text-emerald-100">Presence aux evenements & animations</h3>
-              <p className="mt-1 text-sm text-gray-400">
-                Historique sur les {months} derniers mois — presences confirmees et inscriptions sans feuille de presence.
-              </p>
-              {loadingSections.has("events") ? (
-                <p className="text-gray-400 mt-4">Chargement des participations...</p>
-              ) : sectionError("events") ? (
-                <p className="text-red-300 mt-4">{sectionError("events")}</p>
-              ) : (
-                <>
-                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-xs uppercase tracking-wide">Total</p>
-                      <p className="text-2xl font-bold">{events.total || 0}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-xs uppercase tracking-wide">Presences confirmees</p>
-                      <p className="text-2xl font-bold text-emerald-300">{events.presenceConfirmed || 0}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-xs uppercase tracking-wide">Inscriptions seules</p>
-                      <p className="text-2xl font-bold">{events.registrationOnly || 0}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-xs uppercase tracking-wide">Categorie favorite</p>
-                      <p className="text-lg font-bold truncate">{events.favoriteCategory || "—"}</p>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto mt-5">
-                    <table className="w-full text-sm min-w-[820px]">
-                      <thead>
-                        <tr className="text-left text-gray-400 border-b border-gray-700">
-                          <th className="py-2">Evenement</th>
-                          <th className="py-2">Date</th>
-                          <th className="py-2">Categorie</th>
-                          <th className="py-2">Mode</th>
-                          <th className="py-2">Note</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(events.participations || []).length === 0 ? (
-                          <tr>
-                            <td className="py-4 text-gray-500" colSpan={5}>
-                              Aucune participation sur la periode selectionnee.
-                            </td>
-                          </tr>
-                        ) : (
-                          (events.participations || []).map((row: any) => (
-                            <tr key={`${row.eventId}-${row.date}`} className="border-b border-gray-800">
-                              <td className="py-2 font-medium">{row.title}</td>
-                              <td className="py-2">{formatDate(row.date)}</td>
-                              <td className="py-2">{row.category}</td>
-                              <td className="py-2">
-                                <span
-                                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                    row.mode === "presence"
-                                      ? "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30"
-                                      : "bg-sky-500/15 text-sky-200 border border-sky-400/30"
-                                  }`}
-                                >
-                                  {row.mode === "presence" ? "Presence" : "Inscription"}
-                                </span>
-                              </td>
-                              <td className="py-2 text-gray-300">{row.note || "—"}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
-        )}
-
-        {activeTab === "raids" && (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-violet-500/25 bg-[#151922] p-5">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-violet-100">Raids faits & recus</h3>
-                  <p className="mt-1 text-sm text-gray-400">
-                    Historique manuel + EventSub sur les {months} derniers mois (hub raids TENF).
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      { key: "all", label: "Toutes sources" },
-                      { key: "manual", label: "Manuel" },
-                      { key: "eventsub", label: "EventSub" },
-                      { key: "legacy", label: "Historique" },
-                    ] as const
-                  ).map((opt) => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => setRaidSourceFilter(opt.key)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-colors ${
-                        raidSourceFilter === opt.key
-                          ? "bg-violet-500/25 border-violet-400/40 text-violet-100"
-                          : "bg-[#0f1116] border-gray-700 text-gray-300 hover:text-white"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {loadingSections.has("engagement") ? (
-                <p className="text-gray-400 mt-4">Chargement des raids...</p>
-              ) : sectionError("engagement") ? (
-                <p className="text-red-300 mt-4">{sectionError("engagement")}</p>
-              ) : (
-                <>
-                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-sm">Raids faits</p>
-                      <p className="text-2xl font-bold">{Number(raids.sent || 0)}</p>
-                      <p className="mt-1 text-[11px] text-gray-500">
-                        M:{Number(raidStats.sentManual || 0)} · ES:{Number(raidStats.sentEventsub || 0)} · H:
-                        {Number(raidStats.sentLegacy || 0)}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                      <p className="text-gray-400 text-sm">Raids recus</p>
-                      <p className="text-2xl font-bold">{Number(raids.received || 0)}</p>
-                      <p className="mt-1 text-[11px] text-gray-500">
-                        M:{Number(raidStats.receivedManual || 0)} · ES:{Number(raidStats.receivedEventsub || 0)} · H:
-                        {Number(raidStats.receivedLegacy || 0)}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 md:col-span-2">
-                      <p className="text-gray-400 text-sm mb-2">Repartition mensuelle</p>
-                      <div className="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
-                        {(raids.byMonth || []).length === 0 ? (
-                          <span className="text-xs text-gray-500">Aucune donnee.</span>
-                        ) : (
-                          (raids.byMonth || []).slice(0, 6).map((row: any) => (
-                            <span
-                              key={String(row.month)}
-                              className="rounded-full border border-gray-700 bg-black/30 px-2 py-1 text-[11px] text-gray-300"
-                            >
-                              {toMonthLabel(row.month)} · {row.sent}/{row.received}
-                            </span>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto mt-5">
-                    <table className="w-full text-sm min-w-[900px]">
-                      <thead>
-                        <tr className="text-left text-gray-400 border-b border-gray-700">
-                          <th className="py-2">Date</th>
-                          <th className="py-2">Sens</th>
-                          <th className="py-2">Contrepartie</th>
-                          <th className="py-2">Qté</th>
-                          <th className="py-2">Source</th>
-                          <th className="py-2">Viewers</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredRaidDetails.length === 0 ? (
-                          <tr>
-                            <td className="py-4 text-gray-500" colSpan={6}>
-                              Aucun raid sur la periode ou pour ce filtre.
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredRaidDetails.map((row: any, idx: number) => (
-                            <tr key={`${row.type}-${row.date}-${idx}`} className="border-b border-gray-800">
-                              <td className="py-2">{formatDateTime(row.date)}</td>
-                              <td className="py-2">
-                                <span
-                                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                    row.type === "sent"
-                                      ? "bg-sky-500/15 text-sky-200 border border-sky-400/30"
-                                      : "bg-amber-500/15 text-amber-200 border border-amber-400/30"
-                                  }`}
-                                >
-                                  {row.type === "sent" ? "Fait" : "Recu"}
-                                </span>
-                              </td>
-                              <td className="py-2 font-medium">{row.type === "sent" ? row.target : row.raider}</td>
-                              <td className="py-2">{row.count || 1}</td>
-                              <td className="py-2">
-                                <span
-                                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${raidSourceBadgeClass(row.sourceKind)}`}
-                                >
-                                  {raidSourceLabel(row.sourceKind)}
-                                </span>
-                              </td>
-                              <td className="py-2 text-gray-300">{row.viewers ?? "—"}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
-        )}
-
-        {activeTab === "community" && (
-          <section className="space-y-4">
-            <div className="rounded-2xl border border-sky-500/25 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold text-sky-100">Fiche communauté</h3>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Rôle</p>
-                  <p className="font-semibold">{getRoleBadgeLabel(member.role || "—")}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Parrain</p>
-                  <p className="font-semibold">{member.parrain || "—"}</p>
-                </div>
-                <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3">
-                  <p className="text-gray-400">Mentor intégration</p>
-                  <p className="font-semibold">{member.mentorTwitchLogin ? `@${member.mentorTwitchLogin}` : "—"}</p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold">Suivi follows (evaluation)</h3>
-              {loadingSections.has("engagement") ? (
-                <p className="text-gray-400 mt-3">Chargement du suivi follows...</p>
-              ) : sectionError("engagement") ? (
-                <p className="text-red-300 mt-3">{sectionError("engagement")}</p>
-              ) : (
-                <div className="overflow-x-auto mt-3">
-                  <table className="w-full text-sm min-w-[760px]">
-                    <thead>
-                      <tr className="text-left text-gray-400 border-b border-gray-700">
-                        <th className="py-2">Mois</th>
-                        <th className="py-2">Staff</th>
-                        <th className="py-2">Statut</th>
-                        <th className="py-2">Commentaire</th>
+                <div className="mt-4">
+                  <MemberFicheTableShell minWidth="780px">
+                    <MemberFicheTableHead>
+                      <tr>
+                        <th className="px-3 py-2 text-left">Mois</th>
+                        <th className="px-3 py-2 text-center">Total</th>
+                        <th className="px-3 py-2 text-left">Sections A / B / C / D</th>
+                        <th className="px-3 py-2 text-center">Delta</th>
                       </tr>
-                    </thead>
+                    </MemberFicheTableHead>
                     <tbody>
-                      {follows.length === 0 ? (
-                        <tr><td className="py-3 text-gray-500" colSpan={4}>Aucun suivi follow trouve.</td></tr>
+                      {evalMetrics.rows.length === 0 ? (
+                        <tr>
+                          <td className="px-3 py-3 text-zinc-500" colSpan={4}>
+                            Aucune evaluation disponible.
+                          </td>
+                        </tr>
                       ) : (
-                        follows.map((row: any, idx: number) => (
-                          <tr key={`${row.month}-${row.staffSlug}-${idx}`} className="border-b border-gray-800">
-                            <td className="py-2">{toMonthLabel(row.month)}</td>
-                            <td className="py-2">{row.staffName || row.staffSlug || "—"}</td>
-                            <td className="py-2">{row.status?.status || "—"}</td>
-                            <td className="py-2 text-gray-300">{row.status?.comment || "—"}</td>
+                        [...evalMetrics.rows].reverse().map((row) => (
+                          <tr key={row.month} className="border-b border-white/[0.05]">
+                            <td className="px-3 py-2">{toMonthLabel(row.month)}</td>
+                            <td className="px-3 py-2 text-center font-semibold text-violet-200">{row.total}</td>
+                            <td className="px-3 py-2 text-zinc-400">
+                              A:{row.sectionA} / B:{row.sectionB} / C:{row.sectionC} / D:{row.sectionD}
+                            </td>
+                            <td className="px-3 py-2 text-center tabular-nums">
+                              {row.delta === null ? "—" : `${row.delta > 0 ? "+" : ""}${row.delta.toFixed(1)}`}
+                            </td>
                           </tr>
                         ))
                       )}
                     </tbody>
-                  </table>
+                  </MemberFicheTableShell>
                 </div>
-              )}
-            </div>
-          </section>
+              </>
+            )}
+          </MemberFichePanel>
         )}
 
+        {activeTab === "participation" && (
+          <MemberFichePanel
+            kicker="Evenements"
+            title="Presence aux evenements & animations"
+            intro={`Historique sur les ${months} derniers mois — presences confirmees et inscriptions.`}
+            tone="emerald"
+          >
+            {loadingSections.has("events") ? (
+              <MemberFicheSkeleton rows={6} />
+            ) : sectionError("events") ? (
+              <p className="text-red-300">{sectionError("events")}</p>
+            ) : (
+              <>
+                <MemberFicheFieldGrid cols={4}>
+                  <MemberFicheStatCard label="Total" value={events.total || 0} />
+                  <MemberFicheStatCard label="Presences confirmees" value={events.presenceConfirmed || 0} />
+                  <MemberFicheStatCard label="Inscriptions seules" value={events.registrationOnly || 0} />
+                  <MemberFicheStatCard label="Categorie favorite" value={events.favoriteCategory || "—"} />
+                </MemberFicheFieldGrid>
+
+                <div className="mt-4">
+                  <MemberFicheTableShell minWidth="820px">
+                    <MemberFicheTableHead>
+                      <tr>
+                        <th className="px-3 py-2 text-left">Evenement</th>
+                        <th className="px-3 py-2 text-left">Date</th>
+                        <th className="px-3 py-2 text-left">Categorie</th>
+                        <th className="px-3 py-2 text-left">Mode</th>
+                        <th className="px-3 py-2 text-left">Note</th>
+                      </tr>
+                    </MemberFicheTableHead>
+                    <tbody>
+                      {(events.participations || []).length === 0 ? (
+                        <tr>
+                          <td className="px-3 py-4 text-zinc-500" colSpan={5}>
+                            Aucune participation sur la periode selectionnee.
+                          </td>
+                        </tr>
+                      ) : (
+                        (events.participations || []).map((row: any) => (
+                          <tr key={`${row.eventId}-${row.date}`} className="border-b border-white/[0.05]">
+                            <td className="px-3 py-2 font-medium">{row.title}</td>
+                            <td className="px-3 py-2">{formatDate(row.date)}</td>
+                            <td className="px-3 py-2">{row.category}</td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                  row.mode === "presence"
+                                    ? "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30"
+                                    : "bg-sky-500/15 text-sky-200 border border-sky-400/30"
+                                }`}
+                              >
+                                {row.mode === "presence" ? "Presence" : "Inscription"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-zinc-400">{row.note || "—"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </MemberFicheTableShell>
+                </div>
+              </>
+            )}
+          </MemberFichePanel>
+        )}
+
+        {activeTab === "raids" && (
+          <MemberFichePanel
+            kicker="Engagement"
+            title="Raids faits & recus"
+            intro={`Historique manuel + EventSub sur les ${months} derniers mois.`}
+            tone="violet"
+            headerRight={
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { key: "all", label: "Toutes sources" },
+                    { key: "manual", label: "Manuel" },
+                    { key: "eventsub", label: "EventSub" },
+                    { key: "legacy", label: "Historique" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setRaidSourceFilter(opt.key)}
+                    className={ficheTabClass(raidSourceFilter === opt.key)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            {loadingSections.has("engagement") && activeTab === "raids" ? (
+              <MemberFicheSkeleton rows={6} />
+            ) : sectionError("engagement") ? (
+              <p className="text-red-300">{sectionError("engagement")}</p>
+            ) : (
+              <>
+                <MemberFicheFieldGrid cols={4}>
+                  <MemberFicheStatCard
+                    label="Raids faits"
+                    value={Number(raids.sent || 0)}
+                    hint={`M:${Number(raidStats.sentManual || 0)} · ES:${Number(raidStats.sentEventsub || 0)} · H:${Number(raidStats.sentLegacy || 0)}`}
+                  />
+                  <MemberFicheStatCard
+                    label="Raids recus"
+                    value={Number(raids.received || 0)}
+                    hint={`M:${Number(raidStats.receivedManual || 0)} · ES:${Number(raidStats.receivedEventsub || 0)} · H:${Number(raidStats.receivedLegacy || 0)}`}
+                  />
+                  <div className="rounded-xl border border-white/[0.08] bg-black/25 p-3 ring-1 ring-inset ring-white/[0.03] md:col-span-2">
+                    <p className={ficheStatLabelClass}>Repartition mensuelle</p>
+                    <div className="mt-2 flex flex-wrap gap-2 max-h-20 overflow-y-auto">
+                      {(raids.byMonth || []).length === 0 ? (
+                        <span className="text-xs text-zinc-500">Aucune donnee.</span>
+                      ) : (
+                        (raids.byMonth || []).slice(0, 6).map((row: any) => (
+                          <span
+                            key={String(row.month)}
+                            className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-zinc-300"
+                          >
+                            {toMonthLabel(row.month)} · {row.sent}/{row.received}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </MemberFicheFieldGrid>
+
+                <div className="mt-4">
+                  <MemberFicheTableShell minWidth="900px">
+                    <MemberFicheTableHead>
+                      <tr>
+                        <th className="px-3 py-2 text-left">Date</th>
+                        <th className="px-3 py-2 text-left">Sens</th>
+                        <th className="px-3 py-2 text-left">Contrepartie</th>
+                        <th className="px-3 py-2 text-center">Qte</th>
+                        <th className="px-3 py-2 text-left">Source</th>
+                        <th className="px-3 py-2 text-center">Viewers</th>
+                      </tr>
+                    </MemberFicheTableHead>
+                    <tbody>
+                      {filteredRaidDetails.length === 0 ? (
+                        <tr>
+                          <td className="px-3 py-4 text-zinc-500" colSpan={6}>
+                            Aucun raid sur la periode ou pour ce filtre.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredRaidDetails.map((row: any, idx: number) => (
+                          <tr key={`${row.type}-${row.date}-${idx}`} className="border-b border-white/[0.05]">
+                            <td className="px-3 py-2">{formatDateTime(row.date)}</td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                  row.type === "sent"
+                                    ? "bg-sky-500/15 text-sky-200 border border-sky-400/30"
+                                    : "bg-amber-500/15 text-amber-200 border border-amber-400/30"
+                                }`}
+                              >
+                                {row.type === "sent" ? "Fait" : "Recu"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 font-medium">{row.type === "sent" ? row.target : row.raider}</td>
+                            <td className="px-3 py-2 text-center">{row.count || 1}</td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${raidSourceBadgeClass(row.sourceKind)}`}
+                              >
+                                {raidSourceLabel(row.sourceKind)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center text-zinc-400">{row.viewers ?? "—"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </MemberFicheTableShell>
+                </div>
+              </>
+            )}
+          </MemberFichePanel>
+        )}
+
+        {activeTab === "community" && (
+          <MemberFicheContentGrid columns={1}>
+            <MemberFichePanel kicker="Communaute" title="Fiche communaute" tone="sky">
+              <MemberFicheFieldGrid cols={3}>
+                <MemberFicheField label="Role" value={getRoleBadgeLabel(member.role || "—")} />
+                <MemberFicheField label="Parrain" value={member.parrain || "—"} />
+                <MemberFicheField
+                  label="Mentor integration"
+                  value={member.mentorTwitchLogin ? `@${member.mentorTwitchLogin}` : "—"}
+                />
+              </MemberFicheFieldGrid>
+            </MemberFichePanel>
+
+            <MemberFichePanel kicker="Follow" title="Suivi follows (evaluation D)" tone="neutral">
+              {loadingSections.has("engagement") && activeTab === "community" ? (
+                <MemberFicheSkeleton rows={5} />
+              ) : sectionError("engagement") ? (
+                <p className="text-red-300">{sectionError("engagement")}</p>
+              ) : (
+                <MemberFicheTableShell minWidth="760px">
+                  <MemberFicheTableHead>
+                    <tr>
+                      <th className="px-3 py-2 text-left">Mois</th>
+                      <th className="px-3 py-2 text-left">Staff</th>
+                      <th className="px-3 py-2 text-left">Statut</th>
+                      <th className="px-3 py-2 text-left">Commentaire</th>
+                    </tr>
+                  </MemberFicheTableHead>
+                  <tbody>
+                    {follows.length === 0 ? (
+                      <tr>
+                        <td className="px-3 py-3 text-zinc-500" colSpan={4}>
+                          Aucun suivi follow trouve.
+                        </td>
+                      </tr>
+                    ) : (
+                      follows.map((row: any, idx: number) => (
+                        <tr key={`${row.month}-${row.staffSlug}-${idx}`} className="border-b border-white/[0.05]">
+                          <td className="px-3 py-2">{toMonthLabel(row.month)}</td>
+                          <td className="px-3 py-2">{row.staffName || row.staffSlug || "—"}</td>
+                          <td className="px-3 py-2">{row.status?.status || "—"}</td>
+                          <td className="px-3 py-2 text-zinc-400">{row.status?.comment || "—"}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </MemberFicheTableShell>
+              )}
+            </MemberFichePanel>
+          </MemberFicheContentGrid>
+        )}
+
+        {activeTab === "logs" && <MemberFicheLogsPanel memberId={memberId} />}
+
         {activeTab === "admin" && (
-          <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5 space-y-4">
-              <h3 className="text-lg font-semibold">Notes internes</h3>
+          <MemberFicheContentGrid columns={2}>
+            <MemberFichePanel kicker="Interne" title="Notes internes" tone="neutral">
               {loadingSections.has("notes") ? (
-                <p className="text-gray-400">Chargement des notes...</p>
+                <p className="text-zinc-400">Chargement des notes...</p>
               ) : sectionError("notes") ? (
                 <p className="text-red-300">{sectionError("notes")}</p>
               ) : (
                 <>
-                  <div className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 text-sm whitespace-pre-wrap text-gray-200">
+                  <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3 text-sm whitespace-pre-wrap text-zinc-200">
                     {notes.current || "Aucune note actuelle."}
                   </div>
-                  <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                  <div className="mt-3 space-y-2 max-h-[360px] overflow-y-auto pr-1">
                     {(notes.history || []).map((row: any, idx: number) => (
-                      <div key={`${row.date}-${idx}`} className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 text-sm">
-                        <div className="text-gray-400">{formatDateTime(row.date)} • {row.author}</div>
-                        <div className="text-gray-200">{row.action}</div>
-                        <div className="text-gray-400 text-xs mt-1">
+                      <div
+                        key={`${row.date}-${idx}`}
+                        className="rounded-xl border border-white/[0.06] bg-black/20 p-3 text-sm"
+                      >
+                        <div className="text-zinc-500">
+                          {formatDateTime(row.date)} • {row.author}
+                        </div>
+                        <div className="text-zinc-200">{row.action}</div>
+                        <div className="text-zinc-500 text-xs mt-1">
                           Avant: {row.before || "—"} | Apres: {row.after || "—"}
                         </div>
                       </div>
                     ))}
-                    {(notes.history || []).length === 0 && <p className="text-gray-500 text-sm">Aucun historique de notes.</p>}
+                    {(notes.history || []).length === 0 && (
+                      <p className="text-zinc-500 text-sm">Aucun historique de notes.</p>
+                    )}
                   </div>
                 </>
               )}
-            </div>
+            </MemberFichePanel>
 
-            <div className="rounded-2xl border border-gray-700 bg-[#151922] p-5 space-y-4">
-              <h3 className="text-lg font-semibold">Sanctions internes</h3>
+            <MemberFichePanel kicker="Moderation" title="Sanctions internes" tone="amber">
               {loadingSections.has("sanctions") ? (
-                <p className="text-gray-400">Chargement des sanctions...</p>
+                <p className="text-zinc-400">Chargement des sanctions...</p>
               ) : sectionError("sanctions") ? (
                 <p className="text-red-300">{sectionError("sanctions")}</p>
               ) : (
-                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                   {sanctions.map((row: any, idx: number) => (
-                    <div key={`${row.date}-${idx}`} className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 text-sm">
-                      <div className="font-semibold text-gray-100">{row.type || "Sanction"}</div>
-                      <div className="text-gray-400">{formatDateTime(row.date)} • {row.staff}</div>
-                      {row.motif && <div className="text-gray-200 mt-1">Motif: {row.motif}</div>}
-                      {row.duree && <div className="text-gray-300">Duree: {row.duree}</div>}
-                      {row.commentaire && <div className="text-gray-400">Commentaire: {row.commentaire}</div>}
+                    <div
+                      key={`${row.date}-${idx}`}
+                      className="rounded-xl border border-white/[0.06] bg-black/20 p-3 text-sm"
+                    >
+                      <div className="font-semibold text-zinc-100">{row.type || "Sanction"}</div>
+                      <div className="text-zinc-500">
+                        {formatDateTime(row.date)} • {row.staff}
+                      </div>
+                      {row.motif && <div className="text-zinc-200 mt-1">Motif: {row.motif}</div>}
+                      {row.duree && <div className="text-zinc-300">Duree: {row.duree}</div>}
+                      {row.commentaire && <div className="text-zinc-500">Commentaire: {row.commentaire}</div>}
                     </div>
                   ))}
-                  {sanctions.length === 0 && <p className="text-gray-500 text-sm">Aucune sanction trouvee.</p>}
+                  {sanctions.length === 0 && <p className="text-zinc-500 text-sm">Aucune sanction trouvee.</p>}
                 </div>
               )}
-            </div>
+            </MemberFichePanel>
 
-            <div className="xl:col-span-2 rounded-2xl border border-gray-700 bg-[#151922] p-5">
-              <h3 className="text-lg font-semibold">Logs recents</h3>
+            <MemberFichePanel kicker="Audit" title="Logs recents" tone="neutral" className="xl:col-span-2">
               {loadingSections.has("logs") ? (
-                <p className="text-gray-400 mt-3">Chargement des logs...</p>
+                <p className="text-zinc-400">Chargement des logs...</p>
               ) : sectionError("logs") ? (
-                <p className="text-red-300 mt-3">{sectionError("logs")}</p>
+                <p className="text-red-300">{sectionError("logs")}</p>
               ) : (
-                <div className="mt-3 space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
                   {logs.map((row: any) => (
-                    <div key={String(row.id)} className="rounded-lg border border-gray-700 bg-[#0f1116] p-3 text-sm">
-                      <div className="font-semibold">{row.action}</div>
-                      <div className="text-gray-400">
+                    <div
+                      key={String(row.id)}
+                      className="rounded-xl border border-white/[0.06] bg-black/20 p-3 text-sm"
+                    >
+                      <div className="font-semibold text-zinc-100">{row.action}</div>
+                      <div className="text-zinc-500">
                         {formatDateTime(row.timestamp)} • {row.actorUsername || row.actorDiscordId}
                       </div>
                     </div>
                   ))}
-                  {logs.length === 0 && <p className="text-gray-500 text-sm">Aucun log recent.</p>}
+                  {logs.length === 0 && <p className="text-zinc-500 text-sm">Aucun log recent.</p>}
                 </div>
               )}
-            </div>
-          </section>
+            </MemberFichePanel>
+          </MemberFicheContentGrid>
         )}
+        </MemberFicheTabContent>
       </div>
     </div>
   );

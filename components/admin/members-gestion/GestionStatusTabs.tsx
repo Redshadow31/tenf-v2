@@ -101,9 +101,11 @@ export default function GestionStatusTabs({ statusTab, onChange, counts }: Gesti
   return (
     <>
       <p className="mb-2 max-w-4xl text-xs leading-relaxed text-slate-500">
-        Les onglets ci-dessous changent la <span className="font-medium text-slate-300">population de base</span> (actifs,
-        communauté, suivi pause, nouveaux, affiliés post-intégration, départs, bans, archivés). La recherche et les filtres
-        affinent ensuite cette liste — les compteurs peuvent différer selon la couche utilisée.
+        Vues <span className="font-medium text-slate-300">croisées</span> : un même profil peut figurer dans plusieurs
+        onglets (ex. <span className="text-slate-400">Actifs</span> +{" "}
+        <span className="text-slate-400">Affiliés TENF</span>, ou <span className="text-slate-400">VIP</span> via les
+        filtres rapides). Les compteurs ne sont pas mutuellement exclusifs — la somme peut dépasser le total annuaire.
+        Archivés = liste séparée.
       </p>
       <div
         className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[#2a3148] bg-[linear-gradient(145deg,rgba(22,26,40,0.95),rgba(12,14,20,0.98))] p-2 shadow-inner shadow-black/20"

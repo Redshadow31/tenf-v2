@@ -40,33 +40,40 @@ export function isExitMemberRole(role: string | undefined | null): boolean {
 }
 
 /**
- * Affiliation Twitch obtenue après l'intégration TENF (promotion en Affilié ou date Twitch post-intégration).
+ * Promotion interne TENF Développement → Affilié (hors raccourci Nouveau → Affilié).
  */
-export function isTenfAffiliateAfterJoin(
-  member: Pick<Member, "role" | "roleHistory" | "twitchAffiliateDate" | "integrationDate">
+export function hasDevelopmentToAffiliatePromotion(
+  roleHistory: Member["roleHistory"] | undefined | null
 ): boolean {
-  if (toCanonicalMemberRole(member.role) !== "Affilié") return false;
-
-  const history = member.roleHistory || [];
+  const history = roleHistory || [];
   for (const raw of history) {
     if (!raw || typeof raw !== "object") continue;
-    const o = raw as { fromRole?: string; toRole?: string; kind?: string };
+    const o = raw as { fromRole?: string; toRole?: string };
     const toRole = o.toRole ? toCanonicalMemberRole(o.toRole) : null;
     const fromRole = o.fromRole ? toCanonicalMemberRole(o.fromRole) : null;
-    if (toRole === "Affilié" && fromRole && fromRole !== "Affilié") {
+    if (fromRole === "Développement" && toRole === "Affilié") {
       return true;
     }
   }
-
-  if (member.twitchAffiliateDate && member.integrationDate) {
-    const affMs = new Date(member.twitchAffiliateDate).getTime();
-    const integMs = new Date(member.integrationDate).getTime();
-    if (Number.isFinite(affMs) && Number.isFinite(integMs) && affMs > integMs) {
-      return true;
-    }
-  }
-
   return false;
+}
+
+export function isTenfAffiliateAfterJoin(
+  member: Pick<Member, "role" | "roleHistory">
+): boolean {
+  if (toCanonicalMemberRole(member.role) !== "Affilié") return false;
+  return hasDevelopmentToAffiliatePromotion(member.roleHistory);
+}
+
+/** Membre rôle Affilié promu depuis Développement (parcours TENF complet). */
+export function isTenfAffiliateMember(
+  member: Pick<Member, "role" | "roleHistory">
+): boolean {
+  return toCanonicalMemberRole(member.role) === "Affilié" && isTenfAffiliateAfterJoin(member);
+}
+
+export function filterTenfAffiliateMembers(members: Member[]): Member[] {
+  return members.filter(isTenfAffiliateMember);
 }
 
 export function isCommunityRoleMember(role: MemberRole | string): boolean {
@@ -86,7 +93,7 @@ export function memberBelongsToStatusTab(member: Member, statusTab: GestionStatu
   if (statusTab === "nouveaux") return role === "Nouveau";
 
   if (statusTab === "affilies") {
-    return role === "Affilié" && isTenfAffiliateAfterJoin(member);
+    return isTenfAffiliateMember(member);
   }
 
   if (statusTab === "communaute") {
@@ -96,7 +103,7 @@ export function memberBelongsToStatusTab(member: Member, statusTab: GestionStatu
   if (statusTab === "suivi_pause") {
     return (
       member.statut === "Inactif" &&
-      !isStaffRoleForTab(member.role) &&
+      !isStaffRoleForGestionPopulation(member.role) &&
       !isCommunityRoleMember(role) &&
       role !== "Nouveau" &&
       !(role === "Affilié" && isTenfAffiliateAfterJoin(member))
@@ -104,14 +111,39 @@ export function memberBelongsToStatusTab(member: Member, statusTab: GestionStatu
   }
 
   if (statusTab === "actifs") {
-    return (member.statut === "Actif" || isStaffRoleForTab(member.role)) && role !== "Nouveau";
+    return isGestionActifsPopulationMember(member);
   }
 
   return false;
 }
 
+export type GestionActifsPopulationInput = {
+  role?: string | null;
+  isActive?: boolean | null;
+  statut?: "Actif" | "Inactif";
+};
+
+/**
+ * Population « Actifs » de la gestion membres : intégrés actifs + staff (hors Nouveau, Départ, Banni).
+ * Source unique pour l’onglet admin et les compteurs publics (accueil, /membres, /lives).
+ */
+export function isGestionActifsPopulationMember(member: GestionActifsPopulationInput | Member): boolean {
+  const role = toCanonicalMemberRole(member.role || "Affilié");
+  if (isExitMemberRole(role)) return false;
+  if (role === "Nouveau") return false;
+
+  const statut =
+    "statut" in member && member.statut
+      ? member.statut
+      : member.isActive !== false
+        ? "Actif"
+        : "Inactif";
+
+  return statut === "Actif" || isStaffRoleForGestionPopulation(role);
+}
+
 /** Staff : même périmètre que memberListHelpers (visible dans Actifs même inactif). */
-function isStaffRoleForTab(role: MemberRole | string): boolean {
+export function isStaffRoleForGestionPopulation(role: MemberRole | string): boolean {
   const STAFF = new Set([
     "Admin",
     "Admin Coordinateur",
@@ -131,20 +163,30 @@ function isStaffRoleForTab(role: MemberRole | string): boolean {
   return STAFF.has(role as MemberRole) || STAFF.has(toCanonicalMemberRole(role));
 }
 
-export function partitionMembersByStatusTab(members: Member[]): Record<GestionStatusTab, Member[]> {
+/**
+ * Filtre indépendant par onglet — les populations peuvent se chevaucher
+ * (ex. Actif + Affilié TENF + VIP via les filtres rapides).
+ */
+export function filterMembersForStatusTab(members: Member[], statusTab: GestionStatusTab): Member[] {
+  if (statusTab === "archives") return [];
+  return members.filter((member) => memberBelongsToStatusTab(member, statusTab));
+}
+
+/** Compteurs et listes par onglet, sans répartition exclusive. */
+export function buildStatusTabPopulations(members: Member[]): Record<GestionStatusTab, Member[]> {
   const buckets = Object.fromEntries(
     GESTION_STATUS_TAB_ORDER.map((tab) => [tab, [] as Member[]])
   ) as Record<GestionStatusTab, Member[]>;
 
-  for (const member of members) {
-    for (const tab of GESTION_STATUS_TAB_ORDER) {
-      if (tab === "archives") continue;
-      if (memberBelongsToStatusTab(member, tab)) {
-        buckets[tab].push(member);
-        break;
-      }
-    }
+  for (const tab of GESTION_STATUS_TAB_ORDER) {
+    if (tab === "archives") continue;
+    buckets[tab] = filterMembersForStatusTab(members, tab);
   }
 
   return buckets;
+}
+
+/** @deprecated Préférer buildStatusTabPopulations — les onglets ne sont plus exclusifs. */
+export function partitionMembersByStatusTab(members: Member[]): Record<GestionStatusTab, Member[]> {
+  return buildStatusTabPopulations(members);
 }

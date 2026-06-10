@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface MemberOption {
@@ -45,6 +46,9 @@ interface ProgressionResponse {
 }
 
 export default function EvaluationProgressionPage() {
+  const searchParams = useSearchParams();
+  const initialLogin = (searchParams.get("twitchLogin") || "").trim().toLowerCase();
+
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [members, setMembers] = useState<MemberOption[]>([]);
@@ -87,6 +91,14 @@ export default function EvaluationProgressionPage() {
     }
     init();
   }, []);
+
+  useEffect(() => {
+    if (!initialLogin || hasAccess !== true) return;
+    setSelectedLogin(initialLogin);
+    setSearch(initialLogin);
+    void loadProgression(initialLogin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLogin, hasAccess]);
 
   async function loadProgression(login: string) {
     setLoading(true);

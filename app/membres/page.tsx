@@ -870,9 +870,9 @@ export default function Page() {
             />
             <HeroStatCard
               icon={Sparkles}
-              label="Créateurs suivis"
+              label="Actifs de l'entraide"
               value={formatStatValue(stats.activeCreators, loadingCommunityStats)}
-              caption="Profils actifs sur une fenêtre récente — parcours-les plus bas."
+              caption="Présents dans l'entraide sur la période récente."
               tone="amber"
             />
             <HeroStatCard

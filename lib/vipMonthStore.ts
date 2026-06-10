@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { getBlobStore } from "@/lib/memberData";
 
 export interface VipMonthData {
   month: string;
@@ -10,20 +11,17 @@ export interface VipMonthData {
 
 const STORE_NAME = "tenf-vip-month";
 
-function isNetlify(): boolean {
-  return !!process.env.NETLIFY || !!process.env.NETLIFY_DEV;
+function isNetlifyEnv(): boolean {
+  return !!(
+    process.env.NETLIFY ||
+    process.env.NETLIFY_DEV ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME
+  );
 }
 
-async function getVipMonthStore() {
-  try {
-    if (isNetlify()) {
-      const { getStore } = await import("@netlify/blobs");
-      return getStore(STORE_NAME);
-    }
-  } catch {
-    /* local fallback */
-  }
-  return null;
+function getVipMonthStore() {
+  if (!isNetlifyEnv()) return null;
+  return getBlobStore(STORE_NAME);
 }
 
 /** Mois courant au format YYYY-MM (fuseau serveur). */
@@ -40,10 +38,10 @@ export async function readVipMonthLogins(month: string): Promise<string[]> {
   if (!month.match(/^\d{4}-\d{2}$/)) return [];
 
   try {
-    const store = await getVipMonthStore();
     let vipMonthData: VipMonthData | null = null;
 
-    if (store) {
+    if (isNetlifyEnv()) {
+      const store = getVipMonthStore();
       const data = await store.get(`${month}.json`, { type: "json" }).catch(() => null);
       vipMonthData = data as VipMonthData | null;
     } else {
@@ -63,13 +61,13 @@ export async function readVipMonthLogins(month: string): Promise<string[]> {
 }
 
 export async function writeVipMonthData(data: VipMonthData): Promise<void> {
-  const store = await getVipMonthStore();
   const payload = {
     ...data,
     vipLogins: data.vipLogins.map((login) => login.toLowerCase().trim()).filter(Boolean),
   };
 
-  if (store) {
+  if (isNetlifyEnv()) {
+    const store = getVipMonthStore();
     await store.set(`${data.month}.json`, JSON.stringify(payload, null, 2));
     return;
   }

@@ -1,7 +1,7 @@
 import { calendarDayKey, type SessionDayIndex } from "@/lib/integrationSessionCalendar";
 import { isHonoraryStaffRole, toCanonicalMemberRole } from "@/lib/memberRoles";
 import { ROLE_BADGE_PICKER_OPTIONS, sortMemberRolesForPicker } from "@/lib/roleBadgeSystem";
-import { type GestionStatusTab, partitionMembersByStatusTab } from "./memberPopulationFilters";
+import { buildStatusTabPopulations, type GestionStatusTab } from "./memberPopulationFilters";
 import type { Member, MemberRole, MemberStatus, PresetFilter, SortableColumn } from "./types";
 
 export type { GestionStatusTab };
@@ -326,14 +326,14 @@ export function computeMemberListPipeline(
     });
   }
 
-  const partitioned = partitionMembersByStatusTab(filteredMembers);
-  const newMembers = partitioned.nouveaux;
-  const activeMembers = partitioned.actifs;
-  const communityRoleMembers = partitioned.communaute;
-  const communityFollowupMembers = partitioned.suivi_pause;
-  const tenfAffiliateMembers = partitioned.affilies;
-  const departedMembers = partitioned.departs;
-  const bannedMembers = partitioned.bans;
+  const tabPopulations = buildStatusTabPopulations(filteredMembers);
+  const newMembers = tabPopulations.nouveaux;
+  const activeMembers = tabPopulations.actifs;
+  const communityRoleMembers = tabPopulations.communaute;
+  const communityFollowupMembers = tabPopulations.suivi_pause;
+  const tenfAffiliateMembers = tabPopulations.affilies;
+  const departedMembers = tabPopulations.departs;
+  const bannedMembers = tabPopulations.bans;
   const isSearching = searchQuery.trim().length > 0;
 
   let filteredArchivedMembers = archivedMembers;
@@ -358,7 +358,7 @@ export function computeMemberListPipeline(
       ? filteredArchivedMembers
       : isSearching
         ? filteredMembers
-        : partitioned[statusTab] ?? [];
+        : tabPopulations[statusTab] ?? [];
 
   const totalPages = Math.max(1, Math.ceil(displayedMembers.length / pageSize));
   const clampedCurrentPage = Math.min(currentPage, totalPages);

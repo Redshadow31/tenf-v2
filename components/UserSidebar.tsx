@@ -313,6 +313,7 @@ export default function UserSidebar({
             discordUser={discordUser}
             displayName={displayName}
             unreadNotifications={unreadNotifications}
+            vipActiveThisMonth={Boolean(memberOverview?.vip?.activeThisMonth)}
             onNavigate={onNavigate}
           />
         )}

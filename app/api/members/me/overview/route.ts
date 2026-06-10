@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getAuthenticatedAdmin } from "@/lib/requireAdmin";
-import { eventRepository, memberRepository, vipRepository } from "@/lib/repositories";
+import { eventRepository, memberRepository } from "@/lib/repositories";
+import { resolveMonthVipLogins } from "@/lib/vipCurrentMonthLogins";
 import { getMonthKey, loadRaidsFaits } from "@/lib/raidStorage";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import {
@@ -293,9 +294,9 @@ function buildSafeOverviewPayload(input: {
       },
     },
     vip: {
-      activeThisMonth: Boolean(member?.isVip || member?.is_vip),
-      statusLabel: Boolean(member?.isVip || member?.is_vip) ? "Actif ce mois" : "Non actif ce mois",
-      source: Boolean(member?.isVip || member?.is_vip) ? ("member_flag" as const) : ("none" as const),
+      activeThisMonth: false,
+      statusLabel: "Non actif ce mois",
+      source: "none" as const,
       startsAt: null,
       endsAt: null,
     },
@@ -365,7 +366,6 @@ export async function GET() {
     const memberDiscordUsername = String(member.discordUsername || rawMember.discord_username || "");
     const memberProfileStatus = String(member.profileValidationStatus || rawMember.profile_validation_status || "non_soumis");
     const memberOnboardingStatus = String(member.onboardingStatus || rawMember.onboarding_status || "");
-    const memberIsVip = Boolean(member.isVip || rawMember.is_vip);
     const memberIntegrationRaw = member.integrationDate || rawMember.integration_date || null;
     const memberIntegrationDateIso = memberIntegrationRaw
       ? new Date(memberIntegrationRaw).toISOString()
@@ -743,20 +743,16 @@ export async function GET() {
     const completion = profileCompletion(member);
     const participationThisMonth = raidsThisMonth + eventPresencesThisMonth;
     let vipActiveThisMonth = false;
-    let vipSource: "vip_history" | "member_flag" | "none" = "none";
-    try {
-      const vipMonthEntries = await vipRepository.findByMonth(monthKey);
-      vipActiveThisMonth = vipMonthEntries.some((entry) => normalize(entry.twitchLogin) === normalize(memberTwitchLogin));
-      if (vipActiveThisMonth) vipSource = "vip_history";
-    } catch {
-      // Fallback sur le flag membre si l'historique VIP n'est pas accessible
-      vipActiveThisMonth = memberIsVip;
-      vipSource = vipActiveThisMonth ? "member_flag" : "none";
-    }
-
-    if (!vipActiveThisMonth && memberIsVip) {
-      vipActiveThisMonth = true;
-      vipSource = "member_flag";
+    let vipSource: "vip_month" | "none" = "none";
+    const memberLoginNorm = normalize(memberTwitchLogin);
+    if (memberLoginNorm) {
+      try {
+        const monthVipLogins = await resolveMonthVipLogins(monthKey);
+        vipActiveThisMonth = monthVipLogins.some((login) => normalize(login) === memberLoginNorm);
+        if (vipActiveThisMonth) vipSource = "vip_month";
+      } catch (error) {
+        console.warn("[members/me/overview] VIP month resolve failed:", error);
+      }
     }
 
     const normalizedRole = normalize(memberRole);

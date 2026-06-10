@@ -17,7 +17,11 @@ import {
   loadFinalResult
 } from "@/lib/evaluationStorage";
 import { getMonthKey } from "@/lib/raidStorage";
-import { eventRepository, memberRepository } from "@/lib/repositories";
+import { evaluationRepository, eventRepository, memberRepository } from "@/lib/repositories";
+import {
+  filterEvaluationsByMonthKeys,
+  mapSupabaseEvaluationToFicheRecord,
+} from "@/lib/admin/members-fiche/memberEvaluationRecapApi";
 import { fetchCanonicalTwitchAvatarForLogin, resolveMemberAvatar } from "@/lib/memberAvatar";
 import { mergeMatchedRaidTestEventsForMonth } from "@/lib/raidEventsubMerge";
 import { debugAgentLog } from "@/lib/debugAgentLog";
@@ -510,60 +514,79 @@ export async function GET(
     }
 
     if (section === "evaluations") {
-      // E) Évaluations mensuelles (mois en parallèle ; détails A/C/D en parallèle par mois)
+      // E) Évaluations mensuelles — source Evaluation D (Supabase), repli blobs legacy
       try {
-        const evaluationChunks = await Promise.all(
-          monthKeys.map(async (monthKey) => {
-            try {
-              const finalResult = await loadFinalResult(monthKey);
-              if (!finalResult) return null;
-              const memberScore = finalResult.scores?.find((s: any) =>
-                memberIds.logins.has(String(s.twitchLogin || "").toLowerCase())
-              );
-              if (!memberScore) return null;
+        const twitchLogin = String(memberCanonical?.twitchLogin || member?.twitchLogin || "")
+          .trim()
+          .toLowerCase();
+        let evaluationsFromDb: ReturnType<typeof mapSupabaseEvaluationToFicheRecord>[] = [];
 
-              const [sectionA, sectionC, sectionD] = await Promise.all([
-                loadSectionAData(monthKey).catch(() => null),
-                loadSectionCData(monthKey).catch(() => null),
-                loadSectionDData(monthKey).catch(() => null),
-              ]);
+        if (twitchLogin) {
+          const supabaseEvaluations = await evaluationRepository.findByMember(twitchLogin);
+          evaluationsFromDb = filterEvaluationsByMonthKeys(
+            supabaseEvaluations.map(mapSupabaseEvaluationToFicheRecord),
+            monthKeys
+          );
+        }
 
-              return {
-                month: monthKey,
-                score: memberScore,
-                details: {
-                  sectionA:
-                    sectionA?.spotlights?.filter((s: any) =>
-                      memberIds.logins.has(
-                        String(s.streamerTwitchLogin || "").toLowerCase()
-                      )
-                    ) || [],
-                  sectionC:
-                    sectionC?.validations?.filter((v: any) =>
-                      Object.keys(v.follows || {}).some((login) =>
-                        memberIds.logins.has(String(login || "").toLowerCase())
-                      )
-                    ) || [],
-                  sectionDBonuses:
-                    sectionD?.bonuses?.filter((b: any) =>
-                      memberIds.logins.has(String(b.twitchLogin || "").toLowerCase())
-                    ) || [],
-                },
-              };
-            } catch {
-              return null;
-            }
-          })
-        );
+        if (evaluationsFromDb.length > 0) {
+          result.evaluations = evaluationsFromDb;
+          result.evaluationsMeta = { months, monthKeys, source: "supabase" };
+        } else {
+          const evaluationChunks = await Promise.all(
+            monthKeys.map(async (monthKey) => {
+              try {
+                const finalResult = await loadFinalResult(monthKey);
+                if (!finalResult) return null;
+                const memberScore = finalResult.scores?.find((s: any) =>
+                  memberIds.logins.has(String(s.twitchLogin || "").toLowerCase())
+                );
+                if (!memberScore) return null;
 
-        result.evaluations = evaluationChunks
-          .filter((e): e is NonNullable<(typeof evaluationChunks)[number]> => e != null)
-          .reverse();
-        result.evaluationsMeta = { months, monthKeys };
+                const [sectionA, sectionC, sectionD] = await Promise.all([
+                  loadSectionAData(monthKey).catch(() => null),
+                  loadSectionCData(monthKey).catch(() => null),
+                  loadSectionDData(monthKey).catch(() => null),
+                ]);
+
+                return {
+                  month: monthKey,
+                  score: memberScore,
+                  source: "blob",
+                  details: {
+                    sectionA:
+                      sectionA?.spotlights?.filter((s: any) =>
+                        memberIds.logins.has(
+                          String(s.streamerTwitchLogin || "").toLowerCase()
+                        )
+                      ) || [],
+                    sectionC:
+                      sectionC?.validations?.filter((v: any) =>
+                        Object.keys(v.follows || {}).some((login) =>
+                          memberIds.logins.has(String(login || "").toLowerCase())
+                        )
+                      ) || [],
+                    sectionDBonuses:
+                      sectionD?.bonuses?.filter((b: any) =>
+                        memberIds.logins.has(String(b.twitchLogin || "").toLowerCase())
+                      ) || [],
+                  },
+                };
+              } catch {
+                return null;
+              }
+            })
+          );
+
+          result.evaluations = evaluationChunks
+            .filter((e): e is NonNullable<(typeof evaluationChunks)[number]> => e != null)
+            .sort((a, b) => a.month.localeCompare(b.month));
+          result.evaluationsMeta = { months, monthKeys, source: "blob" };
+        }
       } catch (err) {
         console.error("Error loading evaluations:", err);
         result.evaluations = [];
-        result.evaluationsMeta = { months, monthKeys };
+        result.evaluationsMeta = { months, monthKeys, source: "error" };
       }
     }
 

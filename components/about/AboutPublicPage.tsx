@@ -422,7 +422,7 @@ export default function AboutPublicPage({
                   </span>
                 </p>
                 <p className="mt-1 text-xs font-medium leading-snug text-zinc-400">
-                  membres actif·ves sur la communauté
+                  actifs de l'entraide sur la période récente
                 </p>
               </article>
               <article className="col-span-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-4">

@@ -278,8 +278,8 @@ export default async function Page() {
     },
     {
       target: homeData.stats.activeMembers,
-      label: "Streamers actifs",
-      caption: "présents et visibles sur la période récente",
+      label: "Actifs de l'entraide",
+      caption: "présents dans l'entraide sur la période récente",
       prefix: "",
       suffix: "",
     },

@@ -96,7 +96,7 @@ async function getStatsData() {
   // Compter les membres actifs depuis Supabase
   let activeMembersCount = 0;
   try {
-    activeMembersCount = await memberRepository.countActive();
+    activeMembersCount = await memberRepository.countGestionActifsPopulation();
   } catch (error) {
     console.error('[Home API] Error counting active members:', error);
   }

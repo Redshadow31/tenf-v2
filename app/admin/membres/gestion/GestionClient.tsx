@@ -3100,7 +3100,7 @@ export default function GestionClient() {
             : statusTab === "nouveaux"
             ? "Nouveaux membres (rôle « Nouveau »). Utilise les raccourcis Affilié / Développement pour activer rapidement après l'intégration."
             : statusTab === "affilies"
-            ? "Affiliés TENF : affiliation Twitch obtenue après l'intégration au collectif (historique de rôle ou date d'affiliation post-intégration)."
+            ? "Affiliés TENF : uniquement le passage Développement → Affilié (pas le raccourci Nouveau → Affilié). Vue croisée avec Actifs / VIP."
             : statusTab === "departs"
             ? "Départs : ont quitté TENF (rôle « Départ », toujours inactif, sans suivi d'information)."
             : statusTab === "bans"

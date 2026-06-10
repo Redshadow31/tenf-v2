@@ -4,6 +4,7 @@ import type { MemberData } from '../memberData';
 import { cacheGet, cacheSet, cacheSetWithNamespace, cacheInvalidateNamespace, cacheKey, CACHE_TTL } from '../cache';
 import { logDatabase, logCache } from '../logging/logger';
 import { fetchCanonicalTwitchAvatarForLogin, hydrateTwitchStatusAvatar } from '../memberAvatar';
+import { isGestionActifsPopulationMember } from '../admin/members-gestion/memberPopulationFilters';
 
 export class MemberRepository {
   /**
@@ -587,6 +588,27 @@ export class MemberRepository {
     if (error) throw error;
 
     return (data || []).map(this.mapToMemberData);
+  }
+
+  /**
+   * Compte la population « Actifs » (gestion membres) : intégrés actifs + staff, hors Nouveau/Départ/Banni.
+   */
+  async countGestionActifsPopulation(): Promise<number> {
+    const cacheKeyStr = cacheKey('members', 'count', 'gestion_actifs');
+
+    const cached = await cacheGet<number>(cacheKeyStr);
+    if (cached !== null) {
+      return cached;
+    }
+
+    const allMembers = await this.findAllBatched();
+    const result = allMembers.filter((member) =>
+      isGestionActifsPopulationMember({ role: member.role, isActive: member.isActive })
+    ).length;
+
+    await cacheSet(cacheKeyStr, result, 60);
+
+    return result;
   }
 
   /**

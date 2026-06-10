@@ -59,7 +59,7 @@ export async function GET() {
     let activeMembersCount = 0;
     let activeMembers: any[] = [];
     try {
-      activeMembersCount = await memberRepository.countActive();
+      activeMembersCount = await memberRepository.countGestionActifsPopulation();
       // Récupérer tous les membres actifs pour les lives (sans limite pour avoir tous les logins Twitch)
       activeMembers = await memberRepository.findActive(10000, 0); // Limite élevée pour récupérer tous les membres actifs
       console.log(`[Stats API] Active members count from Supabase: ${activeMembersCount}`);

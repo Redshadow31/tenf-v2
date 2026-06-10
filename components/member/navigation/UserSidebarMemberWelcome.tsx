@@ -4,6 +4,7 @@ import { PanelLeftClose } from "lucide-react";
 import type { DiscordUser } from "@/lib/discord";
 import UserSidebarProfileCard from "@/components/member/navigation/UserSidebarProfileCard";
 import UserSidebarQuickActions from "@/components/member/navigation/UserSidebarQuickActions";
+import UserSidebarVipButton from "@/components/member/navigation/UserSidebarVipButton";
 
 type MemberOverviewPayload = {
   member?: { displayName?: string; role?: string; twitchLogin?: string | null };
@@ -56,6 +57,8 @@ export default function UserSidebarMemberWelcome({
       </div>
 
       <UserSidebarProfileCard discordUser={discordUser} overview={overview} twitchLinked={twitchLinked} />
+
+      {overview?.vip?.activeThisMonth ? <UserSidebarVipButton onNavigate={onNavigate} /> : null}
 
       <div className="mt-3 border-t border-white/10 pt-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-violet-200/80">En un clic</p>

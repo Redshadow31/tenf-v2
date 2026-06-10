@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { ArrowRight, Bell, LayoutDashboard } from "lucide-react";
 import type { DiscordUser } from "@/lib/discord";
+import UserSidebarVipButton from "@/components/member/navigation/UserSidebarVipButton";
 
 type UserSidebarCompactProps = {
   discordUser: DiscordUser;
   displayName: string;
   unreadNotifications: number;
+  vipActiveThisMonth?: boolean;
   onNavigate?: () => void;
 };
 
@@ -15,6 +17,7 @@ export default function UserSidebarCompact({
   discordUser,
   displayName,
   unreadNotifications,
+  vipActiveThisMonth = false,
   onNavigate,
 }: UserSidebarCompactProps) {
   const avatarSrc = discordUser.avatar
@@ -58,6 +61,8 @@ export default function UserSidebarCompact({
         Mon espace membre
         <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
       </Link>
+
+      {vipActiveThisMonth ? <UserSidebarVipButton onNavigate={onNavigate} /> : null}
 
       {unreadNotifications > 0 ? (
         <Link

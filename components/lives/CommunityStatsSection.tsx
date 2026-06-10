@@ -141,9 +141,9 @@ export default function CommunityStatsSection({
       actionLabel: "Annuaire",
     },
     {
-      label: "Actifs ce mois",
+      label: "Actifs de l'entraide",
       value: activeMembers !== null ? String(activeMembers) : "…",
-      caption: "Présence récente sur le serveur",
+      caption: "présents dans l'entraide sur la période récente",
       icon: Sparkles,
       tone: "amber",
       href: "/membres",

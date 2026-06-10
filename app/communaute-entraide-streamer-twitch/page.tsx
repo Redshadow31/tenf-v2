@@ -121,7 +121,7 @@ export default function CommunauteEntraideStreamerPage() {
             progresser ensemble via l'entraide, la visibilite et les actions communautaires.
           </p>
           <p>
-            <span className="font-semibold text-slate-100">Ou voir les streamers actifs ?</span> Sur la page{" "}
+            <span className="font-semibold text-slate-100">Où voir les actifs de l'entraide ?</span> Sur la page{" "}
             <Link href="/lives" className="text-indigo-200 underline underline-offset-2">
               lives
             </Link>
