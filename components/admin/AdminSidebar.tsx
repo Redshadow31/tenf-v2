@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, PanelLeftClose, X } from "lucide-react";
+import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
+import { useMobileAdminViewport } from "@/lib/hooks/useMobileViewport";
 import { useAdminDesktopNav } from "@/contexts/AdminDesktopNavContext";
 import {
   findActiveHub,
@@ -64,7 +66,9 @@ export default function AdminSidebar({
   onCloseMobile,
 }: AdminSidebarProps) {
   const pathname = usePathname();
+  const isMobileViewport = useMobileAdminViewport();
   const { effectiveDesktopCollapsed, prefersReducedMotion, setDesktopCollapsed } = useAdminDesktopNav();
+  useBodyScrollLock(isMobileOpen && isMobileViewport);
   const [openMenus, setOpenMenus] = useState<Set<string>>(new Set());
   const [canAccessAdvanced, setCanAccessAdvanced] = useState(false);
   const [adminMode, setAdminMode] = useState<AdminMode>("simple");
@@ -181,6 +185,12 @@ export default function AdminSidebar({
     onCloseMobile?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  useEffect(() => {
+    if (!isMobileViewport && isMobileOpen) {
+      onCloseMobile?.();
+    }
+  }, [isMobileViewport, isMobileOpen, onCloseMobile]);
 
   useEffect(() => {
     if (!isMobileOpen) return;
@@ -404,13 +414,20 @@ export default function AdminSidebar({
       </aside>
 
       {isMobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div
-            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+        <div
+          className="fixed inset-0 z-50 flex lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation admin"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 animate-[admin-sidebar-backdrop-fade_0.2s_ease-out] bg-black/65 backdrop-blur-sm motion-reduce:animate-none"
             onClick={onCloseMobile}
+            aria-label="Fermer le menu admin"
           />
           <aside
-            className="relative admin-sidebar-scroll h-full w-[92vw] max-w-sm border-r overflow-y-auto px-3.5 py-4"
+            className="relative admin-sidebar-scroll h-full w-[min(20rem,92vw)] max-w-sm overflow-y-auto border-r px-3.5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl motion-reduce:animate-none animate-[admin-sidebar-slide-in_0.25s_ease-out]"
             style={desktopBackground}
           >
             <div className="mb-3 flex items-center justify-between">

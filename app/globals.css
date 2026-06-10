@@ -309,6 +309,24 @@ body {
   }
 }
 
+@keyframes admin-sidebar-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes admin-sidebar-backdrop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes qfFadeIn {
   from {
     opacity: 0;

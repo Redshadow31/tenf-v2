@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
+import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
+import { useMobilePublicViewport } from "@/lib/hooks/useMobileViewport";
 import { useSession } from "next-auth/react";
 import { ChevronDown, ExternalLink, LogIn, Menu, PanelLeftOpen, Search, UserCircle2, X } from "lucide-react";
 import HeaderPrimaryCta from "@/components/header/HeaderPrimaryCta";
@@ -486,20 +489,34 @@ function DiscordStickyCta({ visible }: { visible: boolean }) {
 // ============================================================
 type HeaderProps = {
   onOpenMemberSidebar?: () => void;
+  onCloseMemberSidebar?: () => void;
+  isMemberSidebarOpen?: boolean;
   memberAreaHref?: string;
   showMemberMenuInBurger?: boolean;
 };
 
-export default function Header({ onOpenMemberSidebar, memberAreaHref, showMemberMenuInBurger }: HeaderProps) {
+export default function Header({
+  onOpenMemberSidebar,
+  onCloseMemberSidebar,
+  isMemberSidebarOpen = false,
+  memberAreaHref,
+  showMemberMenuInBurger,
+}: HeaderProps) {
   const pathname = usePathname();
   const memberDesktopNav = useMemberDesktopNavOptional();
+  const isMobileViewport = useMobilePublicViewport();
   const headerMemberArea = Boolean(pathname?.startsWith("/member") || pathname?.startsWith("/membres"));
   const headerRef = useRef<HTMLElement>(null);
+  const [portalReady, setPortalReady] = useState(false);
+  const [headerOffset, setHeaderOffset] = useState(0);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileOpenGroups, setMobileOpenGroups] = useState<Set<string>>(new Set());
   const [memberMenuOpen, setMemberMenuOpen] = useState(false);
   const [memberUnreadNotifications, setMemberUnreadNotifications] = useState(0);
+
+  const shouldLockMobileMenu = mobileMenuOpen && isMobileViewport;
+  useBodyScrollLock(shouldLockMobileMenu);
 
   const showStickyDiscord = isPublicContext(pathname);
   const useMemberHeaderSearch = isMemberSidebarFullContext(pathname);
@@ -516,6 +533,31 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
     return () => window.removeEventListener("member-notifications-count", handler);
   }, []);
 
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    const updateOffset = () => {
+      setHeaderOffset(header.getBoundingClientRect().bottom);
+    };
+
+    updateOffset();
+    const resizeObserver = new ResizeObserver(updateOffset);
+    resizeObserver.observe(header);
+    window.addEventListener("resize", updateOffset);
+    window.addEventListener("scroll", updateOffset, { passive: true });
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateOffset);
+      window.removeEventListener("scroll", updateOffset);
+    };
+  }, [pathname, mobileMenuOpen, isMemberSidebarOpen]);
+
   // Fermer tous les menus au changement de route
   useEffect(() => {
     setOpenDropdown(null);
@@ -523,16 +565,18 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
     setMemberMenuOpen(false);
   }, [pathname]);
 
-  // Verrou de scroll quand le menu mobile est ouvert
+  // Un seul panneau mobile à la fois (burger vs sidebar membre)
   useEffect(() => {
-    if (!mobileMenuOpen) return;
-    if (!window.matchMedia("(max-width: 1279px)").matches) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [mobileMenuOpen]);
+    if (isMemberSidebarOpen) {
+      setMobileMenuOpen(false);
+    }
+  }, [isMemberSidebarOpen]);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setMobileMenuOpen(false);
+    }
+  }, [isMobileViewport]);
 
   // Clic en dehors + Escape pour fermer les menus
   useEffect(() => {
@@ -563,6 +607,25 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
       else next.add(id);
       return next;
     });
+  }
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
+  }
+
+  function toggleMobileMenu() {
+    setMobileMenuOpen((open) => {
+      const next = !open;
+      if (next) {
+        onCloseMemberSidebar?.();
+      }
+      return next;
+    });
+  }
+
+  function openMemberSidebarPanel() {
+    closeMobileMenu();
+    onOpenMemberSidebar?.();
   }
 
   return (
@@ -677,7 +740,7 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
             {onOpenMemberSidebar ? (
               <button
                 type="button"
-                onClick={onOpenMemberSidebar}
+                onClick={openMemberSidebarPanel}
                 className="inline-flex items-center rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 xl:hidden"
                 style={{ color: "var(--color-text)", borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
                 aria-label="Ouvrir le panneau membre"
@@ -702,11 +765,11 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
             {/* Burger mobile */}
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={toggleMobileMenu}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
               aria-label={mobileMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 xl:hidden"
+              className="inline-flex h-10 min-h-[44px] min-w-[44px] w-10 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 xl:hidden"
               style={{ color: "var(--color-text)" }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = "var(--color-surface)";
@@ -720,199 +783,207 @@ export default function Header({ onOpenMemberSidebar, memberAreaHref, showMember
           </div>
         </div>
 
-        {/* Menu mobile en overlay */}
-        {mobileMenuOpen && (
-          <div
-            id="mobile-menu"
-            className="absolute left-0 right-0 top-full border-t shadow-xl xl:hidden"
-            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}
-          >
-            <nav
+      </header>
+
+      {portalReady &&
+        mobileMenuOpen &&
+        isMobileViewport &&
+        createPortal(
+          <div className="xl:hidden" role="presentation">
+            <button
+              type="button"
+              className="fixed inset-0 z-[64] animate-[member-sidebar-backdrop-fade_0.2s_ease-out] bg-black/55 motion-reduce:animate-none"
+              onClick={closeMobileMenu}
+              aria-label="Fermer le menu de navigation"
+            />
+            <div
+              id="mobile-menu"
+              role="dialog"
+              aria-modal="true"
               aria-label="Navigation mobile"
-              className="flex max-h-[78dvh] flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-4"
+              className="fixed inset-x-0 bottom-0 z-[65] overflow-y-auto overscroll-contain border-t shadow-xl motion-reduce:animate-none animate-[member-sidebar-backdrop-fade_0.2s_ease-out]"
+              style={{
+                top: headerOffset,
+                maxHeight: `calc(100dvh - ${headerOffset}px)`,
+                borderColor: "var(--color-border)",
+                backgroundColor: "var(--color-bg)",
+              }}
             >
-              {/* CTA principal */}
-              {showJoinCta ? (
-                <HeaderPrimaryCta variant="mobile" onNavigate={() => setMobileMenuOpen(false)} />
-              ) : null}
+              <nav aria-label="Navigation mobile" className="flex flex-col gap-3 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                {showJoinCta ? (
+                  <HeaderPrimaryCta variant="mobile" onNavigate={closeMobileMenu} />
+                ) : null}
 
-              {/* Recherche mobile */}
-              {useMemberHeaderSearch ? (
-                <MemberHeaderSearch variant="mobile" onItemSelect={() => setMobileMenuOpen(false)} />
-              ) : (
-                <HeaderSearch variant="mobile" onItemSelect={() => setMobileMenuOpen(false)} />
-              )}
+                {useMemberHeaderSearch ? (
+                  <MemberHeaderSearch variant="mobile" onItemSelect={closeMobileMenu} />
+                ) : (
+                  <HeaderSearch variant="mobile" onItemSelect={closeMobileMenu} />
+                )}
 
-              {/* Sections principales */}
-              {NAV_GROUPS.map((group) => {
-                const opened = mobileOpenGroups.has(group.id);
-                const theme = NAV_GROUP_THEME[group.id];
-                const GroupIcon = theme?.icon;
-                return (
-                  <div
-                    key={group.id}
-                    className="overflow-hidden rounded-2xl border"
-                    style={{
-                      borderColor: opened ? `${theme?.accent ?? "var(--color-border)"}44` : "var(--color-border)",
-                      backgroundColor: opened ? `${theme?.accent ?? "transparent"}08` : "transparent",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleMobileGroup(group.id)}
-                      aria-expanded={opened}
-                      aria-controls={`mobile-group-${group.id}`}
-                      className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2"
+                {NAV_GROUPS.map((group) => {
+                  const opened = mobileOpenGroups.has(group.id);
+                  const theme = NAV_GROUP_THEME[group.id];
+                  const GroupIcon = theme?.icon;
+                  return (
+                    <div
+                      key={group.id}
+                      className="overflow-hidden rounded-2xl border"
+                      style={{
+                        borderColor: opened ? `${theme?.accent ?? "var(--color-border)"}44` : "var(--color-border)",
+                        backgroundColor: opened ? `${theme?.accent ?? "transparent"}08` : "transparent",
+                      }}
                     >
-                      <span className="flex min-w-0 items-center gap-3">
-                        {theme ? (
-                          <span
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06]"
-                            style={{ backgroundColor: `${theme.accent}18`, color: theme.accent }}
-                          >
-                            <GroupIcon className="h-5 w-5" aria-hidden />
-                          </span>
-                        ) : null}
-                        <span className="flex min-w-0 flex-col">
-                          <span className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
-                            {group.label}
-                          </span>
-                          <span className="mt-0.5 text-[11px] font-medium leading-snug" style={{ color: "var(--color-text-secondary)" }}>
-                            {group.description}
+                      <button
+                        type="button"
+                        onClick={() => toggleMobileGroup(group.id)}
+                        aria-expanded={opened}
+                        aria-controls={`mobile-group-${group.id}`}
+                        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2"
+                      >
+                        <span className="flex min-w-0 items-center gap-3">
+                          {theme ? (
+                            <span
+                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.06]"
+                              style={{ backgroundColor: `${theme.accent}18`, color: theme.accent }}
+                            >
+                              <GroupIcon className="h-5 w-5" aria-hidden />
+                            </span>
+                          ) : null}
+                          <span className="flex min-w-0 flex-col">
+                            <span className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+                              {group.label}
+                            </span>
+                            <span
+                              className="mt-0.5 text-[11px] font-medium leading-snug"
+                              style={{ color: "var(--color-text-secondary)" }}
+                            >
+                              {group.description}
+                            </span>
                           </span>
                         </span>
+                        <ChevronDown
+                          size={16}
+                          className={`shrink-0 transition-transform duration-200 ${opened ? "rotate-180" : ""}`}
+                          style={{ color: theme?.accent ?? "var(--color-text-secondary)" }}
+                          aria-hidden
+                        />
+                      </button>
+                      {opened && theme ? (
+                        <ul
+                          id={`mobile-group-${group.id}`}
+                          className="space-y-0.5 border-t px-2 py-2"
+                          style={{ borderColor: `${theme.accent}28` }}
+                        >
+                          {group.items.map((item) => {
+                            const active =
+                              pathname === item.href ||
+                              (item.href !== "/" && Boolean(pathname?.startsWith(`${item.href}/`)));
+                            return (
+                              <li key={item.href}>
+                                <NavMenuItemLink
+                                  item={item}
+                                  groupTheme={theme}
+                                  active={active}
+                                  compact
+                                  onNavigate={closeMobileMenu}
+                                />
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
+                  );
+                })}
+
+                {showMemberMenuInBurger && (
+                  <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--color-border)" }}>
+                    <button
+                      type="button"
+                      onClick={() => setMemberMenuOpen((prev) => !prev)}
+                      aria-expanded={memberMenuOpen}
+                      aria-controls="mobile-member-menu"
+                      className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-bold focus-visible:outline-none focus-visible:ring-2"
+                      style={{ color: "var(--color-text)" }}
+                    >
+                      <span className="flex items-center gap-2">
+                        Mon espace
+                        {memberUnreadNotifications > 0 && (
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title="Notifications non lues" />
+                        )}
                       </span>
                       <ChevronDown
                         size={16}
-                        className={`shrink-0 transition-transform duration-200 ${opened ? "rotate-180" : ""}`}
-                        style={{ color: theme?.accent ?? "var(--color-text-secondary)" }}
+                        className={`shrink-0 transition-transform ${memberMenuOpen ? "rotate-180" : ""}`}
                         aria-hidden
                       />
                     </button>
-                    {opened && theme ? (
-                      <ul
-                        id={`mobile-group-${group.id}`}
-                        className="space-y-0.5 border-t px-2 py-2"
-                        style={{ borderColor: `${theme.accent}28` }}
-                      >
-                        {group.items.map((item) => {
-                          const active =
-                            pathname === item.href ||
-                            (item.href !== "/" && Boolean(pathname?.startsWith(`${item.href}/`)));
-                          return (
-                            <li key={item.href}>
-                              <NavMenuItemLink
-                                item={item}
-                                groupTheme={theme}
-                                active={active}
-                                compact
-                                onNavigate={() => setMobileMenuOpen(false)}
-                              />
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : null}
-                  </div>
-                );
-              })}
-
-              {/* Compte mobile (espace membre dans le burger) */}
-              {showMemberMenuInBurger && (
-                <div
-                  className="overflow-hidden rounded-xl border"
-                  style={{ borderColor: "var(--color-border)" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setMemberMenuOpen((prev) => !prev)}
-                    aria-expanded={memberMenuOpen}
-                    aria-controls="mobile-member-menu"
-                    className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-bold focus-visible:outline-none focus-visible:ring-2"
-                    style={{ color: "var(--color-text)" }}
-                  >
-                    <span className="flex items-center gap-2">
-                      Mon espace
-                      {memberUnreadNotifications > 0 && (
-                        <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title="Notifications non lues" />
-                      )}
-                    </span>
-                    <ChevronDown
-                      size={16}
-                      className={`shrink-0 transition-transform ${memberMenuOpen ? "rotate-180" : ""}`}
-                      aria-hidden
-                    />
-                  </button>
-                  {memberMenuOpen && (
-                    <ul
-                      id="mobile-member-menu"
-                      className="border-t px-2 py-2"
-                      style={{ borderColor: "var(--color-border)" }}
-                    >
-                      {memberSidebarNavItemsForMobile.map((item, idx) => (
-                        <li key={`member-${idx}-${item.href}`}>
-                          {item.disabled ? (
-                            <div
-                              role="link"
-                              aria-disabled="true"
-                              tabIndex={-1}
-                              title={`${item.label} — ${item.disabledHint ?? "bientôt disponible"}`}
-                              className="block cursor-not-allowed rounded-lg px-3 py-2 text-sm opacity-60 select-none"
-                              style={{ color: "var(--color-text-secondary)" }}
-                            >
-                              <span className="flex items-center gap-2">
-                                {item.label}
-                                <span className="inline-flex shrink-0 items-center rounded-full border border-zinc-700/70 bg-zinc-800/50 px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-wide text-zinc-400">
-                                  {item.disabledHint ?? "Bientôt"}
+                    {memberMenuOpen && (
+                      <ul id="mobile-member-menu" className="border-t px-2 py-2" style={{ borderColor: "var(--color-border)" }}>
+                        {memberSidebarNavItemsForMobile.map((item, idx) => (
+                          <li key={`member-${idx}-${item.href}`}>
+                            {item.disabled ? (
+                              <div
+                                role="link"
+                                aria-disabled="true"
+                                tabIndex={-1}
+                                title={`${item.label} — ${item.disabledHint ?? "bientôt disponible"}`}
+                                className="block cursor-not-allowed rounded-lg px-3 py-2 text-sm opacity-60 select-none"
+                                style={{ color: "var(--color-text-secondary)" }}
+                              >
+                                <span className="flex items-center gap-2">
+                                  {item.label}
+                                  <span className="inline-flex shrink-0 items-center rounded-full border border-zinc-700/70 bg-zinc-800/50 px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-wide text-zinc-400">
+                                    {item.disabledHint ?? "Bientôt"}
+                                  </span>
                                 </span>
-                              </span>
-                            </div>
-                          ) : item.external ? (
-                            <a
-                              href={item.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={() => setMobileMenuOpen(false)}
-                              className="block rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2"
-                              style={{ color: "var(--color-text)" }}
-                            >
-                              <span className="flex items-center gap-2">
-                                {item.label}
-                                <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                              </span>
-                            </a>
-                          ) : (
-                            <Link
-                              href={item.href}
-                              onClick={() => setMobileMenuOpen(false)}
-                              className="block rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2"
-                              style={{ color: "var(--color-text)" }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = "var(--color-card-hover)";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = "transparent";
-                              }}
-                            >
-                              <span className="flex items-center gap-2">
-                                {item.label}
-                                {item.href === "/member/notifications" && memberUnreadNotifications > 0 && (
-                                  <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title="Non lu" />
-                                )}
-                              </span>
-                            </Link>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-
-            </nav>
-          </div>
+                              </div>
+                            ) : item.external ? (
+                              <a
+                                href={item.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={closeMobileMenu}
+                                className="block rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2"
+                                style={{ color: "var(--color-text)" }}
+                              >
+                                <span className="flex items-center gap-2">
+                                  {item.label}
+                                  <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                                </span>
+                              </a>
+                            ) : (
+                              <Link
+                                href={item.href}
+                                onClick={closeMobileMenu}
+                                className="block rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2"
+                                style={{ color: "var(--color-text)" }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = "var(--color-card-hover)";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = "transparent";
+                                }}
+                              >
+                                <span className="flex items-center gap-2">
+                                  {item.label}
+                                  {item.href === "/member/notifications" && memberUnreadNotifications > 0 && (
+                                    <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title="Non lu" />
+                                  )}
+                                </span>
+                              </Link>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </nav>
+            </div>
+          </div>,
+          document.body,
         )}
-      </header>
 
       {/* Sticky CTA Discord mobile (hors zones membre/admin) */}
       <DiscordStickyCta visible={showStickyDiscord && !mobileMenuOpen} />

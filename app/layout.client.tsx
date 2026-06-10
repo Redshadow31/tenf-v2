@@ -14,6 +14,8 @@ import { MemberDesktopNavProvider, useMemberDesktopNav } from "@/contexts/Member
 import { MemberSidebarSearchProvider } from "@/contexts/MemberSidebarSearchContext";
 import MemberSidebarExpandRail from "@/components/member/navigation/MemberSidebarExpandRail";
 import { isMemberSidebarFullContext } from "@/lib/navigation/memberSidebar";
+import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
+import { useMobilePublicViewport } from "@/lib/hooks/useMobileViewport";
 
 type ClientLayoutProps = {
   children: ReactNode;
@@ -106,6 +108,8 @@ function MemberSiteLayout({
     <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}>
       <Header
         onOpenMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(true) : undefined}
+        onCloseMemberSidebar={shouldRenderMobileSidebarTrigger ? () => setIsMobileSidebarOpen(false) : undefined}
+        isMemberSidebarOpen={shouldRenderMobileSidebar && isMobileSidebarOpen}
         memberAreaHref={isMobileViewport && !isMemberArea ? "/member/dashboard" : undefined}
         showMemberMenuInBurger={isMemberArea}
       />
@@ -152,44 +156,20 @@ function MemberSiteLayout({
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
-  const [isMobileViewport, setIsMobileViewport] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(max-width: 1279px)").matches;
-  });
+  const isMobileViewport = useMobilePublicViewport();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+  useBodyScrollLock(isMobileSidebarOpen && isMobileViewport);
+
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 1279px)");
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsMobileViewport(event.matches);
-      if (!event.matches) {
-        setIsMobileSidebarOpen(false);
-      }
-    };
-
-    setIsMobileViewport(mediaQuery.matches);
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
+    if (!isMobileViewport) {
+      setIsMobileSidebarOpen(false);
     }
-
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, []);
+  }, [isMobileViewport]);
 
   useEffect(() => {
     setIsMobileSidebarOpen(false);
   }, [pathname]);
-
-  useEffect(() => {
-    if (!isMobileSidebarOpen) return;
-    if (!isMobileViewport) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isMobileSidebarOpen, isMobileViewport]);
 
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
