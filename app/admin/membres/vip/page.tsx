@@ -20,6 +20,7 @@ import {
   History,
 } from "lucide-react";
 import { getDiscordUser } from "@/lib/discord";
+import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClassName, getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 
 interface Member {
@@ -55,7 +56,7 @@ export default function GestionVipPage() {
   const [showMonthManager, setShowMonthManager] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string } | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ id: string; username: string; isFounder: boolean } | null>(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
   const [bulkApplyMode, setBulkApplyMode] = useState<"current" | "history">("current");
@@ -68,6 +69,15 @@ export default function GestionVipPage() {
   const [savingMonth, setSavingMonth] = useState(false);
   // VIP du mois depuis le blob (source de vérité après "Enregistrer VIP du mois")
   const [vipMonthLogins, setVipMonthLogins] = useState<string[] | null>(null);
+
+  function resolveVipAuditReason(actionLabel: string): string | null {
+    if (currentAdmin?.isFounder) {
+      return "Gestion VIP — fondateur TENF";
+    }
+    const reason = prompt(`Motif obligatoire pour ${actionLabel} :`);
+    if (!reason?.trim()) return null;
+    return reason.trim();
+  }
 
   // Fonctions de chargement
   async function loadMembers() {
@@ -157,7 +167,7 @@ export default function GestionVipPage() {
             return;
           }
           
-          setCurrentAdmin({ id: user.id, username: user.username });
+          setCurrentAdmin({ id: user.id, username: user.username, isFounder: isFounder(user.id) });
           
           // Initialiser avec le mois actuel
           const now = new Date();
@@ -243,6 +253,13 @@ export default function GestionVipPage() {
       }
 
       const newVipStatus = !member.isVip;
+      const auditReason = resolveVipAuditReason(
+        newVipStatus ? "activer le statut VIP" : "retirer le statut VIP"
+      );
+      if (!auditReason) {
+        setMessage({ type: "error", text: "Motif obligatoire pour cette modification." });
+        return;
+      }
 
       // Appeler l'API de mise à jour
       const response = await fetch("/api/admin/members", {
@@ -255,6 +272,7 @@ export default function GestionVipPage() {
           originalDiscordId: fullMember.discordId,
           originalTwitchId: fullMember.twitchId,
           isVip: newVipStatus,
+          auditReason,
         }),
       });
 
@@ -439,6 +457,13 @@ export default function GestionVipPage() {
       const historicalMode = bulkApplyMode === "history" || selectedMonth !== getCurrentMonthKey();
       const monthLogins = vipMonthLogins ?? vipHistory[selectedMonth] ?? [];
       const existingMonthSet = new Set(monthLogins.map((login) => login.toLowerCase()));
+      const bulkAuditReason = historicalMode
+        ? null
+        : resolveVipAuditReason("activer le statut VIP en masse");
+      if (!historicalMode && !bulkAuditReason) {
+        setMessage({ type: "error", text: "Motif obligatoire pour cette modification." });
+        return;
+      }
 
       for (const { member } of membersToUpdate) {
         try {
@@ -469,6 +494,7 @@ export default function GestionVipPage() {
               originalDiscordId: fullMember.discordId,
               originalTwitchId: fullMember.twitchId,
               isVip: true,
+              auditReason: bulkAuditReason,
             }),
           });
 
@@ -517,6 +543,11 @@ export default function GestionVipPage() {
       const vipMembers = members.filter((m) => m.isVip && m.isActive);
       let successCount = 0;
       let errorCount = 0;
+      const bulkAuditReason = resolveVipAuditReason("retirer le statut VIP à tous");
+      if (!bulkAuditReason) {
+        setMessage({ type: "error", text: "Motif obligatoire pour cette modification." });
+        return;
+      }
 
       for (const member of vipMembers) {
         try {
@@ -535,6 +566,7 @@ export default function GestionVipPage() {
               originalDiscordId: fullMember.discordId,
               originalTwitchId: fullMember.twitchId,
               isVip: false,
+              auditReason: bulkAuditReason,
             }),
           });
 

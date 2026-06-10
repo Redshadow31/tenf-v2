@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { memberRepository } from "@/lib/repositories";
 import { getTwitchUsers } from "@/lib/twitch";
 import { requireAdmin, requirePermission } from "@/lib/requireAdmin";
+import { isFounder } from "@/lib/adminRoles";
 import { logAction, prepareAuditValues } from "@/lib/admin/logger";
 import { logApi, logMember } from "@/lib/logging/logger";
 import { isInactiveExitMemberRole, toCanonicalBadges, toCanonicalMemberRole } from "@/lib/memberRoles";
@@ -992,7 +993,13 @@ export async function PUT(request: NextRequest) {
     if (hasValueChanged(existingMember.discordId, updates.discordId)) sensitiveFieldsChanged.push("discordId");
     if (hasValueChanged(existingMember.discordUsername, updates.discordUsername)) sensitiveFieldsChanged.push("discordUsername");
 
-    const effectiveReason = auditReason || sanitizeAuditReason((updates as any).roleChangeReason);
+    const onlyVipChange =
+      sensitiveFieldsChanged.length > 0 &&
+      sensitiveFieldsChanged.every((field) => field === "isVip");
+    let effectiveReason = auditReason || sanitizeAuditReason((updates as any).roleChangeReason);
+    if (!effectiveReason && onlyVipChange && isFounder(admin.discordId)) {
+      effectiveReason = "Gestion VIP — fondateur TENF";
+    }
     if (sensitiveFieldsChanged.length > 0 && !effectiveReason) {
       return NextResponse.json(
         {
