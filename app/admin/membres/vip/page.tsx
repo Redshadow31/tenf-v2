@@ -750,19 +750,25 @@ export default function GestionVipPage() {
               Pilote les promotions VIP, la cohérence mensuelle et le suivi de rétention des membres premium.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              void loadMembers();
-              void loadVipHistory();
-              void loadVipMonthForSelectedMonth();
-            }}
-            disabled={loading || saving || savingMonth}
-            className={`${subtleButtonClass} disabled:opacity-60`}
-          >
-            <RefreshCw className="h-4 w-4" />
-            Actualiser
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/admin/membres/vip/historique" className={subtleButtonClass}>
+              <History className="h-4 w-4" />
+              Historique VIP
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                void loadMembers();
+                void loadVipHistory();
+                void loadVipMonthForSelectedMonth();
+              }}
+              disabled={loading || saving || savingMonth}
+              className={`${subtleButtonClass} disabled:opacity-60`}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Actualiser
+            </button>
+          </div>
         </div>
       </section>
 

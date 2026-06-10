@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { getDiscordUser } from "@/lib/discord";
 import { isFounder } from "@/lib/adminRoles";
 import { getRoleBadgeClasses } from "@/lib/roleColors";
@@ -10,6 +10,9 @@ import { getRoleBadgeLabel } from "@/lib/roleBadgeSystem";
 import MemberRoleHistoryPanel from "@/components/admin/members-gestion/MemberRoleHistoryPanel";
 import MemberEvaluationRecapPanel from "@/components/admin/members-gestion/MemberEvaluationRecapPanel";
 import MemberFicheLogsPanel from "@/components/admin/members-gestion/MemberFicheLogsPanel";
+import MemberVipParcoursPanel, {
+  type MemberVipParcoursData,
+} from "@/components/admin/members-gestion/MemberVipParcoursPanel";
 import {
   MemberFicheContentGrid,
   MemberFicheField,
@@ -45,6 +48,7 @@ const RECAP_HISTORY_MONTHS = 24;
 const TAB_SECTIONS: Record<TabKey, string[]> = {
   overview: [],
   journey: ["integration"],
+  vipParcours: [],
   recap: [],
   performance: ["evaluations"],
   participation: ["events"],
@@ -89,7 +93,9 @@ function toMonthLabel(monthKey?: string): string {
 
 export default function MemberFichePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const memberId = decodeURIComponent((params?.id as string) || "");
+  const initialTab = (searchParams?.get("tab") || "").trim() as TabKey;
 
   const [ready, setReady] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -103,6 +109,9 @@ export default function MemberFichePage() {
   const [recapEvaluations, setRecapEvaluations] = useState<any[]>([]);
   const [loadingRecap, setLoadingRecap] = useState(false);
   const [recapError, setRecapError] = useState<string | null>(null);
+  const [vipParcours, setVipParcours] = useState<MemberVipParcoursData | null>(null);
+  const [loadingVipParcours, setLoadingVipParcours] = useState(false);
+  const [vipParcoursError, setVipParcoursError] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkAccess() {
@@ -125,9 +134,23 @@ export default function MemberFichePage() {
         }
       }
       setReady(true);
+      if (
+        initialTab === "vipParcours" ||
+        initialTab === "recap" ||
+        initialTab === "journey" ||
+        initialTab === "overview" ||
+        initialTab === "performance" ||
+        initialTab === "participation" ||
+        initialTab === "raids" ||
+        initialTab === "community" ||
+        initialTab === "logs" ||
+        initialTab === "admin"
+      ) {
+        setActiveTab(initialTab);
+      }
     }
     if (memberId) void checkAccess();
-  }, [memberId]);
+  }, [memberId, initialTab]);
 
   useEffect(() => {
     if (ready && memberId) {
@@ -146,10 +169,16 @@ export default function MemberFichePage() {
       return next;
     });
     setRecapEvaluations([]);
+    setVipParcours(null);
     void loadTab(activeTab, true);
-    if (activeTab === "recap") void loadRecapEvaluations(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [months]);
+
+  useEffect(() => {
+    if (!ready) return;
+    void loadTab(activeTab, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, activeTab]);
 
   async function loadSummary() {
     setLoadingSummary(true);
@@ -228,9 +257,37 @@ export default function MemberFichePage() {
     }
   }
 
+  async function loadVipParcours(force = false) {
+    if (!memberId) return;
+    if (!force && vipParcours) return;
+    setLoadingVipParcours(true);
+    setVipParcoursError(null);
+    try {
+      const response = await fetch(
+        `/api/admin/members/${encodeURIComponent(memberId)}/vip-parcours`,
+        { cache: "no-store", headers: { "Cache-Control": "no-cache" } }
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || "Erreur chargement parcours VIP");
+      }
+      const data = await response.json();
+      setVipParcours(data);
+    } catch (e) {
+      setVipParcoursError(e instanceof Error ? e.message : "Erreur chargement parcours VIP");
+      setVipParcours(null);
+    } finally {
+      setLoadingVipParcours(false);
+    }
+  }
+
   async function loadTab(tab: TabKey, force = false) {
     if (tab === "recap") {
       await loadRecapEvaluations(force);
+      return;
+    }
+    if (tab === "vipParcours") {
+      await loadVipParcours(force);
       return;
     }
     const sections = TAB_SECTIONS[tab] || [];
@@ -249,10 +306,11 @@ export default function MemberFichePage() {
 
   const loadingTab = useMemo((): TabKey | null => {
     if (loadingRecap && activeTab === "recap") return "recap";
+    if (loadingVipParcours && activeTab === "vipParcours") return "vipParcours";
     const sections = TAB_SECTIONS[activeTab] || [];
     if (sections.some((section) => loadingSections.has(section))) return activeTab;
     return null;
-  }, [activeTab, loadingRecap, loadingSections]);
+  }, [activeTab, loadingRecap, loadingVipParcours, loadingSections]);
 
   const engagement = sectionData.engagement?.engagement || { follows: [], raids: { sent: 0, received: 0, details: [], byMonth: [], stats: {} } };
   const raids = engagement.raids || { sent: 0, received: 0, details: [], byMonth: [], stats: {} };
@@ -588,6 +646,20 @@ export default function MemberFichePage() {
             loading={loadingRecap}
             error={recapError}
             twitchLogin={member.twitchLogin}
+            toMonthLabel={toMonthLabel}
+          />
+        )}
+
+        {activeTab === "vipParcours" && (
+          <MemberVipParcoursPanel
+            memberId={memberId}
+            data={vipParcours}
+            loading={loadingVipParcours}
+            error={vipParcoursError}
+            onRefresh={async () => {
+              setVipParcours(null);
+              await loadVipParcours(true);
+            }}
             toMonthLabel={toMonthLabel}
           />
         )}

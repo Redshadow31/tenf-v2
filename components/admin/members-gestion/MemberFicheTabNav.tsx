@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
+  Crown,
   Footprints,
   History,
   LayoutDashboard,
@@ -23,6 +24,7 @@ import {
 export type FicheTabKey =
   | "overview"
   | "journey"
+  | "vipParcours"
   | "recap"
   | "performance"
   | "participation"
@@ -42,6 +44,7 @@ type TabDef = {
 const TABS: TabDef[] = [
   { key: "overview", label: "Apercu", hint: "Profil & synthese", Icon: LayoutDashboard, accent: "violet" },
   { key: "journey", label: "Parcours", hint: "Roles & integrations", Icon: Footprints, accent: "indigo" },
+  { key: "vipParcours", label: "Parcours VIP", hint: "Historique mensuel VIP", Icon: Crown, accent: "amber" },
   { key: "recap", label: "Recap", hint: "Evolution evaluation D", Icon: TrendingUp, accent: "emerald" },
   { key: "performance", label: "Performance", hint: "Notes mensuelles", Icon: BarChart3, accent: "sky" },
   { key: "participation", label: "Participation", hint: "Evenements & animations", Icon: Users, accent: "amber" },
@@ -62,7 +65,7 @@ export default function MemberFicheTabNav({ activeTab, onTabChange, loadingTab }
     <nav className={ficheTabNavClass} aria-label="Onglets fiche membre">
       <div className="mb-2 flex items-center justify-between gap-2 px-1">
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">Vue 360°</p>
-        <p className="text-[10px] text-zinc-600">9 sections · donnees live</p>
+        <p className="text-[10px] text-zinc-600">10 sections · donnees live</p>
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
         {TABS.map(({ key, label, hint, Icon, accent }) => {

@@ -162,3 +162,12 @@ export function addVipEntry(login: string, month: string): void {
   }
 }
 
+/** Retire une entrée VIP d'un mois pour un membre. */
+export function removeVipEntry(login: string, month: string): void {
+  const loginLower = login.toLowerCase();
+  const history = loadVipHistory().filter(
+    (entry) => !(entry.login.toLowerCase() === loginLower && entry.month === month)
+  );
+  saveVipHistory(history);
+}
+

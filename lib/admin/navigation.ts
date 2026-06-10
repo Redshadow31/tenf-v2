@@ -110,6 +110,7 @@ export const adminNavigation: NavItem[] = [
         children: [
           { href: "/admin/membres/badges", label: "Badges & rôles" },
           { href: "/admin/membres/vip", label: "VIP" },
+          { href: "/admin/membres/vip/historique", label: "Historique VIP" },
         ],
       },
     ],
@@ -449,6 +450,7 @@ export const adminNavigationSimple: NavItem[] = [
         children: [
           { href: "/admin/membres/badges", label: "Badges & rôles" },
           { href: "/admin/membres/vip", label: "VIP" },
+          { href: "/admin/membres/vip/historique", label: "Historique VIP" },
         ],
       },
     ],

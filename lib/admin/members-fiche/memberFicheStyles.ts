@@ -250,6 +250,8 @@ export const FICHE_TAB_ACCENTS: Record<string, FicheTabAccent> = {
 
   journey: "indigo",
 
+  vipParcours: "amber",
+
   recap: "emerald",
 
   performance: "sky",

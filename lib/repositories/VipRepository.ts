@@ -117,6 +117,80 @@ export class VipRepository {
     if (error) throw error;
   }
 
+  /** Supprime l'entrée VIP d'un membre pour un mois donné. */
+  async deleteByMemberAndMonth(month: string, twitchLogin: string): Promise<void> {
+    const monthDate = `${month}-01`;
+    const { error } = await supabaseAdmin
+      .from("vip_history")
+      .delete()
+      .eq("month", monthDate)
+      .eq("twitch_login", twitchLogin.toLowerCase());
+
+    if (error) throw error;
+  }
+
+  /** Ajoute une entrée VIP si absente pour ce mois / membre. */
+  async ensureMemberMonth(
+    month: string,
+    twitchLogin: string,
+    displayName?: string
+  ): Promise<void> {
+    const monthDate = `${month}-01`;
+    const login = twitchLogin.toLowerCase();
+    const { data, error: findError } = await supabaseAdmin
+      .from("vip_history")
+      .select("id")
+      .eq("month", monthDate)
+      .eq("twitch_login", login)
+      .maybeSingle();
+
+    if (findError) throw findError;
+    if (data) return;
+
+    const { error: insertError } = await supabaseAdmin.from("vip_history").insert({
+      month: monthDate,
+      twitch_login: login,
+      display_name: displayName || login,
+      consecutive_months: 1,
+    });
+
+    if (insertError) throw insertError;
+  }
+
+  /** Historique agrégé par mois (YYYY-MM → logins). */
+  async findAllGroupedByMonth(): Promise<Record<string, string[]>> {
+    const { data, error } = await supabaseAdmin
+      .from("vip_history")
+      .select("month, twitch_login")
+      .order("month", { ascending: false });
+
+    if (error) throw error;
+
+    const byMonth: Record<string, string[]> = {};
+    for (const row of data || []) {
+      const monthKey = String(row.month).slice(0, 7);
+      if (!byMonth[monthKey]) byMonth[monthKey] = [];
+      const login = String(row.twitch_login || "").toLowerCase();
+      if (login && !byMonth[monthKey].includes(login)) {
+        byMonth[monthKey].push(login);
+      }
+    }
+    return byMonth;
+  }
+
+  /** Mois VIP d'un membre (YYYY-MM triés desc). */
+  async findMonthsByMember(twitchLogin: string): Promise<string[]> {
+    const entries = await this.findByMember(twitchLogin);
+    return Array.from(
+      new Set(
+        entries.map((entry) => {
+          const d = entry.month instanceof Date ? entry.month : new Date(entry.month);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        })
+      )
+    ).sort((a, b) => b.localeCompare(a));
+  }
+
   private mapToVipEntry(row: any): VipHistoryEntry {
     return {
       id: row.id,

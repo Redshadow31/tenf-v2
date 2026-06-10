@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadVipHistory, getVipHistoryByMonth, getConsecutiveVipMonths, getVipBadgeText, addVipEntry, saveVipHistory } from '@/lib/vipHistory';
+import { loadVipHistory, getVipHistoryByMonth, getConsecutiveVipMonths, getVipBadgeText, addVipEntry, saveVipHistory, removeVipEntry } from '@/lib/vipHistory';
 import { requirePermission } from '@/lib/requireAdmin';
+import { vipRepository } from '@/lib/repositories';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -120,6 +121,12 @@ export async function POST(request: NextRequest) {
 
     addVipEntry(login, month);
 
+    try {
+      await vipRepository.ensureMemberMonth(month, login);
+    } catch (syncError) {
+      console.error(`[VIP History POST] Sync Supabase failed for ${login}@${month}:`, syncError);
+    }
+
     return NextResponse.json({
       success: true,
       message: `VIP ajouté pour ${login} au mois ${month}`,
@@ -161,13 +168,13 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const history = loadVipHistory();
-    const loginLower = login.toLowerCase();
-    const filteredHistory = history.filter(
-      (entry) => !(entry.login.toLowerCase() === loginLower && entry.month === month)
-    );
+    removeVipEntry(login, month);
 
-    saveVipHistory(filteredHistory);
+    try {
+      await vipRepository.deleteByMemberAndMonth(month, login);
+    } catch (syncError) {
+      console.error(`[VIP History DELETE] Sync Supabase failed for ${login}@${month}:`, syncError);
+    }
 
     return NextResponse.json({
       success: true,
