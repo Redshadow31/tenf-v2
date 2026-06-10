@@ -18,6 +18,8 @@ import AdminHubContextCard from "@/components/admin/sidebar/AdminHubContextCard"
 import AdminSidebarSection from "@/components/admin/sidebar/AdminSidebarSection";
 import AdminSidebarItem from "@/components/admin/sidebar/AdminSidebarItem";
 import { getAdminHubDescription } from "@/components/admin/sidebar/hubDescriptions";
+import { sortAdminHubNavItems } from "@/lib/admin/hubNavOrder";
+import AdminHubNavLinks from "@/components/admin/AdminHubNavLinks";
 
 const ADMIN_MODE_COOKIE = "admin_mode";
 const EVALUATION_V2_ITEM_HREF = "/admin/evaluation/v2";
@@ -81,6 +83,7 @@ export default function AdminSidebar({
     () => findActiveHub(navItems, pathname || "/admin"),
     [navItems, pathname]
   );
+  const orderedNavItems = useMemo(() => sortAdminHubNavItems(navItems), [navItems]);
   const hubChildren = useMemo<NavItem[]>(() => {
     if (!activeHub) return [];
     if (activeHub.children && activeHub.children.length > 0) return activeHub.children;
@@ -301,6 +304,15 @@ export default function AdminSidebar({
 
   const renderSidebarContent = (showDesktopCollapse: boolean) => (
     <>
+      {!showDesktopCollapse ? (
+        <AdminHubNavLinks
+          hubs={orderedNavItems}
+          activeHubHref={activeHub?.href}
+          variant="mobile-drawer"
+          onNavigate={onCloseMobile}
+        />
+      ) : null}
+
       <div className="relative">
         {showDesktopCollapse ? (
           <button

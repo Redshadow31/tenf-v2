@@ -11,6 +11,8 @@ import { useFilteredAdminNav, useAdminNavHrefAllowed } from "@/components/admin/
 import AdminDevRolePreviewSelect from "@/components/admin/AdminDevRolePreviewSelect";
 import { useAdminDevRolePreviewOptional } from "@/contexts/AdminDevRolePreviewContext";
 import { getDevRolePreviewLabel } from "@/lib/admin/devRolePreviewLabels";
+import { sortAdminHubNavItems } from "@/lib/admin/hubNavOrder";
+import AdminHubNavLinks from "@/components/admin/AdminHubNavLinks";
 import type { AdminRole } from "@/lib/adminRoles";
 
 const ADMIN_MODE_COOKIE = "admin_mode";
@@ -18,28 +20,6 @@ const ADMIN_MODE_COOKIE = "admin_mode";
 type AdminTopBarProps = {
   onOpenMobileMenu?: () => void;
 };
-
-const HUB_PRIORITY_ORDER = [
-  "/admin/pilotage",
-  "/admin/mon-compte",
-  "/admin/membres",
-  "/admin/onboarding",
-  "/admin/communaute",
-  "/admin/evaluation",
-  "/admin/academy",
-  "/admin/upa-event",
-  "/admin/new-family-aventura",
-  "/admin/interviews",
-  "/admin/boutique",
-  "/admin/gestion-acces",
-  "/admin/moderation/staff",
-  "/admin/search",
-] as const;
-
-function getHubPriority(href: string): number {
-  const idx = HUB_PRIORITY_ORDER.findIndex((candidate) => href === candidate || href.startsWith(`${candidate}/`));
-  return idx === -1 ? HUB_PRIORITY_ORDER.length + 1 : idx;
-}
 
 function getAdminModeCookie(): AdminMode {
   if (typeof document === "undefined") return "simple";
@@ -97,14 +77,7 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
   const baseNavItems = useMemo(() => getNavigationByMode(adminMode), [adminMode]);
   const navItems = useFilteredAdminNav(baseNavItems);
   const activeHub = useMemo(() => findActiveHub(navItems, pathname), [navItems, pathname]);
-  const orderedNavItems = useMemo(() => {
-    return navItems.slice().sort((a, b) => {
-      const rankA = getHubPriority(a.href);
-      const rankB = getHubPriority(b.href);
-      if (rankA !== rankB) return rankA - rankB;
-      return a.label.localeCompare(b.label, "fr-FR");
-    });
-  }, [navItems]);
+  const orderedNavItems = useMemo(() => sortAdminHubNavItems(navItems), [navItems]);
 
   const logoHomeHref = useMemo(() => {
     if (orderedNavItems.length > 0) return orderedNavItems[0].href;
@@ -223,36 +196,17 @@ export default function AdminTopBar({ onOpenMobileMenu }: AdminTopBarProps) {
           </div>
         </div>
 
-        <nav
-          className="hidden w-full min-w-0 border-t border-white/[0.04] bg-gradient-to-b from-white/[0.015] to-transparent px-[clamp(0.75rem,2.5vw,1.5rem)] py-3 lg:block lg:py-3.5"
-          aria-label="Navigation principale admin"
-        >
-          <div className="flex w-full min-w-0 flex-wrap items-stretch justify-center gap-[clamp(0.25rem,0.8vw,0.5rem)]">
-            {orderedNavItems.map((hub) => {
-              const isActive = activeHub?.href === hub.href;
-              return (
-                <Link
-                  key={hub.href}
-                  href={hub.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`relative max-w-[min(100%,11rem)] rounded-lg px-[clamp(0.65rem,1.2vw,0.9rem)] py-[clamp(0.4rem,1vw,0.55rem)] text-center text-[length:clamp(0.625rem,0.55rem+0.2vw,0.75rem)] font-medium leading-snug tracking-tight transition-colors duration-150 sm:max-w-[min(100%,13rem)] sm:px-[clamp(0.75rem,1.4vw,1rem)] ${focusRing} ${
-                    isActive
-                      ? "bg-violet-500/[0.10] text-zinc-50"
-                      : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100"
-                  }`}
-                >
-                  {isActive ? (
-                    <span
-                      aria-hidden
-                      className="absolute -bottom-[7px] left-1/2 h-[2px] w-6 -translate-x-1/2 rounded-full bg-violet-300/85"
-                    />
-                  ) : null}
-                  {hub.label}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
+        <AdminHubNavLinks
+          hubs={orderedNavItems}
+          activeHubHref={activeHub?.href}
+          variant="mobile-scroll"
+        />
+
+        <AdminHubNavLinks
+          hubs={orderedNavItems}
+          activeHubHref={activeHub?.href}
+          variant="desktop-bar"
+        />
 
         {previewActive && previewLabel ? (
           <p className="w-full border-t border-amber-400/25 bg-gradient-to-r from-amber-500/[0.12] via-amber-950/30 to-amber-500/[0.08] px-[clamp(0.75rem,2.5vw,1.5rem)] py-2 text-center text-[length:clamp(0.625rem,0.55rem+0.2vw,0.6875rem)] leading-relaxed text-amber-100/90">
