@@ -47,7 +47,7 @@ interface ProgressionResponse {
 
 export default function EvaluationProgressionPage() {
   const searchParams = useSearchParams();
-  const initialLogin = (searchParams.get("twitchLogin") || "").trim().toLowerCase();
+  const initialLogin = (searchParams?.get("twitchLogin") || "").trim().toLowerCase();
 
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);

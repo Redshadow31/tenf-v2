@@ -20,7 +20,6 @@ function isNetlifyEnv(): boolean {
 }
 
 function getVipMonthStore() {
-  if (!isNetlifyEnv()) return null;
   return getBlobStore(STORE_NAME);
 }
 

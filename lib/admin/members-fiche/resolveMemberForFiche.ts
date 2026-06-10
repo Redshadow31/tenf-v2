@@ -55,11 +55,11 @@ export async function resolveMemberForFiche(decodedId: string): Promise<any | nu
     if (archivedEntry) {
       member = {
         ...archivedEntry.snapshot,
-        archived: true,
+        isArchived: true,
         archivedAt: archivedEntry.deletedAt,
         archivedBy: archivedEntry.deletedBy,
         archiveReason: archivedEntry.deleteReason,
-      };
+      } as any;
     }
   }
 
